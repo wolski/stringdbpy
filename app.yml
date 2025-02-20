@@ -1,0 +1,16 @@
+bfabric:
+  app_runner: 0.0.14
+versions:
+  - version: 1.9.2
+    commands:
+      dispatch:
+        type: shell
+        command: uv run --script /home/bfabric/slurmworker/config/A373_STRING_GSEA/dispatch.py
+      process:
+        type: shell
+        command: /home/bfabric/slurmworker/config/A366_DIANN/run.sh
+      collect:
+        type: shell
+        command: echo "Hello world" && return 1
+    submitter:
+      name: slurm
