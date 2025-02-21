@@ -13,7 +13,7 @@
     <status>available</status>
     <context>APPLICATION</context>
     <enabled>true</enabled>
-    <program>/home/bfabric/slurmworker/bin/fgcz_slurm_app_runner_compat.bash /home/bfabric/slurmworker/config/A366_DIANN/app.yml</program>
+    <program>/home/bfabric/slurmworker/bin/fgcz_slurm_app_runner_compat.bash /home/bfabric/slurmworker/config/A373_STRING_GSEA/app.yml</program>
     <statusmodified>2023-01-25T10:40:38.563</statusmodified>
     <statusmodifiedby id="482" classname="user"/>
     <supervisor id="482" classname="user"/>
