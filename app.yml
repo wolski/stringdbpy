@@ -8,7 +8,7 @@ versions:
         command: uv run --script /home/bfabric/slurmworker/config/A373_STRING_GSEA/dispatch.py
       process:
         type: shell
-        command: /home/bfabric/slurmworker/config/A366_DIANN/run.sh
+        command: /home/bfabric/slurmworker/config/A373_STRING_GSEA/run.sh
       collect:
         type: shell
         command: echo "Hello world" && return 1
