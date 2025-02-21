@@ -1,7 +1,7 @@
 bfabric:
   app_runner: 0.0.14
 versions:
-  - version: 0.1
+  - version: "0.1"
     commands:
       dispatch:
         type: shell
