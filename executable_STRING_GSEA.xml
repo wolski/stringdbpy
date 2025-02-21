@@ -18,4 +18,19 @@
     <statusmodifiedby id="482" classname="user"/>
     <supervisor id="482" classname="user"/>
     <valid>true</valid>
+     <parameter>
+        <key>application_version</key>
+        <label>Application Version</label>
+        <description>The version of the application to use</description>
+        <context>APPLICATION</context>
+        <required>true</required>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <inUse>true</inUse>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <type>STRING</type>
+        <value>0.1</value>
+    </parameter>
 </executable>
+
