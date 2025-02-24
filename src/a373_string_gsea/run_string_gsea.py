@@ -4,7 +4,7 @@ import re
 import zipfile
 import io
 import glob
-
+import yaml
 from loguru import logger
 from a373_string_gsea.stringgsea import StringGSEA
 from collections import Counter
@@ -52,12 +52,25 @@ def get_oxes(zip_path : str):
 def find_zip_files():
     return glob.glob("*.zip")
 
+def extract_workunit_id_from_file(file_path):
+    try:
+        with open(file_path, 'r') as file:
+            data = yaml.safe_load(file)
+        # Navigate to the 'registration' block and extract 'workunit_id'
+        return data.get('registration', {}).get('workunit_id')
+    except Exception as e:
+        logger.error(f"Error reading or parsing the YAML file: {e}")
+        return None
+
 
 if __name__ == '__main__':
     species: int = 9606
     api_key = "b36F8oaRJwFZ"
     workunit_id = "322025"
 
+
+    workunit_id =  extract_workunit_id_from_file("../workunit_definition.yml")
+    logger.info(f"Workunit ID: {workunit_id}")
     fdr: float = 0.25
 
     # Path to your zip file
