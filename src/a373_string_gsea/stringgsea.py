@@ -8,6 +8,8 @@ import time
 import subprocess
 from loguru import logger
 from pathlib import Path
+import shutil
+
 
 class StringGSEA:
 
@@ -134,3 +136,11 @@ class StringGSEA:
                 f.write(response.content)
 
         return res_path
+
+    @staticmethod
+    def zip_folder(folder_path: Path) -> Path:
+        folder_path = folder_path.resolve()
+        archive_base = folder_path.parent / folder_path.name
+        zip_file_path = shutil.make_archive(str(archive_base), 'zip', root_dir=str(folder_path))
+        return Path(zip_file_path)
+

@@ -86,13 +86,13 @@ if __name__ == '__main__':
     dataframes = StringGSEA.get_rank_files(zip_path)
     gsea = StringGSEA(api_key, workunit_id, dataframes, species, fdr)
 
-    #gsea.string_gsea()
-    #logger.info("Job submitted successfully.")
+    gsea.string_gsea()
+    logger.info(f"Job submitted successfully.{gsea.res_job_id}")
 
     gsea.res_job_id = {'C37638WU322006/Bait_FAN1~FAN1.rnk': 'bhDZz6P6jgmx'}
     gsea.pull_results()
     logger.info("got results")
-    path = gsea.write_results()
+    path = gsea.zip_folder(gsea.write_results())
     status = gsea.save_link()
 
 
