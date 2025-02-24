@@ -76,7 +76,7 @@ class StringGSEA:
             response = requests.get(URL)
             data = response.json()
             status = data[0].get('status')
-            print(f"Status: {status}")
+            logger.info(f"Status: {status}")
             if status != "running":
                 break
             time.sleep(sleep_t)
@@ -86,15 +86,15 @@ class StringGSEA:
         # queries if resdata is completed.
         self.res_data = {}
         for name, job_id in self.res_job_id.items():
-            print(job_id)
-            print(self.api_key)
+            logger.info(f"job_id: {job_id}")
+            logger.info(f"api_key: {self.api_key}")
             self.res_data[name] = self._pull_results(job_id)
         return self
 
     def _save_link(self, link:str, name:str) -> dict:
         # Define your arguments
         cmd = ["bfabric_save_link_to_workunit.py", self.workunit_id, link, name]
-        print(shlex.join(cmd))
+        logger.info(shlex.join(cmd))
         # Run the command and capture the output
         result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -119,7 +119,7 @@ class StringGSEA:
 
         for name, data in self.res_data.items():
             path = Path(name)
-            print(f"Results for {name}:")
+            logger.info(f"Results for {name}:")
             download_url = data['download_url']
             response = requests.get(download_url)
             response.raise_for_status()  # Raises an error for bad responses
@@ -132,5 +132,5 @@ class StringGSEA:
             response.raise_for_status()  # Raises an error for bad responses
             with open(res_path / path.with_suffix(".png").name, 'wb') as f:
                 f.write(response.content)
-            print("\n")
+
         return res_path
