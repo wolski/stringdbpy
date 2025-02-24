@@ -89,7 +89,7 @@ if __name__ == '__main__':
     gsea.string_gsea()
     logger.info(f"Job submitted successfully.{gsea.res_job_id}")
 
-    gsea.res_job_id = {'C37638WU322006/Bait_FAN1~FAN1.rnk': 'bhDZz6P6jgmx'}
+    # gsea.res_job_id = {'C37638WU322006/Bait_FAN1~FAN1.rnk': 'bhDZz6P6jgmx'}
     gsea.pull_results()
     logger.info("got results")
     path = gsea.zip_folder(gsea.write_results())
