@@ -79,7 +79,7 @@ class StringGSEA:
             data = response.json()
             status = data[0].get('status')
             logger.info(f"Status: {status}")
-            if status == "finished":
+            if status == "success":
                 break
             time.sleep(sleep_t)
         return data[0]
