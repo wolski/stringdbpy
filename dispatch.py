@@ -18,7 +18,8 @@ def dispatch_strategy(resources_df, workunit_definition):
         {
             "type": "static_yaml",
             "filename": "params.yml",
-            "data": workunit_definition.execution.raw_parameters,
+            #"data": workunit_definition.execution.raw_parameters,
+            "data": workunit_definition.model_dump(mode = "json")
         }
     ]
     return resources_df, extra_inputs
