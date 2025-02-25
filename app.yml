@@ -1,5 +1,5 @@
 bfabric:
-  app_runner: "git+https://github.com/fgcz/bfabricPy@main#subdirectory=bfabric_app_runner"
+  app_runner: main
 versions:
   - version: "0.1"
     commands:
