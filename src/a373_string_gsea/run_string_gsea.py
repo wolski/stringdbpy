@@ -50,7 +50,9 @@ def get_oxes(zip_path : str):
     return oxes
 
 def find_zip_files():
-    return glob.glob("*.zip")
+    pattern = re.compile(r'^\d{7}\.zip$')
+    files = [f for f in glob.glob("*.zip") if pattern.match(f)]
+    return files
 
 def extract_workunit_id_from_file(file_path):
     try:
