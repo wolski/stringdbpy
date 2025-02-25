@@ -9,6 +9,7 @@ from loguru import logger
 from a373_string_gsea.stringgsea import StringGSEA
 from collections import Counter
 from pathlib import Path
+import subprocess
 
 
 
@@ -83,6 +84,22 @@ def outputs_yml(search_zip : Path, outputs_yml = "outputs.yml"):
         
         logger.info(f"YAML file {outputs_yml} has been generated.")
 
+
+def register_result(workunit_id):
+    # home/bfabric/slurmworker/bin/fgcz_app_runner 0.0.17 outputs register workunit_id
+    # Define the command and its arguments as a list
+    cmd = [
+        "/home/bfabric/slurmworker/bin/fgcz_app_runner",
+        "0.0.17",
+        "outputs",
+        "register",
+        "outputs.yml",
+        workunit_id
+    ]
+
+    # Run the command
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    return result
 
 
 if __name__ == '__main__':
