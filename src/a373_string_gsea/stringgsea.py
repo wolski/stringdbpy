@@ -72,16 +72,20 @@ class StringGSEA:
         return self
 
 
-    def _pull_results(self, job_id:str, sleep_t:int = 10) -> dict:
+    def _pull_results(self, job_id:str, sleep_t:int = 10, max_time = 3600) -> dict:
         URL = f"https://version-12-0.string-db.org/api/json/valuesranks_enrichment_status?api_key={self.api_key}&job_id={job_id}"
-        while True:
+        
+        elapsed = 0
+        while elapsed < max_time:
             response = requests.get(URL)
             data = response.json()
             status = data[0].get('status')
-            logger.info(f"Status: {status}")
+            logger.info(f"time : {elapsed} Status: {status}")
             if status == "success":
                 break
             time.sleep(sleep_t)
+            elapsed += sleep_t
+
         return data[0]
 
     def pull_results(self):
