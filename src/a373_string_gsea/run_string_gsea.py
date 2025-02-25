@@ -8,7 +8,7 @@ import yaml
 from loguru import logger
 from a373_string_gsea.stringgsea import StringGSEA
 from collections import Counter
-
+from pathlib import Path
 
 
 
@@ -62,6 +62,26 @@ def extract_workunit_id_from_file(file_path):
         logger.error(f"Error reading or parsing the YAML file: {e}")
         return None
 
+def outputs_yml(search_zip : Path, outputs_yml = "outputs.yml"):
+        output1 = {
+           'local_path': str(search_zip.resolve()),
+            'store_entry_path': search_zip.name,
+            'type': 'bfabric_copy_resource'
+        }
+        outputs_list = [output1]
+
+        # Step 3: Create the main dictionary and assign the outputs list to the key 'outputs'
+        data = {
+            'outputs': outputs_list
+        }
+        
+        with open(outputs_yml, 'w') as file:
+            yaml.dump(data, file, default_flow_style=False)
+        
+        
+        logger.info(f"YAML file {outputs_yml} has been generated.")
+
+
 
 if __name__ == '__main__':
     species: int = 9606
@@ -82,18 +102,21 @@ if __name__ == '__main__':
     # Get the most common element (returns a list of tuples)
     species = counter.most_common(1)[0][0]
 
-
     dataframes = StringGSEA.get_rank_files(zip_path)
     gsea = StringGSEA(api_key, workunit_id, dataframes, species, fdr)
 
     gsea.string_gsea()
     logger.info(f"Job submitted successfully.{gsea.res_job_id}")
 
-    # gsea.res_job_id = {'C37638WU322006/Bait_FAN1~FAN1.rnk': 'bhDZz6P6jgmx'}
+    #gsea.res_job_id = {'C37638WU322006/Bait_FAN1~FAN1.rnk': 'bhDZz6P6jgmx'}
     gsea.pull_results()
     logger.info("got results")
     path = gsea.zip_folder(gsea.write_results())
+    outputs_yml(path)
+    logger.info("zipped results.")
     status = gsea.save_link()
+    logger.info("saved link")
+    
 
 
 
