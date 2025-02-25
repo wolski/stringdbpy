@@ -108,7 +108,7 @@ if __name__ == '__main__':
     workunit_id = "322025"
 
 
-    workunit_id =  str(extract_workunit_id_from_file("../workunit_definition.yml"))
+    workunit_id =  str(extract_workunit_id_from_file("params.yml"))
     logger.info(f"Workunit ID: {workunit_id}")
     fdr: float = 0.25
 
