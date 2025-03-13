@@ -115,7 +115,7 @@ class StringGSEA:
         for name, data in self.res_data.items():
             link_url = data['page_url']
             p = Path(name)
-            link_name = "Result GSEA String for Bait [ " + p.stem + "]"
+            link_name = "Result string-db GSEA for [ " + p.stem + "]"
             save_status[name] = self._save_link(link_url, link_name)
         return save_status
 
