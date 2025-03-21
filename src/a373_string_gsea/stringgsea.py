@@ -83,7 +83,7 @@ class StringGSEA:
             logger.info(f"time : {elapsed} Status: {status}")
             if status == "success":
                 break
-            if status == "nothing found"
+            if status == "nothing found":
                 break
             time.sleep(sleep_t)
             elapsed += sleep_t
