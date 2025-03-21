@@ -83,6 +83,8 @@ class StringGSEA:
             logger.info(f"time : {elapsed} Status: {status}")
             if status == "success":
                 break
+            if status == "nothing found"
+                break
             time.sleep(sleep_t)
             elapsed += sleep_t
 
@@ -113,10 +115,11 @@ class StringGSEA:
     def save_link(self) -> dict:
         save_status = {}
         for name, data in self.res_data.items():
-            link_url = data['page_url']
-            p = Path(name)
-            link_name = "Result string-db GSEA for [ " + p.stem + "]"
-            save_status[name] = self._save_link(link_url, link_name)
+            data.get('status') == "success":
+                link_url = data['page_url']
+                p = Path(name)
+                link_name = "Result string-db GSEA for [ " + p.stem + "]"
+                save_status[name] = self._save_link(link_url, link_name)
         return save_status
 
     def write_results(self, path:Path = Path(".")):
