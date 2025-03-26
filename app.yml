@@ -1,5 +1,5 @@
 bfabric:
-  app_runner: 0.0.20
+  app_runner: main
 versions:
   - version: "0.1"
     commands:
