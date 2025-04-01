@@ -83,6 +83,8 @@ class StringGSEA:
             logger.info(f"time : {elapsed} Status: {status}")
             if status == "success":
                 break
+            if status == "nothing found":
+                break
             time.sleep(sleep_t)
             elapsed += sleep_t
 
@@ -113,10 +115,11 @@ class StringGSEA:
     def save_link(self) -> dict:
         save_status = {}
         for name, data in self.res_data.items():
-            link_url = data['page_url']
-            p = Path(name)
-            link_name = "Result GSEA String for Bait [ " + p.stem + "]"
-            save_status[name] = self._save_link(link_url, link_name)
+            if data.get('status') == "success":
+                link_url = data['page_url']
+                p = Path(name)
+                link_name = "Result string-db GSEA for [ " + p.stem + "]"
+                save_status[name] = self._save_link(link_url, link_name)
         return save_status
 
     def write_results(self, path:Path = Path(".")):
@@ -124,20 +127,21 @@ class StringGSEA:
         res_path.mkdir(exist_ok=True)
 
         for name, data in self.res_data.items():
-            path = Path(name)
-            logger.info(f"Results for {name}:")
-            download_url = data['download_url']
-            response = requests.get(download_url)
-            response.raise_for_status()  # Raises an error for bad responses
-            # Option 1: Save the TSV content to a file
-            with open(res_path / path.with_suffix(".tsv").name, 'wb') as f:
-                f.write(response.content)
+            if data.get('status') == "success":
+                path = Path(name)
+                logger.info(f"Results for {name}:")
+                download_url = data['download_url']
+                response = requests.get(download_url)
+                response.raise_for_status()  # Raises an error for bad responses
+                # Option 1: Save the TSV content to a file
+                with open(res_path / path.with_suffix(".tsv").name, 'wb') as f:
+                    f.write(response.content)
 
-            image_url = data['graph_url']
-            response = requests.get(image_url)
-            response.raise_for_status()  # Raises an error for bad responses
-            with open(res_path / path.with_suffix(".png").name, 'wb') as f:
-                f.write(response.content)
+                image_url = data['graph_url']
+                response = requests.get(image_url)
+                response.raise_for_status()  # Raises an error for bad responses
+                with open(res_path / path.with_suffix(".png").name, 'wb') as f:
+                    f.write(response.content)
 
         return res_path
 
