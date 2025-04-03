@@ -1,7 +1,5 @@
 import unittest
-import io
-from unittest.mock import patch, mock_open
-from a373_string_gsea.run_string_gsea import get_ox_fields, get_oxes
+from a373_string_gsea.run_string_gsea import get_ox_fields
 
 class TestRunStringGSEA(unittest.TestCase):
 

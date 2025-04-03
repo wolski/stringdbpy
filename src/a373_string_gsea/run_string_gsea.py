@@ -4,21 +4,33 @@ import re
 import zipfile
 import io
 import glob
+import shlex
+
 import yaml
 from loguru import logger
+
+from a373_string_gsea import postprocess
 from a373_string_gsea.stringgsea import StringGSEA
 from collections import Counter
 from pathlib import Path
 import subprocess
+import polars as pl
 
+def get_rank_files(zip_path):
+    dataframes = {}
+    with zipfile.ZipFile(zip_path, 'r') as z:
+        # Filter out the .rnk files from the archive
+        rnk_files = [f for f in z.namelist() if f.endswith('.rnk')]
+        for file in rnk_files:
+            with z.open(file) as f:
+                # Read the file content into memory
+                file_bytes = f.read()
+                # Wrap bytes in a BytesIO stream for polars to read from
+                # Adjust the separator (sep) if your file is not tab-delimited
+                df = pl.read_csv(io.BytesIO(file_bytes), separator="\t", has_header=False)
+                dataframes[file] = df
+    return dataframes
 
-
-if False:
-    URL = "https://version-12-0.string-db.org/api/json/get_api_key"
-    response = requests.get(URL)
-    print("Status code:", response.status_code)
-    print("Returned data:", response.json()['api_key'])
-# create a test for this function please
 
 def get_ox_fields(fasta_content):
     pattern = re.compile(r'OX=(\d+)')
@@ -39,7 +51,7 @@ def get_ox_fields(fasta_content):
 
     return ox_values
 
-def get_oxes(zip_path : str):
+def get_species_from_oxes(zip_path : str):
     oxes = {}
     with zipfile.ZipFile(zip_path, 'r') as z:
         fasta_files = [f for f in z.namelist() if f.endswith(('.fas', '.fasta'))]
@@ -48,7 +60,13 @@ def get_oxes(zip_path : str):
                 file_bytes = f.read()
                 ox = get_ox_fields(io.BytesIO(file_bytes))
                 oxes[file] = ox
-    return oxes
+
+    merged = [item for sublist in oxes.values() for item in sublist]
+    counter = Counter(merged)
+    # Get the most common element (returns a list of tuples)
+    species = counter.most_common(1)[0][0]
+
+    return species
 
 def find_zip_files():
     pattern = re.compile(r'^(\d{7}|DEA_[^/]+)\.zip$')
@@ -80,9 +98,32 @@ def outputs_yml(search_zip : Path, outputs_yml = "outputs.yml"):
         
         with open(outputs_yml, 'w') as file:
             yaml.dump(data, file, default_flow_style=False)
-        
-        
         logger.info(f"YAML file {outputs_yml} has been generated.")
+
+
+def _save_link(link:str, name:str, workunit_id: str) -> dict:
+    # Define your arguments
+    cmd = ["bfabric_save_link_to_workunit.py", workunit_id, link, name]
+    logger.info(shlex.join(cmd))
+    # Run the command and capture the output
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    # Check if the command executed successfully
+    if result.returncode == 0:
+        return {result.returncode : result.stdout}
+    else:
+        return {result.returncode : result.stderr}
+
+def save_link(res_data : dict, workunit_id: str) -> dict:
+    save_status = {}
+    for name, data in res_data.items():
+        if data.get('status') == "success":
+            link_url = data['page_url']
+            p = Path(name)
+            link_name = "Result string-db GSEA for [ " + p.stem + "]"
+            save_status[name] = _save_link(link_url, link_name,workunit_id)
+    return save_status
+
 
 
 def register_result(workunit_id):
@@ -96,46 +137,45 @@ def register_result(workunit_id):
         "outputs.yml",
         workunit_id
     ]
-
-    # Run the command
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result
 
 
+def run_string_gsea(zip_path : str, workunit_id: str, api_key: str, fdr: float = 0.25):
+
+    species = get_species_from_oxes(zip_path)
+    dataframes = get_rank_files(zip_path)
+    gsea = StringGSEA(api_key, workunit_id, dataframes, species, fdr)
+
+    gsea.string_gsea()
+    logger.info(f"Job submitted successfully.{gsea.res_job_id}")
+    gsea.pull_results()
+    logger.info("got results")
+    result_dir = gsea.write_results()
+    postprocess.result_to_xlsx(result_dir, workunit_id)
+    logger.info(f"Results written to {result_dir}")
+    path = gsea.zip_folder(result_dir)
+    logger.info(f"Zipped results to {path}")
+    outputs_yml(path)
+    logger.info("zipped results.")
+    status = save_link(gsea.res_data, workunit_id)
+    logger.info(f"saved link {status}")
+
+
 if __name__ == '__main__':
-    species: int = 9606
+    species: int
     api_key = "b36F8oaRJwFZ"
-    workunit_id = "322025"
+    workunit_id: str
 
 
     workunit_id =  str(extract_workunit_id_from_file("params.yml"))
     logger.info(f"Workunit ID: {workunit_id}")
     fdr: float = 0.25
-
-    # Path to your zip file
-    # zip_path = Path(__file__).parents[1]/'2806039.zip'
     zip_path = find_zip_files()[0]
-    res = get_oxes(zip_path)
-    merged = [item for sublist in res.values() for item in sublist]
-    counter = Counter(merged)
-    # Get the most common element (returns a list of tuples)
-    species = counter.most_common(1)[0][0]
+    run_string_gsea(zip_path, workunit_id, api_key, fdr)
 
-    dataframes = StringGSEA.get_rank_files(zip_path)
-    gsea = StringGSEA(api_key, workunit_id, dataframes, species, fdr)
 
-    gsea.string_gsea()
-    logger.info(f"Job submitted successfully.{gsea.res_job_id}")
 
-    #gsea.res_job_id = {'C37638WU322006/Bait_FAN1~FAN1.rnk': 'bhDZz6P6jgmx'}
-    gsea.pull_results()
-    logger.info("got results")
-    path = gsea.zip_folder(gsea.write_results())
-    outputs_yml(path)
-    logger.info("zipped results.")
-    status = gsea.save_link()
-    logger.info("saved link")
-    
 
 
 

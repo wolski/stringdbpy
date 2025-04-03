@@ -1,11 +1,6 @@
-import shlex
-import zipfile
-import io
-import polars as pl
 import json
 import requests
 import time
-import subprocess
 from loguru import logger
 from pathlib import Path
 import shutil
@@ -24,21 +19,6 @@ class StringGSEA:
         self.fdr = fdr
         self.dataframes = dataframes
 
-    @staticmethod
-    def get_rank_files(zip_path):
-        dataframes = {}
-        with zipfile.ZipFile(zip_path, 'r') as z:
-            # Filter out the .rnk files from the archive
-            rnk_files = [f for f in z.namelist() if f.endswith('.rnk')]
-            for file in rnk_files:
-                with z.open(file) as f:
-                    # Read the file content into memory
-                    file_bytes = f.read()
-                    # Wrap bytes in a BytesIO stream for polars to read from
-                    # Adjust the separator (sep) if your file is not tab-delimited
-                    df = pl.read_csv(io.BytesIO(file_bytes), separator="\t", has_header=False)
-                    dataframes[file] = df
-        return dataframes
 
     def _string_gsea(self, rank_data:str) -> str:
         string_api_url = "https://version-12-0.string-db.org/api"
@@ -54,14 +34,20 @@ class StringGSEA:
             "ge_enrichment_rank_direction": -1
         }
         response = requests.post(request_url, data=params)
-        data = json.loads(response.text)[0]
-        if 'status' in data and data['status'] == 'error':
-            logger.error("Status:", data['status'])
-            logger.error("Message:", data['message'])
+
+        if response.ok :
+            data = json.loads(response.text)[0]
+            if 'status' in data and data['status'] == 'error':
+                logger.error("Status:", data['status'])
+                logger.error("Message:", data['message'])
+            else:
+                job_id = data["job_id"]
+                logger.info(f"Job submitted successfully. Job ID: {job_id}")
+                return job_id
         else:
-            job_id = data["job_id"]
-            logger.info(f"Job submitted successfully. Job ID: {job_id}")
-            return job_id
+            logger.info(response.text)
+            logger.error(f"Request failed with status code: {response.status_code}")
+            raise RuntimeError("Request failed with status code: {}".format(response.status_code))
 
     def string_gsea(self):
         # submits gsea job to string-db
@@ -98,29 +84,6 @@ class StringGSEA:
             logger.info(f"api_key: {self.api_key}")
             self.res_data[name] = self._pull_results(job_id)
         return self
-
-    def _save_link(self, link:str, name:str) -> dict:
-        # Define your arguments
-        cmd = ["bfabric_save_link_to_workunit.py", self.workunit_id, link, name]
-        logger.info(shlex.join(cmd))
-        # Run the command and capture the output
-        result = subprocess.run(cmd, capture_output=True, text=True)
-
-        # Check if the command executed successfully
-        if result.returncode == 0:
-            return {result.returncode : result.stdout}
-        else:
-            return {result.returncode : result.stderr}
-
-    def save_link(self) -> dict:
-        save_status = {}
-        for name, data in self.res_data.items():
-            if data.get('status') == "success":
-                link_url = data['page_url']
-                p = Path(name)
-                link_name = "Result string-db GSEA for [ " + p.stem + "]"
-                save_status[name] = self._save_link(link_url, link_name)
-        return save_status
 
     def write_results(self, path:Path = Path(".")):
         res_path = path / f"WU_{self.workunit_id}_GSEA"
