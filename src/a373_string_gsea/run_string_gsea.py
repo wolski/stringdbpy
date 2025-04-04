@@ -69,7 +69,7 @@ def get_species_from_oxes(zip_path : str):
     return species
 
 def find_zip_files():
-    pattern = re.compile(r'^(\d{7}|DEA_[^/]+)\.zip$')
+    pattern = re.compile(r'^(\d{7}.*|DEA_[^/]+)\.zip$')
     files = [f for f in glob.glob("*.zip") if pattern.match(f)]
     return files
 
