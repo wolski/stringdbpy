@@ -4,6 +4,7 @@ from pyexcelerate import Workbook
 from typing import Dict, List
 from loguru import logger
 
+
 def write_xlsx(dataframes: Dict[str, pl.DataFrame], filename: Path) -> None:
     wb = Workbook()
     for sheet_name, dataframe in dataframes.items():
@@ -17,6 +18,7 @@ def write_xlsx(dataframes: Dict[str, pl.DataFrame], filename: Path) -> None:
     wb.save(filename)
 
     logger.info(f"Wrote {filename}")
+
 
 def results_to_dataframe(tsv_files: List[Path]) -> pl.DataFrame:
     dfs_with_key = []
@@ -41,15 +43,16 @@ def results_to_dataframe(tsv_files: List[Path]) -> pl.DataFrame:
     return combined_df
 
 
-def to_wide(combined_df : pl.DataFrame, columns: List[str]) -> Dict[str, pl.DataFrame]:
+def to_wide(combined_df: pl.DataFrame, columns: List[str]) -> Dict[str, pl.DataFrame]:
     pivot_dict = {}
     for col in columns:
         pivot_dict[col] = combined_df.pivot(
             values=col,
-            index=["category", "termID", "termDescription","num_contrasts"],
+            index=["category", "termID", "termDescription", "num_contrasts"],
             on="contrast"
         )
     return pivot_dict
+
 
 def merge_pivoted_dfs(pivot_dict: Dict[str, pl.DataFrame]) -> pl.DataFrame:
     join_cols = ["category", "termID", "termDescription", "num_contrasts"]
@@ -68,6 +71,7 @@ def merge_pivoted_dfs(pivot_dict: Dict[str, pl.DataFrame]) -> pl.DataFrame:
         merged_df = merged_df.join(df, on=join_cols, how="inner")
     return merged_df
 
+
 def result_to_xlsx(directory: Path, workunit_id: str) -> None:
     tsv_files = list(directory.glob("*.tsv"))
 
@@ -79,17 +83,16 @@ def result_to_xlsx(directory: Path, workunit_id: str) -> None:
     combined_df = results_to_dataframe(tsv_files)
     pivoted_dict = to_wide(combined_df,
                            ["enrichmentScore", "genesInSet", "genesMapped", "directionNR", "falseDiscoveryRate"])
-    x = pivoted_dict["enrichmentScore"]
 
     merged_df = merge_pivoted_dfs(pivoted_dict)
-    write_xlsx(pivoted_dict, directory /f"WU{workunit_id}_string_gsea_results_pivoted.xlsx")
+    write_xlsx(pivoted_dict, directory / f"WU{workunit_id}_string_gsea_results_pivoted.xlsx")
     logger.info("written pivoted XLSX")
     merged_df = {"merged_df": merged_df}
-    write_xlsx(merged_df, directory /f"WU{workunit_id}_string_gsea_results_merged.xlsx")
+    write_xlsx(merged_df, directory / f"WU{workunit_id}_string_gsea_results_merged.xlsx")
     logger.info("written merged XLSX")
 
     longformat_df = {"longformat_df": combined_df}
-    write_xlsx(longformat_df, directory /f"WU{workunit_id}_string_gsea_results_long.xlsx")
+    write_xlsx(longformat_df, directory / f"WU{workunit_id}_string_gsea_results_long.xlsx")
     logger.info("written merged XLSX")
 
     print("done writing excel")
@@ -98,5 +101,5 @@ def result_to_xlsx(directory: Path, workunit_id: str) -> None:
 if __name__ == '__main__':
     # Define the directory
     directory = Path('../../WU_322935_GSEA')
-    result_to_xlsx( directory, "322935" )
+    result_to_xlsx(directory, "322935")
     print("done writing excel")
