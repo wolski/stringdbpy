@@ -146,7 +146,6 @@ def run_string_gsea(zip_path : str, workunit_id: str, api_key: str, fdr: float =
     species = get_species_from_oxes(zip_path)
     dataframes = get_rank_files(zip_path)
     gsea = StringGSEA(api_key, workunit_id, dataframes, species, fdr)
-
     gsea.string_gsea()
     logger.info(f"Job submitted successfully.{gsea.res_job_id}")
     gsea.pull_results()
