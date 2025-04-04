@@ -9,6 +9,7 @@ dependencies = [
     { name = "bfabric-scripts" },
     { name = "loguru" },
     { name = "polars" },
+    { name = "pyexcelerate" },
     { name = "pyyaml" },
     { name = "requests" },
 ]
@@ -19,6 +20,7 @@ requires-dist = [
     { name = "bfabric-scripts" },
     { name = "loguru" },
     { name = "polars" },
+    { name = "pyexcelerate" },
     { name = "pyyaml" },
     { name = "requests" },
 ]
@@ -381,6 +383,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/99/bddde3ddde76c03b65dfd5a66ab436c4e58ffc42927d4ff1198ffbf96f5f/pydantic_core-2.27.2-cp313-cp313-win32.whl", hash = "sha256:1ebaf1d0481914d004a573394f4be3a7616334be70261007e47c2a6fe7e50130", size = 1834387 },
     { url = "https://files.pythonhosted.org/packages/71/47/82b5e846e01b26ac6f1893d3c5f9f3a2eb6ba79be26eef0b759b4fe72946/pydantic_core-2.27.2-cp313-cp313-win_amd64.whl", hash = "sha256:953101387ecf2f5652883208769a79e48db18c6df442568a0b5ccd8c2723abee", size = 1990453 },
     { url = "https://files.pythonhosted.org/packages/51/b2/b2b50d5ecf21acf870190ae5d093602d95f66c9c31f9d5de6062eb329ad1/pydantic_core-2.27.2-cp313-cp313-win_arm64.whl", hash = "sha256:ac4dbfd1691affb8f48c2c13241a2e3b60ff23247cbcf981759c768b6633cf8b", size = 1885186 },
+]
+
+[[package]]
+name = "pyexcelerate"
+version = "0.12.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jinja2" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/52/fb/1575032802af4aff5b9cc36cab3b5dd89793f4a88d02476a602f09d31d0e/pyexcelerate-0.12.0.tar.gz", hash = "sha256:9a8f7f6fe2424acf07f8a70762a5c50c961c13f2d891d828795437bbcb1a1672", size = 29538 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ad/cb/ee90990ff687cce9cab1ad5b5e8f08ac6bbe2dd04d96188c20f8b1ed1111/PyExcelerate-0.12.0-py3-none-any.whl", hash = "sha256:3135fb823f2ba5bbed74c079c26f412fb68b9411427d7e1563607a6cb12b2c3f", size = 28933 },
 ]
 
 [[package]]
