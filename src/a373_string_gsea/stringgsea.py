@@ -85,6 +85,16 @@ class StringGSEA:
             self.res_data[name] = self._pull_results(job_id)
         return self
 
+    def write_rankfiles(self, path:Path = Path(".")):
+        res_path = path / f"WU_{self.workunit_id}_GSEA"
+        res_path.mkdir(exist_ok=True)
+        for name, data in self.dataframes.items():
+            path = Path(name)
+            logger.info(f"Rankfile for {name}:")
+            with open(res_path / path.with_suffix(".rnk").name, 'wb') as f:
+                f.write(data.write_csv(separator="\t", include_header=False).encode())
+        return res_path
+
     def write_results(self, path:Path = Path(".")):
         res_path = path / f"WU_{self.workunit_id}_GSEA"
         res_path.mkdir(exist_ok=True)
