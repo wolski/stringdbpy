@@ -71,8 +71,10 @@ def merge_pivoted_dfs(pivot_dict: Dict[str, pl.DataFrame]) -> pl.DataFrame:
         merged_df = merged_df.join(df, on=join_cols, how="inner")
     return merged_df
 
+def list_subfolders(path: Path):
+    return [p for p in path.iterdir() if p.is_dir()]
 
-def result_to_xlsx(directory: Path, workunit_id: str) -> None:
+def _result_to_xlsx(directory: Path, workunit_id: str) -> None:
     tsv_files = list(directory.glob("*.tsv"))
 
     logger.info(f"Found {len(tsv_files)} tsv files")
@@ -95,11 +97,13 @@ def result_to_xlsx(directory: Path, workunit_id: str) -> None:
     write_xlsx(longformat_df, directory / f"WU{workunit_id}_string_gsea_results_long.xlsx")
     logger.info("written merged XLSX")
 
-    print("done writing excel")
-
+def result_to_xlsx(w_directory:Path, workunit_id: str) -> None:
+    directories = list_subfolders(w_directory)
+    for directory in directories:
+        _result_to_xlsx(directory, workunit_id)
 
 if __name__ == '__main__':
     # Define the directory
-    directory = Path('../../WU_322935_GSEA')
-    result_to_xlsx(directory, "322935")
+    w_directory = Path('./WU_234567_GSEA')
+    result_to_xlsx(w_directory, "234567")
     print("done writing excel")

@@ -1,0 +1,20 @@
+{
+    "config": {
+        "api_key": "b36F8oaRJwFZ",
+        "workunit_id": "abcd",
+        "species": "10090",
+        "fdr": 0.25
+    },
+    "results": {
+        "from_rnk~GSEA_Oligomycin_vs_Control_WU321033": {
+            "job_id": "bzXDVvAm06qS",
+            "creation_time": "2025-04-14 07:59:14",
+            "string_version": "12.0",
+            "status": "success",
+            "message": "Job finished",
+            "page_url": "https://version-12-0.string-db.org/cgi/globalenrichment?networkId=bnrspX3NMoZw",
+            "download_url": "https://version-12-0.string-db.org/api/tsv/downloadenrichmentresults?networkId=bnrspX3NMoZw",
+            "graph_url": "https://version-12-0.string-db.org/api/image/enrichmentfigure?networkId=bnrspX3NMoZw"
+        }
+    }
+}
