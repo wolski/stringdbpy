@@ -1,7 +1,7 @@
 import pytest
 import polars as pl
 from pathlib import Path
-from src.a373_string_gsea.gsea_utilities import get_rank_files, find_zip_files
+from string_gsea.gsea_utilities import get_rank_files, find_zip_files
 
 # Define the path to the test data directory relative to the test file
 TEST_DATA_DIR = Path(__file__).parent / 'data'

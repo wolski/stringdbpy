@@ -7,15 +7,15 @@ from pathlib import Path
 import yaml
 from loguru import logger
 
-from a373_string_gsea import postprocess
-from a373_string_gsea.gsea_utilities import get_rank_files, find_zip_files
-from a373_string_gsea.stringgsea import StringGSEA
-from a373_string_gsea.get_species import OxFieldsZip, get_species_taxon
+from string_gsea import postprocess
+from string_gsea.gsea_utilities import get_rank_files, find_zip_files
+from string_gsea.string_gsea import StringGSEA
+from string_gsea.get_species import OxFieldsZip, get_species_taxon
 import subprocess
 import tempfile
 
 
-def extract_workunit_id_from_file(file_path):
+def extract_workunit_id_from_file(file_path: Path) -> str | None:
     try:
         with open(file_path, 'r') as file:
             data = yaml.safe_load(file)
@@ -81,9 +81,9 @@ def register_result(workunit_id):
 
 def run_string_gsea(zip_path : Path,
                     workunit_id: str,
-                    api_key: str,
                     fdr: float = 0.25,
                     base_dir: Path = Path(".")) -> None:
+    api_key = "b36F8oaRJwFZ"
 
     species = get_species_taxon(zip_path)
     dataframes = get_rank_files(zip_path)
@@ -109,22 +109,20 @@ def run_string_gsea(zip_path : Path,
 
 
 if __name__ == '__main__':
+    test_data = Path(__file__).parent.parent.parent / "tests/data/"
     testing = True
-    api_key = "b36F8oaRJwFZ"
     fdr: float = 0.25
     current_directory = os.getcwd()
-
     # Print the working directory
     print("Current working directory:", current_directory)
-
-    workunit_id =  extract_workunit_id_from_file("params.yml")
+    workunit_id =  extract_workunit_id_from_file(test_data / "params.yml")
     if workunit_id is None:
         workunit_id = "876543"
 
     logger.info(f"Workunit ID: {workunit_id}")
     if testing:
         # replace the code above with pathlib and __FILE__
-        zip_path = Path(__file__).parent.parent.parent / "tests/data/DE_mouse_fasta_rnk.zip"
+        zip_path = test_data / "DE_mouse_fasta_rnk.zip"
         logger.info(f"Zip path: {zip_path}")
     else:
         zip_path = find_zip_files()[0]
@@ -135,5 +133,6 @@ if __name__ == '__main__':
     else:
         print(f"The file {zip_path} does not exist.")
     # create a temp directory
+
     tempdir = Path(tempfile.mkdtemp())
-    run_string_gsea(zip_path, workunit_id, api_key, fdr, base_dir = tempdir)
+    run_string_gsea(zip_path, workunit_id, fdr = fdr, base_dir = tempdir)

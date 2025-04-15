@@ -3,7 +3,7 @@ from pathlib import Path
 import polars as pl
 from loguru import logger
 
-from src.a373_string_gsea.ranksFromDEAXLSX import DiffXLSX
+from string_gsea.ranks_from_dea_xlsx import DiffXLSX
 
 
 class TestDiffXLSXIntegration:

@@ -1,0 +1,20 @@
+execution:
+  dataset: null
+  raw_parameters:
+    application_version: '0.1'
+    memory: 16G
+    nodelist: fgcz-r-033
+    partition: prx
+  resources:
+  - 2833357
+  - 2833356
+  - 2833355
+registration:
+  application_id: 373
+  application_name: STRING_GSEA
+  container_id: 37901
+  container_type: order
+  storage_id: 2
+  storage_output_folder: p37901/bfabric/Bioinformatics/STRING_GSEA/2025/2025-04/2025-04-02/workunit_323674
+  workunit_id: 323674
+  workunit_name: STRING_GSEA_Human_BtoE

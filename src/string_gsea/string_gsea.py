@@ -7,8 +7,8 @@ from pathlib import Path
 import shutil
 import tempfile
 
-from a373_string_gsea.gsea_utilities import get_rank_files
-from a373_string_gsea.get_species import OxFieldsZip
+from string_gsea.gsea_utilities import get_rank_files
+from string_gsea.get_species import OxFieldsZip
 
 class StringGSEA:
 

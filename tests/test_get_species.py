@@ -4,8 +4,8 @@ import pytest
 import os
 import polars as pl # Add polars import
 
-from src.a373_string_gsea.get_species import OxFieldsZip, GetTaxonID # Import GetTaxonID
-from src.a373_string_gsea.gsea_utilities import get_rank_files # Import get_rank_files
+from string_gsea.get_species import OxFieldsZip, GetTaxonID # Import GetTaxonID
+from string_gsea.gsea_utilities import get_rank_files # Import get_rank_files
 
 # Define the path to the test data directory relative to the test file
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')

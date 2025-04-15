@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "a373-string-gsea"
+name = "string-gsea"
 dynamic = ["version"]
 description = ''
 readme = "README.md"
@@ -17,31 +17,33 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "pyyaml","polars","requests","bfabric",'bfabric-scripts','loguru','pyexcelerate'
+    "pyyaml","polars","requests","bfabric",'bfabric-scripts','loguru','pyexcelerate','cyclopts'
 ]
 
+[project.scripts]
+"string_gsea_bfabric" = "string_gsea.scripts.string_gsea_bfabric:app"
 
 [tool.hatch.version]
-path = "src/a373_string_gsea/__about__.py"
+path = "src/string_gsea/__about__.py"
 
 [tool.hatch.envs.types]
 extra-dependencies = [
   "mypy>=1.0.0",
 ]
 [tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/a373_string_gsea tests}"
+check = "mypy --install-types --non-interactive {args:src/string_gsea tests}"
 
 [tool.coverage.run]
-source_pkgs = ["a373_string_gsea", "tests"]
+source_pkgs = ["string_gsea", "tests"]
 branch = true
 parallel = true
 omit = [
-  "src/a373_string_gsea/__about__.py",
+  "src/string_gsea/__about__.py",
 ]
 
 [tool.coverage.paths]
-a373_string_gsea = ["src/a373_string_gsea", "*/a373-string-gsea/src/a373_string_gsea"]
-tests = ["tests", "*/a373-string-gsea/tests"]
+string_gsea = ["src/string_gsea"]
+tests = ["tests"]
 
 [tool.coverage.report]
 exclude_lines = [

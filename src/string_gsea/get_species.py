@@ -6,7 +6,7 @@ from loguru import logger
 import polars as pl
 import zipfile
 from pathlib import Path
-from src.a373_string_gsea.gsea_utilities import get_rank_files
+from string_gsea.gsea_utilities import get_rank_files
 
 
 class GetTaxonID:

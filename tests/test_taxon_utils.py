@@ -3,7 +3,7 @@ import polars as pl
 from pathlib import Path
 
 # Import the TaxonUtils class from your module
-from src.a373_string_gsea.get_species import TaxonUtils
+from string_gsea.get_species import TaxonUtils
 
 # Create a fixture for the TaxonUtils instance
 @pytest.fixture

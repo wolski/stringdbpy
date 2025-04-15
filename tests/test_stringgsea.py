@@ -4,7 +4,7 @@ from pathlib import Path
 
 import requests
 # No longer mocking requests or using os
-from a373_string_gsea.stringgsea import StringGSEA
+from string_gsea.string_gsea import StringGSEA
 
 # Define the path to the test data directory relative to the test file
 TEST_DATA_DIR = Path(__file__).parent / 'data'
