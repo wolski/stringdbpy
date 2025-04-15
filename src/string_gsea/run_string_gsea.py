@@ -104,7 +104,7 @@ def run_string_gsea(zip_path : Path,
 
     path = gsea.zip_folder(result_dir)
     logger.info(f"Zipped results to {path}")
-    outputs_yml(path)
+    outputs_yml(path, base_dir)
     logger.info("zipped results.")
     if workunit_id is not None:
         status = save_link(gsea.get_links(), workunit_id)
