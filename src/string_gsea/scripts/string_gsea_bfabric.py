@@ -1,6 +1,6 @@
 from cyclopts import App
 from pathlib import Path
-import loguru as logger
+from loguru import logger
 
 from string_gsea.gsea_utilities import find_zip_files
 from string_gsea.run_string_gsea import extract_workunit_id_from_file, run_string_gsea
