@@ -5,6 +5,7 @@ import time
 from loguru import logger
 from pathlib import Path
 import shutil
+import tempfile
 
 from a373_string_gsea.gsea_utilities import get_rank_files
 from a373_string_gsea.get_species import OxFieldsZip
@@ -15,7 +16,8 @@ class StringGSEA:
                  workunit_id:str,
                  rank_dataframes:dict,
                  species:int = 9606,
-                 fdr:float=0.25):
+                 fdr:float=0.25,
+                 base_path:Path = Path(".")):
         self.api_key =  api_key
         self.workunit_id = workunit_id
         self.species = species
@@ -23,6 +25,7 @@ class StringGSEA:
         self.rank_dataframes = rank_dataframes
         self.res_data = {}
         self.res_job_id = {}
+        self.base_path = base_path
 
     @classmethod
     def from_serialized_json(cls, json_path: Path):
@@ -59,6 +62,7 @@ class StringGSEA:
             workunit_id = config['workunit_id']
             species = config['species']
             fdr = config['fdr']
+            base_path = Path(config.get('base_path', '.'))
         except KeyError as e:
             logger.error(f"Missing expected configuration key in {json_path}: {e}")
             raise
@@ -69,7 +73,8 @@ class StringGSEA:
                        workunit_id=workunit_id,
                        rank_dataframes={}, # dataframes are not stored/restored
                        species=species,
-                       fdr=fdr)
+                       fdr=fdr,
+                       base_path=base_path)
 
         # Reconstruct res_data with tuple keys
         reconstructed_res_data = {}
@@ -166,8 +171,13 @@ class StringGSEA:
             self.res_data[name] = self._pull_results(job_id)
         return self
 
-    def get_res_path(self, path : Path = Path(".")) -> Path:
-        res_path = path / f"WU_{self.workunit_id}_GSEA"
+    def get_res_path(self) -> Path:
+        """Get the path for storing results.
+        
+        Returns:
+            Path: The path for storing results.
+        """
+        res_path = self.base_path / f"WU_{self.workunit_id}_GSEA"
         res_path.mkdir(exist_ok=True)
         return res_path
 
@@ -185,14 +195,22 @@ class StringGSEA:
         
         return links_dict
     
-    def _write_links_to_file(self, outer_key: str, path: Path = Path(".")) -> Path:
+    def _write_links_to_file(self, outer_key: str) -> Path:
+        """Write links for a specific outer key to a file.
+        
+        Args:
+            outer_key: The outer key for which to write links.
+            
+        Returns:
+            Path: The path to the file where links were written, or None if no links were found.
+        """
         links_dict = self.get_links()
         
         if outer_key not in links_dict:
             logger.warning(f"No links found for outer_key: {outer_key}")
             return None
         
-        subfolder_path = path / str(outer_key)
+        subfolder_path = self.base_path / str(outer_key)
         subfolder_path.mkdir(exist_ok=True)
         
         filename = "links.txt"
@@ -206,14 +224,19 @@ class StringGSEA:
         return file_path
 
 
-    def write_links(self, path: Path = Path(".")) -> dict:
-        path = self.get_res_path(path)
+    def write_links(self) -> dict:
+        """Write links for all outer keys to files.
+        
+        Returns:
+            dict: A dictionary mapping outer keys to the paths of the files where links were written.
+        """
+        path = self.get_res_path()
         written_files = {}
         links_dict = self.get_links()
         
         # Iterate over each outer_key in the links dictionary.
         for outer_key in links_dict:
-            file_path = self._write_links_to_file(outer_key, path)
+            file_path = self._write_links_to_file(outer_key)
             if file_path is not None:
                 written_files[outer_key] = file_path
             else:
@@ -221,8 +244,13 @@ class StringGSEA:
         return written_files
 
 
-    def write_rank_files(self, path: Path = Path(".")):
-        res_path = self.get_res_path(path)
+    def write_rank_files(self):
+        """Write rank files for all rank dataframes.
+        
+        Returns:
+            Path: The path where rank files were written.
+        """
+        res_path = self.get_res_path()
         res_path.mkdir(exist_ok=True)
 
         for (outer_key, inner_key), df in self.rank_dataframes.items():
@@ -238,8 +266,13 @@ class StringGSEA:
         return res_path
 
 
-    def write_gsea_results(self, path:Path = Path(".")) :
-        res_path = self.get_res_path(path)
+    def write_gsea_results(self):
+        """Write GSEA results for all successful jobs.
+        
+        Returns:
+            Path: The path where GSEA results were written.
+        """
+        res_path = self.get_res_path()
 
         for (outer_key, inner_key), data in self.res_data.items():
             if data.get('status') == "success":
@@ -247,72 +280,54 @@ class StringGSEA:
                 download_url = data['download_url']
                 response = requests.get(download_url)
                 response.raise_for_status()  # Raises an error for bad responses
-                # Option 1: Save the TSV content to a file
-
-                # write downloaded tsv dast
+                
+                # Create subfolder for this result
                 subfolder_path = res_path / str(outer_key)
                 subfolder_path.mkdir(exist_ok=True)
-                filename = f"{inner_key}.tsv"
+                
+                # Save the results
+                filename = f"{inner_key}_gsea_results.txt"
                 file_path = subfolder_path / filename
+                
                 with open(file_path, 'wb') as f:
                     f.write(response.content)
-
-                # Write downloaded image
-                filename = f"{inner_key}.png"
-                file_path = subfolder_path / filename
-                image_url = data['graph_url']
-                response = requests.get(image_url)
-                response.raise_for_status()  # Raises an error for bad responses
-                with open(file_path, 'wb') as f:
-                    f.write(response.content)
+                
+                logger.info(f"Saved GSEA results to {file_path}")
+        
         return res_path
 
-    def serialize_results(self, path: Path = Path(".")) -> Path:
-        """Serializes the self.res_data dictionary and configuration to a JSON file.
-
-        Converts tuple keys in res_data to strings before serialization.
-        Stores configuration (api_key, workunit_id, species, fdr) as well.
-
-        Args:
-            path: The base directory to save the file in. Defaults to current directory.
-
+    def serialize_results(self) -> Path:
+        """Serialize the results to a JSON file.
+        
         Returns:
-            The Path object of the created JSON file.
+            Path: The path to the serialized JSON file.
         """
-        res_path = self.get_res_path(path)
-        filename = "serialized_gsea_session.json" # Renamed for clarity
-        file_path = res_path / filename
-
-        # Convert tuple keys in res_data to strings for JSON compatibility
+        # Create a serializable version of the results
         serializable_results = {}
-        for key_tuple, value in self.res_data.items():
-            # Assuming key_tuple is like (outer_key, inner_key)
-            str_key = f"{key_tuple[0]}~{key_tuple[1]}"
+        for (outer_key, inner_key), value in self.res_data.items():
+            # Convert tuple keys to strings for JSON serialization
+            str_key = f"{outer_key}~{inner_key}"
             serializable_results[str_key] = value
-
-        # Combine config and results
-        output_data = {
-            "config": {
-                "api_key": self.api_key, # Consider security implications if sensitive
-                "workunit_id": self.workunit_id,
-                "species": self.species,
-                "fdr": self.fdr
+        
+        # Create the serialized data structure
+        serialized_data = {
+            'config': {
+                'api_key': self.api_key,
+                'workunit_id': self.workunit_id,
+                'species': self.species,
+                'fdr': self.fdr,
+                'base_path': str(self.base_path)
             },
-            "results": serializable_results
+            'results': serializable_results
         }
-
-        try:
-            with open(file_path, 'w') as f:
-                json.dump(output_data, f, indent=4)
-            logger.info(f"Serialized GSEA session written to {file_path}")
-            return file_path
-        except TypeError as e:
-            logger.error(f"Failed to serialize results data to JSON: {e}")
-            raise
-        except IOError as e:
-            logger.error(f"Failed to write serialized results to file {file_path}: {e}")
-            raise
-        return file_path
+        
+        # Write to file
+        output_path = self.base_path / 'serialized_gsea_session.json'
+        with open(output_path, 'w') as f:
+            json.dump(serialized_data, f, indent=2)
+        
+        logger.info(f"Serialized GSEA session to {output_path}")
+        return output_path
 
 
     @staticmethod
@@ -324,31 +339,42 @@ class StringGSEA:
 
 
 if __name__ == '__main__':
+    # Define the path to the test data directory relative to the test file
     api_key = "b36F8oaRJwFZ"
     fdr: float = 0.25
+
+
     current_directory = os.getcwd()
     print("Current working directory:", current_directory)
 
-    # zip_path = "./testing_examples/fromDEA/2790797.zip"
-    zip_path = "./tests/data/DE_mouse_fasta_rnk.zip"
+    zip_path = "../../tests/data/DE_mouse_fasta_rnk.zip"
     workunit_id = "abcd"
     species = OxFieldsZip.get_species_from_oxes(zip_path)
     logger.info(f"species is : {species}")
     dataframes = get_rank_files(zip_path)
 
-    gsea = StringGSEA(api_key, workunit_id, dataframes, species, fdr)
+    # Create a temporary directory for testing
+    tempdir = Path(tempfile.mkdtemp())
+    logger.info(f"Created temporary directory: {tempdir}")
+
+    # Initialize StringGSEA with the temporary directory as base_path
+    gsea = StringGSEA(api_key, workunit_id, dataframes, species, fdr, base_path=tempdir)
     gsea.submit()
     logger.info(f"Job submitted successfully.{gsea.res_job_id}")
     gsea.pull_results()
     logger.info("got results")
-    p = Path("./tests/data")
-    p.exists()
-    serres_file = gsea.serialize_results(p)
+
+    # Serialize results
+    serialized_json_file = gsea.serialize_results()
     
+    # Write files using the base_path set in the constructor
     gsea.write_rank_files()
     gsea.write_links()
     result_dir = gsea.write_gsea_results()
-    serres_file = "/Users/witoldwolski/__checkout/slurmworker/config/A373_STRING_GSEA/WU_abcd_GSEA/serialized_gsea_session.json"
-    gsea2 = StringGSEA.from_serialized_json(serres_file)
+
+    # Create a new instance from the serialized JSON
+    gsea2 = StringGSEA.from_serialized_json(serialized_json_file)
+
+    # Change the workunit_id and write results again
     gsea2.workunit_id = "xyz"
-    gsea.write_gsea_results()
+    gsea2.write_gsea_results()

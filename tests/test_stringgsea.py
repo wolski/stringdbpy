@@ -27,20 +27,10 @@ def test_integration_deserialize_and_write_outputs(tmp_path): # Added tmp_path f
     gsea2.workunit_id = new_workunit_id
 
     # --- Call methods to write outputs to the temporary directory (NO MOCKING) ---
-    try:
-        results_output_dir = gsea2.write_gsea_results(path=tmp_path)
-        links_output_files = gsea2.write_links(path=tmp_path)
-    except requests.exceptions.RequestException as e:
-        pytest.fail(f"Network error during file download: {e}. Check network or URLs in JSON.")
-    except Exception as e:
-        pytest.fail(f"Error during write_gsea_results or write_links: {e}")
-
-
-    # --- Assertions ---
-    # Define expected base directory using the *new* workunit_id
+    results_output_dir = gsea2.write_gsea_results(path=tmp_path)
+    links_output_files = gsea2.write_links(path=tmp_path)
     expected_base_dir = tmp_path / f"WU_{new_workunit_id}_GSEA"
 
-    # Assertions for write_gsea_results output
     assert results_output_dir == expected_base_dir, f"write_gsea_results returned wrong base dir"
     assert expected_base_dir.is_dir(), f"Base output directory not created: {expected_base_dir}"
 

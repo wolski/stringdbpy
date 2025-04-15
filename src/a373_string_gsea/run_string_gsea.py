@@ -2,14 +2,18 @@
 
 import shlex
 import os
+from pathlib import Path
 
 import yaml
 from loguru import logger
 
 from a373_string_gsea import postprocess
-from a373_string_gsea.gsea_utilities import get_rank_files, get_species_from_oxes
+from a373_string_gsea.gsea_utilities import get_rank_files, find_zip_files
 from a373_string_gsea.stringgsea import StringGSEA
+from a373_string_gsea.get_species import OxFieldsZip, get_species_taxon
 import subprocess
+import tempfile
+
 
 def extract_workunit_id_from_file(file_path):
     try:
@@ -40,7 +44,7 @@ def outputs_yml(search_zip : Path, outputs_yml = "outputs.yml"):
 
 def _save_link(link:str, name:str, workunit_id: str) -> dict:
     # Define your arguments
-    cmd = ["bfabric_save_link_to_workunit.py", workunit_id, link, name]
+    cmd = ["bfabric_save_link_to_workunit.py", str(workunit_id), link, name]
     logger.info(shlex.join(cmd))
     # Run the command and capture the output
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -75,17 +79,23 @@ def register_result(workunit_id):
     return result
 
 
-def run_string_gsea(zip_path : str, workunit_id: str, api_key: str, fdr: float = 0.25):
-    species = get_species_from_oxes(zip_path)
+def run_string_gsea(zip_path : Path,
+                    workunit_id: str,
+                    api_key: str,
+                    fdr: float = 0.25,
+                    base_dir: Path = Path(".")) -> None:
+
+    species = get_species_taxon(zip_path)
     dataframes = get_rank_files(zip_path)
-    gsea = StringGSEA(api_key, workunit_id, dataframes, species, fdr)
+    gsea = StringGSEA(api_key, workunit_id, dataframes, species, fdr, base_dir)
     gsea.submit()
     logger.info(f"Job submitted successfully.{gsea.res_job_id}")
     gsea.pull_results()
     logger.info("got results")
     gsea.write_rank_files()
     result_dir = gsea.write_gsea_results()
-    gsea.write_all_links_to_file()
+    gsea.write_links()
+
     postprocess.result_to_xlsx(result_dir, workunit_id)
     logger.info(f"Results written to {result_dir}")
 
@@ -94,12 +104,12 @@ def run_string_gsea(zip_path : str, workunit_id: str, api_key: str, fdr: float =
     outputs_yml(path)
     logger.info("zipped results.")
     if workunit_id is not None:
-        links_dict = save_link()
-        status = save_link(links_dict, workunit_id)
-    logger.info(f"saved link {status}")
+        status = save_link(gsea.get_links(), workunit_id)
+        logger.info(f"saved link {status}")
 
 
 if __name__ == '__main__':
+    testing = True
     api_key = "b36F8oaRJwFZ"
     fdr: float = 0.25
     current_directory = os.getcwd()
@@ -109,18 +119,21 @@ if __name__ == '__main__':
 
     workunit_id =  extract_workunit_id_from_file("params.yml")
     if workunit_id is None:
-        workunit_id = 876543
+        workunit_id = "876543"
 
     logger.info(f"Workunit ID: {workunit_id}")
-    if False:
+    if testing:
+        # replace the code above with pathlib and __FILE__
+        zip_path = Path(__file__).parent.parent.parent / "tests/data/DE_mouse_fasta_rnk.zip"
+        logger.info(f"Zip path: {zip_path}")
+    else:
         zip_path = find_zip_files()[0]
-    else:
-        zip_path = "./testing_examples/fromDEA/2790797.zip"
 
-    file_path = Path(zip_path)
-    if file_path.exists():
-        print("The file exists.")
-    else:
-        print("The file does not exist.")
 
-    run_string_gsea(zip_path, workunit_id, api_key, fdr)
+    if Path(zip_path).exists():
+        print(f"The file {zip_path} exists.")
+    else:
+        print(f"The file {zip_path} does not exist.")
+    # create a temp directory
+    tempdir = Path(tempfile.mkdtemp())
+    run_string_gsea(zip_path, workunit_id, api_key, fdr, base_dir = tempdir)
