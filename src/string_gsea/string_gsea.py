@@ -321,7 +321,7 @@ class StringGSEA:
         }
         
         # Write to file
-        output_path = self.base_path / 'serialized_gsea_session.json'
+        output_path = self.get_res_path() / 'serialized_gsea_session.json'
         with open(output_path, 'w') as f:
             json.dump(serialized_data, f, indent=2)
         
