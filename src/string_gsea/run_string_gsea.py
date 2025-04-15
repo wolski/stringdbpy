@@ -26,7 +26,7 @@ def extract_workunit_id_from_file(file_path: Path) -> str | None:
         return None
 
 
-def outputs_yml(search_zip : Path, outputs_yml = "outputs.yml"):
+def outputs_yml(search_zip : Path, base_path: Path, outputs_yml = "outputs.yml"):
     output1 = {
         'local_path': str(search_zip.resolve()),
         'store_entry_path': search_zip.name,
@@ -37,6 +37,7 @@ def outputs_yml(search_zip : Path, outputs_yml = "outputs.yml"):
     data = {
         'outputs': outputs_list
     }
+    outputs_yml = base_path / outputs_yml
     with open(outputs_yml, 'w') as file:
         yaml.dump(data, file, default_flow_style=False)
     logger.info(f"YAML file {outputs_yml} has been generated.")
@@ -84,17 +85,19 @@ def run_string_gsea(zip_path : Path,
                     fdr: float = 0.25,
                     base_dir: Path = Path(".")) -> None:
     api_key = "b36F8oaRJwFZ"
-
+    base_dir.mkdir(exist_ok = True)
     species = get_species_taxon(zip_path)
     dataframes = get_rank_files(zip_path)
     gsea = StringGSEA(api_key, workunit_id, dataframes, species, fdr, base_dir)
     gsea.submit()
     logger.info(f"Job submitted successfully.{gsea.res_job_id}")
     gsea.pull_results()
+    gsea.serialize_results()
+
     logger.info("got results")
     gsea.write_rank_files()
     result_dir = gsea.write_gsea_results()
-    gsea.write_links()
+    written_links = gsea.write_links()
 
     postprocess.result_to_xlsx(result_dir, workunit_id)
     logger.info(f"Results written to {result_dir}")

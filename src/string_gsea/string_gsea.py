@@ -210,7 +210,7 @@ class StringGSEA:
             logger.warning(f"No links found for outer_key: {outer_key}")
             return None
         
-        subfolder_path = self.base_path / str(outer_key)
+        subfolder_path = self.get_res_path() / str(outer_key)
         subfolder_path.mkdir(exist_ok=True)
         
         filename = "links.txt"
@@ -230,7 +230,6 @@ class StringGSEA:
         Returns:
             dict: A dictionary mapping outer keys to the paths of the files where links were written.
         """
-        path = self.get_res_path()
         written_files = {}
         links_dict = self.get_links()
         
@@ -286,7 +285,7 @@ class StringGSEA:
                 subfolder_path.mkdir(exist_ok=True)
                 
                 # Save the results
-                filename = f"{inner_key}_gsea_results.txt"
+                filename = f"{inner_key}_gsea_results.tsv"
                 file_path = subfolder_path / filename
                 
                 with open(file_path, 'wb') as f:

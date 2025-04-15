@@ -33,7 +33,6 @@ def string_gsea_bfabric(
 
     if not Path(zip_path).exists():
         raise FileNotFoundError(f"Zip file not found: {zip_path}")
-
     run_string_gsea(zip_path, workunit_id, fdr=fdr, base_dir=Path(out_dir))
 
 if __name__ == '__main__':

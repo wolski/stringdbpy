@@ -115,5 +115,5 @@ if __name__ == '__main__':
     logger.info(f"Zip path: {zip_path}")
     df_xlsx = DiffXLSX(zip_path)
     rank_files = df_xlsx.rank_dict()
-    rank_files
+
 
