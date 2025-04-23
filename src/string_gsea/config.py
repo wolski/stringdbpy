@@ -60,7 +60,7 @@ def get_configuration() -> Dict[str, Any]:
     except Exception as e:
         raise ValueError(f"Error loading configuration from {config_path}: {e}")
 
-def write_initial_configuration(fdr: float = 0.25, caller_identity: str = "www.fgcz.ch") -> Path:
+def write_initial_configuration(caller_identity: str = "www.fgcz.ch", fdr: float = 0.25) -> Path:
     """
     Write an initial configuration file with the provided parameters and fetch an API key from STRING-DB.
     

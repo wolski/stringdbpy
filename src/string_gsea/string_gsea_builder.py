@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 import requests
 import time
@@ -130,25 +131,11 @@ class StringGSEABuilder:
 
     def save_session(self, filepath: Path = None) -> Path:
         out_dir = self.get_res_path()
-        path = filepath or (out_dir / 'session.yaml')
+        path = filepath or (out_dir / 'session.yml')
         self.session.to_yaml(path)
         return path
 
 
-    @classmethod
-    def load_session(cls, yaml_input: Path) -> StringGSEAResults:
-        session = GSEASession.from_yaml(yaml_input)
-        builder = cls(
-            rank_dataframes={},
-            config_dict=session.config_dict,
-            workunit_id=session.workunit_id,
-            species=session.species,
-            base_path=session.base_path
-        )
-        builder.session = session
-        if not session.res_data and session.res_job_id:
-            builder.poll()
-        return builder.build_results()
 
 if __name__ == '__main__':
     config_dict = {
@@ -158,7 +145,9 @@ if __name__ == '__main__':
         'ge_enrichment_rank_direction': -1
     }
     print("Current working directory:", os.getcwd())
-    zip_path = "../../tests/data/2848501.zip"
+    script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent.parent
+    zip_path = project_root / "tests" / "data" / "2848501.zip"
     workunit_id = "abcd"
     species = OxFieldsZip.get_species_from_oxes(zip_path)
 
@@ -185,8 +174,9 @@ if __name__ == '__main__':
     results.write_gsea_graphs()
     builder.save_session()
     results.serialize_results()
-
-    results2 = builder.load_session(session_path)
+    # copy session_path file into tests/data/dummy_d
+    shutil.copy(session_path, project_root / "tests" / "data" / "dummy_d" / "session.yml")
+    results2 = StringGSEAResults(GSEASession.from_yaml(session_path))
     results2.write_links()
 
 

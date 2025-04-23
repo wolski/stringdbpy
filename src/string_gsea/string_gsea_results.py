@@ -4,7 +4,7 @@ import requests
 from pathlib import Path
 from loguru import logger
 
-from gsea_session import GSEASession
+from string_gsea.gsea_session import GSEASession
 
 class StringGSEAResults:
     """
@@ -85,24 +85,11 @@ class StringGSEAResults:
         """
         Dump the full session (config + results) to JSON in the results folder.
         """
-        serial = {}
-        for (outer, inner), val in self.session.res_data.items():
-            serial[f"{outer}~{inner}"] = val
-
-        payload = {
-            'config': {
-                'config_dict': self.session.config_dict,
-                'workunit_id': self.session.workunit_id,
-                'species': self.session.species,
-                'base_path': str(self.session.base_path)
-            },
-            'results': serial
-        }
-
+        # use the GSEASession.to_yaml() method to serialize the session
+        # and save it to the results folder
         outdir = self.get_res_path()
-        file_path = outdir / 'serialized_gsea_session.json'
-        with open(file_path, 'w') as f:
-            json.dump(payload, f, indent=2)
+        file_path = outdir / 'gsea_session.yml'
+        self.session.to_yaml(file_path)
         logger.info(f"Serialized results to {file_path}")
         return file_path
 
@@ -111,3 +98,15 @@ class StringGSEAResults:
         """Create a .zip archive of the given folder."""
         archive = shutil.make_archive(str(folder_path.parent / folder_path.name), 'zip', root_dir=str(folder_path))
         return Path(archive)
+
+if __name__ == '__main__':
+    script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent.parent
+    yaml_input = project_root / "tests" / "data" / "dummy_d" / "session.yml"
+    session = GSEASession.from_yaml(yaml_input)
+    results = StringGSEAResults(session)
+    logger.info(f"Jobs: {results.session.res_job_id}")
+    results.write_links()
+    results.write_gsea_tsv()
+    results.write_gsea_graphs()
+    

@@ -39,7 +39,7 @@ def test_to_yaml_string(sample_session):
 
 
 def test_to_yaml_file(tmp_path, sample_session):
-    yaml_file = tmp_path / 'session.yaml'
+    yaml_file = tmp_path / 'session.yml'
     yaml_str = sample_session.to_yaml(filepath=yaml_file)
 
     # File should exist and content should match returned string
@@ -57,7 +57,7 @@ def test_from_yaml_string(sample_session):
 
 
 def test_from_yaml_file(tmp_path, sample_session):
-    yaml_file = tmp_path / 'session.yaml'
+    yaml_file = tmp_path / 'session.yml'
     sample_session.to_yaml(filepath=yaml_file)
     loaded = GSEASession.from_yaml(yaml_input=yaml_file)
     assert loaded == sample_session
