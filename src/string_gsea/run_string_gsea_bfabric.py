@@ -7,12 +7,14 @@ from pathlib import Path
 import yaml
 from loguru import logger
 
-from string_gsea import postprocess
 from string_gsea.gsea_utilities import get_rank_files, find_zip_files
-from string_gsea.string_gsea import StringGSEA
-from string_gsea.get_species import OxFieldsZip, get_species_taxon
+from string_gsea.get_species import get_species_taxon
 import subprocess
 import tempfile
+
+from string_gsea.postprocess import result_to_xlsx
+from string_gsea.string_gsea_builder import StringGSEABuilder
+from string_gsea.string_gsea_results import StringGSEAResults
 
 
 def extract_workunit_id_from_file(file_path: Path) -> str | None:
@@ -80,62 +82,72 @@ def register_result(workunit_id):
     return result
 
 
-def run_string_gsea_bfabric(zip_path : Path,
-                            workunit_id: str,
-                            fdr: float = 0.25,
-                            base_dir: Path = Path(".")) -> None:
-    api_key = "b36F8oaRJwFZ"
-    base_dir.mkdir(exist_ok = True)
+
+def run_string_gsea_bfabric(
+    zip_path: Path,
+    workunit_id: str,
+    fdr: float = 0.25,
+    base_dir: Path = Path(".")
+) -> None:
+    # 1) Prepare config & workspace
+    config = {
+        "api_key": "b36F8oaRJwFZ",
+        "fdr": fdr,
+        "caller_identity": "www.fgcz.ch",
+        "ge_enrichment_rank_direction": -1,
+    }
+    base_dir.mkdir(exist_ok=True)
     species = get_species_taxon(zip_path)
     dataframes = get_rank_files(zip_path)
-    gsea = StringGSEA(api_key, workunit_id, dataframes, species, fdr, base_dir)
-    gsea.submit()
-    logger.info(f"Job submitted successfully.{gsea.res_job_id}")
-    gsea.pull_results()
-    gsea.serialize_results()
 
-    logger.info("got results")
-    gsea.write_rank_files()
-    result_dir = gsea.write_gsea_results()
-    written_links = gsea.write_links()
+    # 2) Build, write inputs, submit & poll
+    builder = StringGSEABuilder(
+        rank_dataframes=dataframes,
+        config_dict=config,
+        workunit_id=workunit_id,
+        species=species,
+        base_path=base_dir
+    )
+    builder.write_rank_files()
+    # submit + poll under the hood
+    results: StringGSEAResults = builder.get_result()
+    logger.info(f"Jobs completed: {builder.session.res_job_id}")
 
-    postprocess.result_to_xlsx(result_dir, workunit_id)
-    logger.info(f"Results written to {result_dir}")
+    # 3) Serialize session + results, write out files
+    #   - YAML session
+    session_yaml = builder.save_session()
+    logger.info(f"Session YAML written to {session_yaml}")
 
-    path = gsea.zip_folder(result_dir)
+    #   - JSON results
+    serialized_json = results.serialize_results()
+    logger.info(f"Results JSON written to {serialized_json}")
+
+    #   - links, TSVs, graphs
+    links = results.write_links()
+    tsv_dir = results.write_gsea_tsv()
+    graph_dir = results.write_gsea_graphs()
+    logger.info(f"Wrote links to {links}\nTSVs to {tsv_dir}\nGraphs to {graph_dir}")
+
+    # 4) Post‑processing
+    result_to_xlsx(tsv_dir, workunit_id)
+    path = StringGSEAResults.zip_folder(results.get_res_path())
     logger.info(f"Zipped results to {path}")
+
     outputs_yml(path, base_dir)
-    logger.info("zipped results.")
-    if workunit_id is not None:
-        status = save_link(gsea.get_links(), workunit_id)
-        logger.info(f"saved link {status}")
+    logger.info("Outputs YAML written.")
+
+    # 5) Save link if desired
+    if workunit_id:
+        status = save_link(results.get_links(), workunit_id)
+        logger.info(f"Saved link status: {status}")
 
 
-if __name__ == '__main__':
-    test_data = Path(__file__).parent.parent.parent / "tests/data/"
-    testing = True
-    fdr: float = 0.25
-    current_directory = os.getcwd()
-    # Print the working directory
-    print("Current working directory:", current_directory)
-    workunit_id =  extract_workunit_id_from_file(test_data / "params.yml")
-    if workunit_id is None:
-        workunit_id = "876543"
-
-    logger.info(f"Workunit ID: {workunit_id}")
-    if testing:
-        # replace the code above with pathlib and __FILE__
-        zip_path = test_data / "DE_mouse_fasta_rnk.zip"
-        logger.info(f"Zip path: {zip_path}")
-    else:
-        zip_path = find_zip_files()[0]
-
-
-    if Path(zip_path).exists():
-        print(f"The file {zip_path} exists.")
-    else:
-        print(f"The file {zip_path} does not exist.")
-    # create a temp directory
-
+if __name__ == "__main__":
+    test_data = Path(__file__).parent.parent.parent / "tests/data/dummy_d"
+    workunit_id = extract_workunit_id_from_file(test_data / "params.yml") or "876543"
+    zip_path = test_data.parent / "2848501.zip"
     tempdir = Path(tempfile.mkdtemp())
-    run_string_gsea_bfabric(zip_path, workunit_id, fdr = fdr, base_dir = tempdir)
+    logger.info(f"Running on {zip_path} into {tempdir}")
+    run_string_gsea_bfabric(zip_path, workunit_id, fdr=0.25, base_dir=tempdir)
+
+

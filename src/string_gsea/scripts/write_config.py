@@ -1,0 +1,29 @@
+from cyclopts import App
+from pathlib import Path
+from loguru import logger
+
+from string_gsea.config import write_empty_configuration
+
+app = App()
+
+
+@app.default()
+def write_config():
+    """
+    Write an empty configuration file with default values.
+    
+    The configuration file is located in:
+    - Windows: %APPDATA%/string_gsea/config.toml
+    - macOS/Linux: ~/.config/string_gsea/config.toml
+    """
+    try:
+        config_path = write_empty_configuration()
+        logger.info(f"Configuration file created successfully at: {config_path}")
+        logger.info("Please edit the file to add your API key and other configuration values.")
+    except Exception as e:
+        logger.error(f"Failed to create configuration file: {e}")
+        raise
+
+
+if __name__ == '__main__':
+    app() 

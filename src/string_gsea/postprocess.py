@@ -97,8 +97,8 @@ def _result_to_xlsx(directory: Path, workunit_id: str) -> None:
     write_xlsx(longformat_df, directory / f"WU{workunit_id}_string_gsea_results_long.xlsx")
     logger.info("written merged XLSX")
 
-def result_to_xlsx(w_directory:Path, workunit_id: str) -> None:
-    directories = list_subfolders(w_directory)
+def result_to_xlsx(work_directory:Path, workunit_id: str) -> None:
+    directories = list_subfolders(work_directory)
     for directory in directories:
         _result_to_xlsx(directory, workunit_id)
 

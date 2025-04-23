@@ -6,8 +6,6 @@ import polars as pl
 from loguru import logger
 
 
-
-
 class DiffXLSX:
 
     def __init__(self, zip_path: Path):

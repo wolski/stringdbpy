@@ -11,27 +11,46 @@ from string_gsea.gsea_utilities import get_rank_files
 
 class GetTaxonID:
     @staticmethod
-    def _fetch_ncbi_taxon_id(identifier):
+    def _fetch_ncbi_taxon_ids(identifiers):
         """
-        Fetches the ncbiTaxonId for a given identifier from the STRING API.
-        
+        Fetches the ncbiTaxonId for one or more identifiers from the STRING API.
+
         Parameters:
-            identifier (str): The identifier to query (e.g., "P05737").
-        
+            identifiers (str or list of str):
+                A single identifier (e.g. "P05737") or a list of them
+                (e.g. ["TP53", "CDK2", "PTEN"]).
+
         Returns:
-            int or None: The ncbiTaxonId if found, otherwise None.
+            dict: mapping each input identifier to its ncbiTaxonId (int),
+                  or None if that identifier wasn’t found.
         """
+        # If they gave us a list, join with CR so that it becomes "%0D" in the URL
+        if isinstance(identifiers, (list, tuple)):
+            id_string = "\r".join(identifiers)
+        else:
+            id_string = identifiers
+
         url = "https://string-db.org/api/json/get_string_ids"
-        params = {"identifiers": identifier}
-        
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        data = response.json()
-        
-        # Check if the response contains a list and return the "ncbiTaxonId" from the first element.
-        if data and isinstance(data, list):
-            return data[0].get("ncbiTaxonId")
-        return None
+        params = {"identifiers": id_string}
+
+        resp = requests.get(url, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+
+        # Build a map: input identifier → returned ncbiTaxonId
+        result = {}
+        if isinstance(data, list):
+            for entry in data:
+                # The API echoes back your query under 'queryItem' (or 'inputId')
+                input_id = entry.get("queryItem") or entry.get("inputId") or None
+                # If we can’t find that field, fall back to the raw string we passed
+                if input_id is None:
+                    # split our joined string to recover inputs
+                    parts = id_string.split("\r")
+                    # assume entries come back in the same order
+                    input_id = parts[len(result)]
+                result[input_id] = entry.get("ncbiTaxonId")
+        return result
 
     @staticmethod
     def determine_species(df: pl.DataFrame, nr: int = 10) -> int:
@@ -66,19 +85,8 @@ class GetTaxonID:
         sampled_ids = identifiers.sample(n=sample_size, shuffle=True).to_series().to_list()
 
         # Fetch taxon IDs for sampled identifiers.
-        taxon_ids = []
-        for identifier in sampled_ids:
-            try:
-                taxon_id = GetTaxonID._fetch_ncbi_taxon_id(identifier)
-                if taxon_id is not None:
-                    taxon_ids.append(taxon_id)
-            except Exception:
-                # Skip identifiers that raise an exception during API call.
-                continue
-
-        # If no taxon IDs were fetched, raise an exception.
-        if not taxon_ids:
-            raise ValueError("Could not fetch any taxon IDs for the sampled identifiers.")
+        taxon_ids = GetTaxonID._fetch_ncbi_taxon_ids(sampled_ids)
+        taxon_ids = [tid for tid in taxon_ids.values() if tid is not None]
 
         # Count frequencies and return the most common taxon ID.
         most_common_taxon = Counter(taxon_ids).most_common(1)[0][0]
@@ -87,7 +95,7 @@ class GetTaxonID:
 
 class OxFieldsZip:
     @staticmethod
-    def get_ox_fields(fasta_content: io.BytesIO) -> list[str]:
+    def get_ox_fields(fasta_content: io.BytesIO) -> list[int]:
         pattern = re.compile(r'OX=(\d+)') # re was not defined before
         ox_values = []
 
@@ -97,7 +105,7 @@ class OxFieldsZip:
             if line.startswith('>'):
                 match = pattern.search(line)
                 if match:
-                    ox_values.append(match.group(1))
+                    ox_values.append(int(match.group(1)))
 
         return ox_values
     
@@ -106,7 +114,9 @@ class OxFieldsZip:
         oxes = {}
         with zipfile.ZipFile(zip_path, 'r') as z:
             fasta_files = [f for f in z.namelist() if f.endswith(('.fas', '.fasta'))]
+            logger.info(f"Found {len(fasta_files)} fasta files in {zip_path}")
             for file in fasta_files:
+                logger.info(f"Processing file: {file}")
                 with z.open(file) as f:
                     file_bytes = f.read()
                     ox = OxFieldsZip.get_ox_fields(io.BytesIO(file_bytes))

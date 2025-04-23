@@ -5,7 +5,7 @@ from string_gsea.gsea_utilities import get_rank_files, find_zip_files
 
 # Define the path to the test data directory relative to the test file
 TEST_DATA_DIR = Path(__file__).parent / 'data'
-DE_ZIP_FILENAME = 'DE_mouse_fasta_rnk.zip'
+DE_ZIP_FILENAME = 'dummy_d/DEA_mouse_fasta_rnk.zip'
 DE_ZIP_PATH = TEST_DATA_DIR / DE_ZIP_FILENAME
 
 # --- Test Case 1: Test that find_zip_files raises error when no file matches pattern ---
@@ -15,15 +15,13 @@ def test_find_zip_files_raises_error_when_no_match():
     in tests/data but none match the required pattern (e.g., DEA_*, not DE_*).
     """
     # Ensure the files that *don't* match the pattern exist
-    if not DE_ZIP_PATH.exists():
-        pytest.fail(f"Required test zip file {DE_ZIP_FILENAME} not found at {DE_ZIP_PATH}")
-    non_matching_zip = TEST_DATA_DIR / 'fasta_test.zip'
+    non_matching_zip = TEST_DATA_DIR / "no_matching_zip" / 'fasta_test.zip'
     if not non_matching_zip.exists():
          pytest.fail(f"Required non-matching zip file fasta_test.zip not found at {non_matching_zip}")
 
     # Assert that the specific error is raised because no files match the DEA_* pattern
     with pytest.raises(FileNotFoundError, match="No zip files found matching the pattern."):
-        find_zip_files(TEST_DATA_DIR)
+        find_zip_files(TEST_DATA_DIR / "no_matching_zip")
 
 
 # --- Test Case 2: Folder without zip archive ---
