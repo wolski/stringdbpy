@@ -30,8 +30,9 @@ class GetTaxonID:
         else:
             id_string = identifiers
 
-        url = "https://string-db.org/api/json/get_string_ids"
+        url = "https://version-12-0.string-db.org/api/json/get_string_ids"
         params = {"identifiers": id_string}
+        logger.info(f"Fetching ncbiTaxonId for identifiers: {url}?{id_string}")
 
         resp = requests.get(url, params=params)
         resp.raise_for_status()
