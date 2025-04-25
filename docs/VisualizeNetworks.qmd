@@ -1,134 +1,130 @@
 ---
-title: "VisualizeNetworks"
-date: "2025-04-10"
+title: VisualizeNetworks
+date: '2025-04-10'
 format:
   html:
     code-fold: false
+jupyter: python3
 ---
 
 # Load Libraries
 
 ```{python}
+#| vscode: {languageId: python}
 import polars as pl
-import pandas as pd
 import glob, os
 import networkx as nx
 import matplotlib.pyplot as plt
 from pyvis.network import Network
+from pathlib import Path
+from string_gsea.network import separate_pivot_longer
+from IPython.display import display
+from string_gsea.network import summarize_terms
+from string_gsea.network import make_network
+from string_gsea.network import make_network_with_colors, plot_network_graph
+from string_gsea.network import interactive_cytoscape, plot_network_graph_plotly
+```
+
+```{python}
+#| vscode: {languageId: python}
+wd = %pwd
+print(Path(wd))
 ```
 
 # Data Preparation
 
 ```{python}
+#| vscode: {languageId: python}
 # Define input directory and file
-indir = "WU_234567_GSEA/pep_1/"
-file = [f for f in os.listdir(indir) if "string_gsea_results_long.xlsx" in f][0]
+
+
+file = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk/"/"WUabcd_string_gsea_results_long.xlsx"
+file.exists()
+
 # Read Excel and convert to Polars
-import pandas as _pd  # only for reading Excel
-df_pd = _pd.read_excel(os.path.join(indir, file))
-df = pl.from_pandas(df_pd).with_columns(
+# Read Excel file directly with polars
+df = pl.read_excel(file)
+# Select and explode protein columns
+df = df.with_columns(
     (pl.col("genesMapped") / pl.col("genesInSet")).alias("geneRatio")
 )
-# Select and explode protein columns
-xd = (
-    df
-    .select([
-        "contrast", "category", "termID", "termDescription",
-        "enrichmentScore", "direction", "falseDiscoveryRate",
-        "method", "proteinIDs", "proteinLabels",
-        "proteinInputLabels", "proteinInputValue",
-        "geneRatio", "genesMapped"
-    ])
-    .with_columns([
-        pl.col("proteinIDs").str.split(",").alias("proteinIDs_list"),
-        pl.col("proteinLabels").str.split(",").alias("proteinLabels_list"),
-        pl.col("proteinInputLabels").str.split(",").alias("proteinInputLabels_list"),
-        pl.col("proteinInputValue").str.split(",").alias("proteinInputValue_list")
-    ])
-    .explode(["proteinIDs_list", "proteinLabels_list", "proteinInputLabels_list", "proteinInputValue_list"])
-    .with_columns(
-        pl.col("proteinInputValue_list").cast(pl.Float64).alias("proteinInputValue")
-    )
-    .rename({
-        "proteinIDs_list": "proteinIDs",
-        "proteinLabels_list": "proteinLabels",
-        "proteinInputLabels_list": "proteinInputLabels"
-    })
-)
-# Compute mean input value per term
-means = (
-    xd
-    .groupby(["contrast", "termID"])
-    .agg(pl.col("proteinInputValue").mean().alias("meanInputValue"))
-)
-xd = xd.join(means, on=["contrast", "termID"] )
-# Filter
-xd = xd.filter(
-    (pl.col("falseDiscoveryRate") < 0.05) &
-    (pl.col("genesMapped") > 10)
-)
-# Unique contrasts and categories
-contrast_list = xd["contrast"].unique().to_list()
-category_list = xd["category"].unique().to_list()
-categ = [c for c in category_list if c != "Publications"]
+df.columns
+```
+
+```{python}
+#| vscode: {languageId: python}
+xd = separate_pivot_longer(df)
+xd = summarize_terms(xd)
+```
+
+```{python}
+#| vscode: {languageId: python}
+# Display the first 10 rows of your Polars DataFrame 'xd' in the notebook
+#display(xd.head(100))
+# pull line direction and show unique values
+#display(xd.col("direction").unique())
+# pull line direction and show unique values 
+display(xd.get_column("direction").unique())
+```
+
+```{python}
+#| vscode: {languageId: python}
+import seaborn as sns
+
+#pdf = xd.select(['contrast','proteinRanks','proteinInputValues']).to_pandas()
+
+g = sns.FacetGrid(xd, col='contrast', col_wrap=3, sharex=False, sharey=False)
+g.map_dataframe(sns.scatterplot, x='proteinRanks', y='proteinInputValues')
+g.set_axis_labels('proteinRanks', 'proteinInputValues')
+for ax in g.axes.flatten():
+    ax.tick_params(labelrotation=45)
+
+plt.tight_layout()
+plt.show()
 ```
 
 # Results { .tab-set }
 
 ```{python}
-from IPython.display import display, Markdown
-# Define network functions
-
-def make_network(xdf):
-    df = xdf.to_pandas()
-    edges = df[["termID","proteinLabels","falseDiscoveryRate","proteinInputValue","meanInputValue"]].drop_duplicates()
-    terms = edges[["termID","falseDiscoveryRate","meanInputValue"]].drop_duplicates().rename(columns={"termID":"name"})
-    terms["nodeType"] = "term"
-    proteins = edges[["proteinLabels","proteinInputValue"]].drop_duplicates().rename(columns={"proteinLabels":"name"})
-    proteins["nodeType"] = "protein"
-    nodes = pd.concat([terms, proteins], ignore_index=True)
-    edge_list = edges.rename(columns={"termID":"from","proteinLabels":"to"})[["from","to"]]
-    G = nx.from_pandas_edgelist(edge_list, "from", "to")
-    # Add attributes
-    for _, row in nodes.iterrows():
-        n = row["name"]
-        G.nodes[n]["nodeType"] = row["nodeType"]
-        if row["nodeType"] == "term":
-            G.nodes[n]["falseDiscoveryRate"] = row["falseDiscoveryRate"]
-            G.nodes[n]["meanInputValue"] = row["meanInputValue"]
-        else:
-            G.nodes[n]["proteinInputValue"] = row["proteinInputValue"]
-    # Size and color assignment (customize as needed)
-    return G
-
-
-def plot_graph(G, title):
-    pos = nx.kamada_kawai_layout(G)
-    sizes = [100 for _ in G.nodes()]
-    colors = ["grey" for _ in G.nodes()]
-    nx.draw(G, pos, with_labels=True, node_size=sizes, node_color=colors, font_size=8)
-    plt.title(title)
-    plt.show()
-
-
-def plot_graph_interactive(G, title):
-    net = Network(height="600px", width="100%")
-    for n, data in G.nodes(data=True):
-        net.add_node(n, label=n, group=data["nodeType"], title=f"Type: {data['nodeType']}")
-    for u, v in G.edges():
-        net.add_edge(u, v)
-    net.show_buttons(filter_=['physics'])
-    return net
-
+#| vscode: {languageId: python}
 # Loop through contrasts and categories
-for cont in contrast_list:
-    display(Markdown(f"## Results {cont}"))
-    for cat in categ:
-        display(Markdown(f"### {cat}"))
-        xdf = xd.filter((pl.col("contrast")==cont) & (pl.col("category")==cat))
-        G = make_network(xdf)
-        plot_graph(G, cat)
-        net = plot_graph_interactive(G, cat)
-        net.show(f"network_{cont}_{cat}.html")
+if False:
+    for cont in contrast_list:
+        display(Markdown(f"## Results {cont}"))
+        for cat in categ:
+            display(Markdown(f"### {cat}"))
+            xdf = xd.filter((pl.col("contrast")==cont) & (pl.col("category")==cat))
+            
+            G = make_network(xdf)
+            G = color_network(G)   
+            plot_graph(G, cat)
+            #net = plot_graph_interactive(G, cat)
+            #net.show(f"network_{cont}_{cat}.html")
+
+
+
+cont = "Bait_NCP_pUbT12T14_results.tsv"
+cat = "Monarch"
+xdf = xd.filter((pl.col("contrast")==cont) & (pl.col("category")==cat))
+        
+G = make_network_with_colors(xdf)
+```
+
+```{python}
+#| vscode: {languageId: python}
+plot_network_graph(G, cat)
+```
+
+```{python}
+#| vscode: {languageId: python}
+# --- usage in your notebook ---
+widget = interactive_cytoscape(G)
+widget
+```
+
+```{python}
+#| vscode: {languageId: python}
+fig = plot_network_graph_plotly(G, "Demo")
+fig.update_layout(width=800, height=800)
 ```
 

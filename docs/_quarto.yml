@@ -1,0 +1,15 @@
+project:
+  type: website
+  render:
+    - "*.qmd"
+    - "!**/*.ipynb"
+    - "!python_notebooks/"
+
+website:
+  title: "stringdbpy Network Visualizations"
+  navbar:
+    left:
+      - text: Home
+        href: index.qmd
+      - text: Visualize Networks
+        href: VisualizeNetworks.qmd
