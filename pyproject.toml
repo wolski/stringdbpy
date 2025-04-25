@@ -17,7 +17,21 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "pyyaml","polars","requests","bfabric",'bfabric-scripts','loguru','fastexcel','cyclopts','tomli','tomli_w','networkx','matplotlib','pyvis'
+    "pyyaml",
+    "polars",
+    "requests",
+    "bfabric",
+    'bfabric-scripts',
+    'loguru',
+    'fastexcel',
+    'cyclopts',
+    'tomli',
+    'tomli_w',
+    'networkx',
+    'matplotlib',
+    'pyvis',
+    'notebook>=7.4.1',
+    'plotly'
 ]
 
 [project.scripts]
