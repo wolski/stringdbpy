@@ -1,5 +1,4 @@
 import polars as pl
-import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 from ipycytoscape import CytoscapeWidget
@@ -54,6 +53,10 @@ def summarize_terms(xd: pl.DataFrame) -> pl.DataFrame:
     return xd
 
 
+
+
+
+
 def make_network(xdf: pl.DataFrame) -> nx.Graph:
     # 1) dedupe the edge table
     edges_pl = (
@@ -64,7 +67,8 @@ def make_network(xdf: pl.DataFrame) -> nx.Graph:
             "falseDiscoveryRate",
             "proteinInputValues",   # plural here
             "meanInputValues",
-            "direction"
+            "direction",
+            "termDescription"  # Added termDescription
         ])
         .unique()
     )
@@ -75,7 +79,8 @@ def make_network(xdf: pl.DataFrame) -> nx.Graph:
         .select(["termID",
                 "falseDiscoveryRate",
                 "meanInputValues",
-                "direction"])
+                "direction",
+                "termDescription"])
         .unique()
         .with_columns([
             pl.lit("term").alias("nodeType"),
@@ -88,7 +93,8 @@ def make_network(xdf: pl.DataFrame) -> nx.Graph:
             "falseDiscoveryRate",
             "meanInputValues",
             "proteinInputValues",
-            "direction"
+            "direction",
+            "termDescription"
         ])
     )
 
@@ -101,7 +107,8 @@ def make_network(xdf: pl.DataFrame) -> nx.Graph:
             pl.lit("protein").alias("nodeType"),
             pl.lit(None).cast(pl.Float64).alias("falseDiscoveryRate"),
             pl.lit(None).cast(pl.Float64).alias("meanInputValues"),
-            pl.lit(None).cast(pl.Utf8).alias("direction")
+            pl.lit(None).cast(pl.Utf8).alias("direction"),
+            pl.lit(None).cast(pl.Utf8).alias("termDescription")
         ])
         .rename({
             "proteinLabels": "name"
@@ -113,7 +120,8 @@ def make_network(xdf: pl.DataFrame) -> nx.Graph:
             "falseDiscoveryRate",
             "meanInputValues",
             "proteinInputValues",
-            "direction"
+            "direction",
+            "termDescription"
         ])
     )
 
@@ -153,8 +161,8 @@ def assign_node_sizes(G):
     for n, d in G.nodes(data=True):
         if d["nodeType"] == "term":
             # protect against FDR = 0
-            fdr = max(d["falseDiscoveryRate"], 1e-300)
-            d["size"] = -np.log10(fdr) * 4
+            fdr = max(d["falseDiscoveryRate"], 1e-5)
+            d["size"] = -np.log10(fdr) * 3
         else:
             d["size"] = 3
     return G
@@ -283,7 +291,8 @@ def plot_network_graph(G, title: str):
     plt.title(title)
     plt.axis("off")
     plt.tight_layout()
-    plt.show()
+    fig = plt.gcf()  # Get the current figure
+    return fig
 
 
 
@@ -309,10 +318,12 @@ def build_tooltip(node_id: str, data: dict) -> str:
     if data["nodeType"] == "term":
         direction = data.get("direction", "unknown")
         mean_val  = data.get("meanInputValues", float("nan"))
+        fdr       = data.get("falseDiscoveryRate", float("nan"))
         return (
             f"<b>Term:</b> {node_id}<br/>"
             f"<b>Direction:</b> {direction}<br/>"
-            f"<b>Mean:</b> {mean_val:.3f}"
+            f"<b>Mean:</b> {mean_val:.3f}<br/>"
+            f"<b>FDR:</b> {fdr:.3f}"
         )
     else:
         prot_val = data.get("proteinInputValues", float("nan"))
