@@ -33,6 +33,7 @@ def separate_pivot_longer(df: pl.DataFrame) -> pl.DataFrame:
     )
     return xd
 
+
 def summarize_terms(xd: pl.DataFrame) -> pl.DataFrame:
     # Compute mean input value per term
     means = (
@@ -46,10 +47,6 @@ def summarize_terms(xd: pl.DataFrame) -> pl.DataFrame:
         (pl.col("falseDiscoveryRate") < 0.05) &
         (pl.col("genesMapped") > 10)
     )
-    # Unique contrasts and categories
-    #contrast_list = xd["contrast"].unique().to_list()
-    #category_list = xd["category"].unique().to_list()
-    #categ = [c for c in category_list if c != "Publications"]
     return xd
 
 
@@ -319,11 +316,13 @@ def build_tooltip(node_id: str, data: dict) -> str:
         direction = data.get("direction", "unknown")
         mean_val  = data.get("meanInputValues", float("nan"))
         fdr       = data.get("falseDiscoveryRate", float("nan"))
+        description = data.get("termDescription", "")
         return (
             f"<b>Term:</b> {node_id}<br/>"
             f"<b>Direction:</b> {direction}<br/>"
             f"<b>Mean:</b> {mean_val:.3f}<br/>"
-            f"<b>FDR:</b> {fdr:.3f}"
+            f"<b>FDR:</b> {fdr:.3f}<br/>"
+            f"<b>Description:</b> {description}"
         )
     else:
         prot_val = data.get("proteinInputValues", float("nan"))
@@ -415,8 +414,6 @@ def interactive_cytoscape(G, layout="cose", width="100%", height="600px"):
 
     return cw
 
-
-
 def plot_network_graph_plotly(G, title: str):
     # 1) layout
     pos = nx.kamada_kawai_layout(G)
@@ -445,7 +442,7 @@ def plot_network_graph_plotly(G, title: str):
     prot_colors = [to_css_rgba(G.nodes[n]["color"]) for n in prot_nodes]
     # use plain <br> here
     prot_hover  = [
-        f"Protein: {n}<br>Value: {G.nodes[n]['proteinInputValues']:.3f}"
+        build_tooltip(n, G.nodes[n]).replace("<br/>", "<br>")
         for n in prot_nodes
     ]
     prot_trace = go.Scatter(
@@ -475,11 +472,8 @@ def plot_network_graph_plotly(G, title: str):
     term_sizes       = [G.nodes[n]["size"]*5 for n in term_nodes]
     term_face_colors = [to_css_rgba(G.nodes[n]["color"]) for n in term_nodes]
     term_edge_colors = [G.nodes[n].get("borderColor","gray")        for n in term_nodes]
-    term_hover       = [
-        # again use <br> for line breaks
-        f"Term: {n}<br>"
-        f"Direction: {G.nodes[n].get('direction','unknown')}<br>"
-        f"Mean: {G.nodes[n]['meanInputValues']:.3f}"
+    term_hover = [
+        build_tooltip(n, G.nodes[n]).replace("<br/>", "<br>")
         for n in term_nodes
     ]
     term_trace = go.Scatter(
