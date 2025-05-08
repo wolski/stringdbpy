@@ -4,6 +4,15 @@ from matplotlib.colors import LinearSegmentedColormap
 from ipycytoscape import CytoscapeWidget
 import networkx as nx
 import plotly.graph_objs as go
+import matplotlib.pyplot as plt
+import networkx as nx
+
+
+def add_gene_ratio(df: pl.DataFrame) -> pl.DataFrame:
+    return df.with_columns(
+        (pl.col("genesMapped") / pl.col("genesInSet")).alias("geneRatio")
+    )
+    return df
 
 
 def separate_pivot_longer(df: pl.DataFrame) -> pl.DataFrame:
@@ -48,7 +57,6 @@ def summarize_terms(xd: pl.DataFrame) -> pl.DataFrame:
         (pl.col("genesMapped") > 10)
     )
     return xd
-
 
 
 
@@ -227,8 +235,6 @@ def make_network_with_colors(xdf: pl.DataFrame) -> nx.Graph:
     return G
 
 
-import matplotlib.pyplot as plt
-import networkx as nx
 
 def plot_network_graph(G, title: str):
     # 1) compute layout
@@ -414,10 +420,131 @@ def interactive_cytoscape(G, layout="cose", width="100%", height="600px"):
 
     return cw
 
-def plot_network_graph_plotly(G, title: str):
-    # 1) layout
-    pos = nx.kamada_kawai_layout(G)
+def bipartite_hybrid_layout(
+    G,
+    terms: list,
+    proteins: list,
+    left_x: float = -1.0,
+    right_x: float = +1.0,
+    input_attr: str = "proteinInputValues",
+    desc: bool = True
+):
+    """
+    1) Sort proteins by G.nodes[p][input_attr] descending (or ascending if desc=False).
+    2) Lay terms in input-sorted order? No—keep original term order for now.
+    3) Compute term-barycenters over that protein order, re-sort terms.
+    4) Compute protein-barycenters over the new term order, re-sort proteins.
+    5) Lay both sides evenly in y.
+    """
+    # (A) fetch values & initial sort of proteins
+    prot_vals = {p: G.nodes[p].get(input_attr, 0.0) for p in proteins}
+    prots_init = sorted(proteins, key=lambda p: prot_vals[p], reverse=desc)
 
+    # (B) initial term positions (in their given order)
+    #    we'll postpone final term sort until after step C
+    T = len(terms)
+    yL0 = np.linspace(1.0, -1.0, T)
+    term_pos = {t: (left_x, yL0[i]) for i,t in enumerate(terms)}
+
+    # (C) compute term-barycenters over the initial protein order
+    #     use the y from an evenly spaced prot_init layout
+    P0 = len(prots_init)
+    yP0 = np.linspace(1.0, -1.0, P0)
+    prot_pos0 = {p: (right_x, yP0[i]) for i,p in enumerate(prots_init)}
+
+    term_bary = {}
+    for t in terms:
+        nbr = [p for p in G[t] if p in prot_pos0]
+        if nbr:
+            term_bary[t] = np.mean([prot_pos0[p][1] for p in nbr])
+        else:
+            term_bary[t] = 0.0
+
+    sorted_terms = sorted(terms, key=lambda t: term_bary[t], reverse=True)
+
+    # (D) re-lay out terms in new barycenter order
+    yL1 = np.linspace(1.0, -1.0, len(sorted_terms))
+    term_pos = {t: (left_x, yL1[i]) for i,t in enumerate(sorted_terms)}
+
+    # (E) now compute protein-barycenters over the new term positions
+    prot_bary = {}
+    for p in proteins:
+        nbr = [t for t in G[p] if t in term_pos]
+        if nbr:
+            prot_bary[p] = np.mean([term_pos[t][1] for t in nbr])
+        else:
+            prot_bary[p] = 0.0
+
+    # (F) final protein order: start from the input-sorted list, 
+    #     then sub-sort by barycenter to refine crossings
+    sorted_prots = sorted(
+        prots_init,
+        key=lambda p: prot_bary[p],
+        reverse=True
+    )
+
+    # (G) lay out proteins in that final order
+    yP1 = np.linspace(1.0, -1.0, len(sorted_prots))
+    prot_pos = {p: (right_x, yP1[i]) for i,p in enumerate(sorted_prots)}
+
+    # (H) merge & return
+    return {**term_pos, **prot_pos}
+
+
+def bipartite_barycenter_layout(
+    G,
+    terms,      # list of "term" node IDs (original set)
+    prots,      # list of "protein" node IDs (original set)
+    left_x=-1.0,
+    right_x=+1.0
+):
+    # 1) Start by laying out terms in their given order
+    L = len(terms)
+    yL = np.linspace( 1, -1, L )
+    term_pos = { t: (left_x, yL[i]) for i,t in enumerate(terms) }
+
+    # 2) First barycenter pass: sort proteins by avg-y of their term neighbours
+    prot_bary = {}
+    for p in prots:
+        nbr = [t for t in G[p] if t in term_pos]
+        prot_bary[p] = np.mean([term_pos[t][1] for t in nbr]) if nbr else 0.0
+    # descending so highest-bary (towards top) appear at top
+    sorted_prots = sorted(prots, key=lambda p: prot_bary[p], reverse=True)
+
+    # 3) Lay out proteins in that new order
+    P = len(sorted_prots)
+    yP = np.linspace( 1, -1, P )
+    prot_pos = { p: (right_x, yP[i]) for i,p in enumerate(sorted_prots) }
+
+    # 4) Second pass: re-sort terms by barycenters of these protein positions
+    term_bary = {}
+    for t in terms:
+        nbr = [p for p in G[t] if p in prot_pos]
+        term_bary[t] = np.mean([prot_pos[p][1] for p in nbr]) if nbr else 0.0
+    sorted_terms = sorted(terms, key=lambda t: term_bary[t], reverse=True)
+
+    # 5) Re-lay out terms in that final order
+    yL2 = np.linspace( 1, -1, len(sorted_terms) )
+    term_pos = { t: (left_x, yL2[i]) for i,t in enumerate(sorted_terms) }
+
+    # 6) Return merged dict
+    return {**term_pos, **prot_pos}
+
+
+def plot_network_graph_plotly(G, title: str, layout: str = "bipartite"):
+    # 1) layout
+        # 1) pick layout
+    if layout == "kamada_kawai":
+        pos = nx.kamada_kawai_layout(G)
+    elif layout == "circular":
+        pos = nx.circular_layout(G)
+    elif layout == "bipartite":
+        terms = [n for n,d in G.nodes(data=True) if d["nodeType"]=="term"]
+        prots = [n for n,d in G.nodes(data=True) if d["nodeType"]=="protein"]
+        pos   = bipartite_hybrid_layout(G, terms, prots)
+    else:
+        raise ValueError(f"Unknown layout: {layout!r}")
+    
     def to_css_rgba(rgba):
         r, g, b, a = rgba
         return f"rgba({int(r*255)},{int(g*255)},{int(b*255)},{a})"

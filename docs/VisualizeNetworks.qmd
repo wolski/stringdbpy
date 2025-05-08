@@ -9,7 +9,6 @@ params:
   data_file: null    # or "~"
 ---
 
-# Load Libraries
 
 ```{python}
 #| include: false
@@ -31,11 +30,14 @@ from pathlib import Path
 from string_gsea.network import separate_pivot_longer
 from IPython.display import display
 from IPython.display import Markdown, display
+import seaborn as sns
 
 from string_gsea.network import summarize_terms
 from string_gsea.network import make_network
 from string_gsea.network import make_network_with_colors, plot_network_graph
-from string_gsea.network import interactive_cytoscape, plot_network_graph_plotly
+from string_gsea.network import interactive_cytoscape, plot_network_graph_plotly, add_gene_ratio
+from string_gsea.cluster_genesets import make_nested_dict, convert_to_binary, plot_term_distance_heatmap
+
 ```
 
 ```{python}
@@ -45,7 +47,6 @@ wd = %pwd
 print(Path(wd))
 ```
 
-# Data Preparation
 
 ```{python}
 #| vscode: {languageId: python}
@@ -55,6 +56,7 @@ print(Path(wd))
 if data_file is None:
     # fallback, or raise, or skip
     file = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"WUabcd_string_gsea_results_long.xlsx"
+    file_links = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"links.txt"
 else:
     file = Path(data_file)
 
@@ -64,23 +66,29 @@ print("Using file:", file)
 # Read Excel file directly with polars
 df = pl.read_excel(file)
 # Select and explode protein columns
-df = df.with_columns(
-    (pl.col("genesMapped") / pl.col("genesInSet")).alias("geneRatio")
-)
-df.columns
+# read the links.txt into a dict
+with open(file_links, "r") as f:
+    link_map = {
+        line.split(": ", 1)[0]: line.split(": ", 1)[1].strip()
+        for line in f.read().splitlines() if line.strip()
+    }
+
 ```
 
 ```{python}
 #| vscode: {languageId: python}
 #| include: false
+df = add_gene_ratio(df)
 xd = separate_pivot_longer(df)
 xd = summarize_terms(xd)
+
 ```
+
+
 
 ```{python}
 #| vscode: {languageId: python}
 #| include: false
-import seaborn as sns
 
 #pdf = xd.select(['contrast','proteinRanks','proteinInputValues']).to_pandas()
 
@@ -94,36 +102,20 @@ plt.tight_layout()
 plt.show()
 ```
 
-# Results { .tab-set }
+
 
 ```{python}
 #| vscode: {languageId: python}
 #| include: false
+nested = make_nested_dict(xd)
 cont = "Bait_NCP_pUbT12T14_results.tsv"
-cat = "Monarch"
-xdf = xd.filter((pl.col("contrast")==cont) & (pl.col("category")==cat))
-        
-G = make_network_with_colors(xdf)
-```
+cat = "SMART"
+fc = nested[cont][cat]
 
-
-
-```{python}
-#| vscode: {languageId: python}
-#| include: false
-fig = plot_network_graph_plotly(G, "Demo")
-fig.update_layout(width=800, height=800)
-```
-
-
-
-```{python}
-#| vscode: {languageId: python}
-#| include: false
-
-contrast_list = xd.get_column("contrast").unique().to_list()
-category_list = [cat for cat in xd.get_column("category").unique().to_list() if cat in ["Monarch", "KEGG"]]
-category_list = xd.get_column("category").unique().to_list()
+g = plot_term_distance_heatmap(fc)
+plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
+plt.show()
+            
 ```
 
 
@@ -132,14 +124,28 @@ category_list = xd.get_column("category").unique().to_list()
 #| vscode: {languageId: python}
 #| echo: false
 #| output: asis
-#| include: false
+#| include: true
+#| warning: false
+
+from matplotlib import pyplot as plt
+from string_gsea.gsea_plotting import make_upset, plot_term_ridges
+
+contrast_list = xd.get_column("contrast").unique().to_list()
+category_list = xd.get_column("category").unique().to_list()
+
 for cont in contrast_list:
     # make this a tab‐set
-    display(Markdown(f"## {cont}\n"))
+    display(Markdown(f"## Contrast: {cont}\n"))
+
+    # show the enrichment URL for this contrast, if present
+    url = link_map.get(cont.removesuffix("_results.tsv"))
+    if url:
+        display(Markdown(f"[🔗 Global enrichment for {cont}]({url})\n"))
+    
     display(Markdown(f"::: {{.panel-tabset}}\n"))
     for cat in category_list:
         # each of these becomes a tab
-        display(Markdown(f"## {cat}\n"))
+        display(Markdown(f"## Cat.: {cat}\n"))
 
         xdf = xd.filter(
             (pl.col("contrast") == cont) & (pl.col("category") == cat)
@@ -151,7 +157,19 @@ for cont in contrast_list:
             fig = plot_network_graph_plotly(G, f"{cont} – {cat}")
             fig.update_layout(width=800, height=800)
             fig.show()
-            display(Markdown(f" "))
+            display(Markdown(f"Network plot using bipartite hybrid layout.\n"))
+            one_nested = nested[cont][cat]
+            g = plot_term_distance_heatmap(one_nested)
+            plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
+            plt.show()
+            display(Markdown(f"Heatmap showing term and protein distances, using Jaccard index.\n"))
+            binary = convert_to_binary(one_nested, to_boolean=True)
+            upset = make_upset(binary, xdf)
+            axes = upset.plot()
+            display(Markdown(f"Upset plot showing the overlap of terms and proteins.\m"))
+            g = plot_term_ridges(xdf)
+            plt.show(g.figure)
+            display(Markdown(f"Ridgeline plot showing the distribution of protein input values (log2FC, t-statistic, etc.) for each term. \n"))
     display(Markdown(f":::\n"))
 ```
 
