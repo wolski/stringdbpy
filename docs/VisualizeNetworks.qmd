@@ -157,19 +157,19 @@ for cont in contrast_list:
             fig = plot_network_graph_plotly(G, f"{cont} – {cat}")
             fig.update_layout(width=800, height=800)
             fig.show()
-            display(Markdown(f"Network plot using bipartite hybrid layout.\n"))
+            display(Markdown(f"\nNetwork plot using bipartite hybrid layout.\n"))
             one_nested = nested[cont][cat]
             g = plot_term_distance_heatmap(one_nested)
             plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
             plt.show()
-            display(Markdown(f"Heatmap showing term and protein distances, using Jaccard index.\n"))
+            display(Markdown(f"\nHeatmap showing term and protein distances, using Jaccard index.\n"))
             binary = convert_to_binary(one_nested, to_boolean=True)
             upset = make_upset(binary, xdf)
             axes = upset.plot()
-            display(Markdown(f"Upset plot showing the overlap of terms and proteins.\m"))
+            display(Markdown(f"\nUpset plot showing the overlap of terms and proteins.\m"))
             g = plot_term_ridges(xdf)
             plt.show(g.figure)
-            display(Markdown(f"Ridgeline plot showing the distribution of protein input values (log2FC, t-statistic, etc.) for each term. \n"))
+            display(Markdown(f"\nRidgeline plot showing the distribution of protein input values (log2FC, t-statistic, etc.) for each term. \n"))
     display(Markdown(f":::\n"))
 ```
 
