@@ -84,7 +84,7 @@ nested = make_nested_dict(xd)
 
 
 cont = "Bait_NCP_pUbT12T14_results.tsv"
-cat = "SMART"
+cat = "Publications"
 df_long = xd.filter((pl.col("contrast") == cont) & (pl.col("category") == cat))
 one_nested = nested[cont][cat]
 binary = convert_to_binary(one_nested, to_boolean=True)
@@ -95,7 +95,8 @@ binary = convert_to_binary(one_nested, to_boolean=True)
 
 
 ```{python}
-upset = make_upset(binary, df_long)
+
+upset = make_upset(binary, df_long, max_category=25)
 axes = upset.plot()
 
 ```

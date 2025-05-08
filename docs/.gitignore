@@ -4,3 +4,4 @@
 *.html
 *.ipynb
 site_libs/
+*.zip

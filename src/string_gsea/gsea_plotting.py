@@ -3,7 +3,7 @@ import polars as pl
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-def make_upset(df_binary: pl.DataFrame, df_values: pl.DataFrame) -> None:
+def make_upset(df_binary: pl.DataFrame, df_values: pl.DataFrame, max_category = 25,max_subset_rank = 35) -> None:
     df_values = df_values.select(pl.col("proteinLabels"), pl.col("proteinInputValues")).unique()
     df = df_values.join(df_binary, on="proteinLabels", how="right")
     df_binary = df.to_pandas()
@@ -12,9 +12,18 @@ def make_upset(df_binary: pl.DataFrame, df_values: pl.DataFrame) -> None:
     non_domain_cols = ['proteinLabels', 'proteinInputValues']
     domain_cols = [col for col in df_binary.columns if col not in non_domain_cols]
 
-    pdfx = df_binary.set_index(list(domain_cols))
-    
-    upset = upsetplot.UpSet(pdfx, subset_size="count",intersection_plot_elements=3)
+    # compute total hits per domain, pick top N
+    counts = df_binary[domain_cols].sum(axis=0).sort_values(ascending=False)
+    topN   = counts.head(max_category).index.tolist()
+
+    # rebuild only those columns
+    df_small = df_binary[topN + non_domain_cols]
+    #pdfx     = df_small.set_index(topN)
+    df_small = df_small[df_small[topN].any(axis=1)]
+    pdfx = df_small.set_index(list(topN))
+    # limit the number of elements in the intersection plot
+    upset = upsetplot.UpSet(pdfx, subset_size="count",intersection_plot_elements=3,max_subset_rank= max_subset_rank)
+
     upset.add_catplot(value="proteinInputValues", kind="strip", color="blue")
     return upset
 
