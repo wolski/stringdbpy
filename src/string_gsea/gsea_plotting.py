@@ -2,6 +2,10 @@ import upsetplot
 import polars as pl
 import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib import cm
+from scipy.stats import gaussian_kde
+
 
 def make_upset(df_binary: pl.DataFrame, df_values: pl.DataFrame, max_category = 25,max_subset_rank = 35) -> None:
     df_values = df_values.select(pl.col("proteinLabels"), pl.col("proteinInputValues")).unique()
@@ -27,79 +31,139 @@ def make_upset(df_binary: pl.DataFrame, df_values: pl.DataFrame, max_category = 
     upset.add_catplot(value="proteinInputValues", kind="strip", color="blue")
     return upset
 
-def plot_term_ridges(df_long: pl.DataFrame,
-    ridge_height =  0.4,
-    ridge_width = 6,
-    aspect = 6,
-    height = 0.8) -> sns.FacetGrid:
-    # ————— prep your pandas df exactly as before —————
+
+def plot_single_ridge(
+    ax,
+    x_vals: np.ndarray,
+    gene_ratio: float,
+    norm_fdr: float,
+    direction: str,
+    term_id: str,
+    description: str,
+    x_min: float,
+    x_max: float,
+    desc_max_chars: int = 60,      # NEW: max display length
+    desc_fontsize: float = 6.0     # NEW: smaller font
+):
+    """
+    Draw a single ridge plot for a gene set enrichment term.
+
+    Args:
+        ax: Matplotlib axis to draw on
+        x_vals (np.ndarray): Input values for the proteins in this term
+        gene_ratio (float): Ratio of genes in list vs term size, between 0-1
+        norm_fdr (float): Normalized false discovery rate, between 0-1
+        direction (str): Direction of enrichment, one of 'top', 'bottom', or 'both ends'
+        term_id (str): ID of the enrichment term
+        description (str): Description of the enrichment term
+        x_min (float): Minimum x value for plotting range
+        x_max (float): Maximum x value for plotting range
+    """
+
+    """
+    Draw one ridge on `ax` with:
+      - KDE of x_vals from x_min→x_max
+      - fill color = gene_ratio (0→white, 1→red)
+      - border color = {'top':'yellow','bottom':'blue','both ends':'green'}[direction]
+      - a tiny bar at the right whose height = norm_fdr (0→1)
+      - y=0 baseline, term_id label, and centered description
+    """
+    # compute sweep
+    xi = np.linspace(x_min, x_max, 200)
+    yi = gaussian_kde(x_vals)(xi)
+    
+    # colors
+    fill_col   = cm.Greens(gene_ratio)
+    border_col = {"top":"yellow", "bottom":"blue", "both ends":"green"}[direction]
+    
+    # draw
+    ax.fill_between(xi, yi, color=fill_col, alpha=0.8)
+    ax.plot(xi, yi, color=border_col, lw=1.5)
+    ax.axhline(0, color="k", lw=0.5)
+    
+    # little FDR bar
+    x_range   = x_max - x_min
+    bar_off   = 0.05 * x_range
+    pad       = 0.02 * x_range
+    bar_x     = x_max + bar_off/2
+    bar_w     = bar_off
+    ax.bar(bar_x, norm_fdr, width=bar_w, bottom=0, color="grey", alpha=0.7)
+    
+    # fix x-limits so both data & bar are in view
+    ax.set_xlim(x_min - pad, x_max + bar_off + pad)
+    
+    
+    # annotate
+    ax.set_yticks([])
+    ax.set_ylabel(term_id, rotation=0, labelpad=50, va="center", fontsize=9)
+
+    if len(description) > desc_max_chars:
+        display_desc = description[: desc_max_chars - 3] + "..."
+    else:
+        display_desc = description
+
+    ax.text(0.5, 0.5, display_desc,
+            transform=ax.transAxes,
+            ha="center", va="center",
+            fontsize=desc_fontsize)
+
+def plot_term_ridges(df_long, ridge_height=0.4, ridge_width=6, left_margin=0.2, hspace=0.4):
+    # — prepare pandas df —
     pdf = (
         df_long
-        .select(["termDescription","termID","proteinInputValues"])
+        .select([
+            "termID","termDescription",
+            "proteinInputValues","geneRatio",
+            "falseDiscoveryRate","direction"   # renamed from 'border'
+        ])
         .filter(pl.col("proteinInputValues").is_not_null())
         .to_pandas()
     )
+    
+    # order by median
     term_order = (
-        pdf
-        .groupby("termID")["proteinInputValues"]
-        .median()
-        .sort_values(ascending=False)
-        .index
-        .tolist()
+        pdf.groupby("termID")["proteinInputValues"]
+           .median()
+           .sort_values(ascending=False)
+           .index
+           .tolist()
     )
-    desc_map = { tid: pdf.loc[pdf.termID == tid, "termDescription"].iat[0]
-                for tid in term_order }
-
-    # how many rows?
+    cmap = cm.get_cmap("Reds")
+    # global min/max
+    x_min, x_max = pdf["proteinInputValues"].min(), pdf["proteinInputValues"].max()
+    # precompute normalized FDR per term
+    neglog = -np.log10(pdf["falseDiscoveryRate"])
+    fdr_max = neglog.max()
+    
+    # build canvas
     n = len(term_order)
-
-    # ————— build the FacetGrid with more height per row —————
-    g = sns.FacetGrid(
-        pdf,
-        row="termID",
-        row_order=term_order,
-        sharex=True,
-        sharey=False,
-        height=height,        # INCHES per facet
-        aspect=aspect,          # width/height ratio
-        margin_titles=False
-    )
-
-    # draw the filled and outline KDEs + baseline
-    g.map(sns.kdeplot, "proteinInputValues", fill=True, alpha=0.8, linewidth=1.5)
-    g.map(sns.kdeplot, "proteinInputValues", color="k", lw=0.5, cut=0)
-    g.map(plt.axhline, y=0, lw=1, color="k")
-
-    # kill the autogenerated titles and y‐labels
-    g.set_titles("")
-    g.set(yticks=[])
-    g.set(ylabel="")
-
-    # annotate each row
-    for ax, tid in zip(g.axes.flat, term_order):
-        ax.set_ylabel(
-            tid, rotation=0, labelpad=50, va="center", fontsize=9
+    fig, axes = plt.subplots(n, 1,
+                             figsize=(ridge_width, ridge_height*n),
+                             sharex=False, dpi=300)
+    if n == 1:
+        axes = [axes]
+    
+    # loop
+    for ax, tid in zip(axes, term_order):
+        sub = pdf[pdf.termID == tid]
+        plot_single_ridge(
+            ax               = ax,
+            x_vals           = sub["proteinInputValues"].values,
+            gene_ratio       = sub["geneRatio"].iat[0],
+            norm_fdr         = (-np.log10(sub["falseDiscoveryRate"].iat[0]) / fdr_max),
+            direction        = sub["direction"].iat[0],
+            term_id          = tid,
+            description      = sub["termDescription"].iat[0],
+            x_min            = x_min,
+            x_max            = x_max,
         )
-        ax.text(
-            0.5, 0.5, desc_map[tid],
-            transform=ax.transAxes,
-            ha="center", va="center",
-            fontsize=8, color="black"
-        )
-
-    # now explicitly size the entire figure and add some vertical spacing
-    total_height = ridge_height * n    # inches
-    g.figure.set_size_inches(ridge_width, total_height)
-    g.figure.subplots_adjust(hspace=0.4, left=0.2)
-
-    sns.despine(bottom=True, left=True)
-
-    axes = g.axes.flatten()
+    
+    # only bottom axis shows x‐ticks
     for ax in axes[:-1]:
-        ax.tick_params(labelbottom=False, bottom=False)
+        ax.tick_params(labelbottom=False)
+    axes[-1].set_xlabel("proteinInputValues")
+    
+    plt.subplots_adjust(hspace=hspace, left=left_margin, bottom=0.1)
+    sns.despine(left=True, bottom=True)
+    return fig
 
-    # Make sure the bottom one actually has its x‐axis shown
-    bottom_ax = axes[-1]
-    bottom_ax.tick_params(labelbottom=True, bottom=True)
-    bottom_ax.set_xlabel("proteinInputValues")
-    return g
