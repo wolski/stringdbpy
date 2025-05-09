@@ -1,6 +1,7 @@
 ---
-title: VisualizeNetworks
-date: '2025-04-10'
+title: Visualize Gene Set Enrichment Analysis Results
+# current date automatically added
+date: today
 format:
   html:
     code-fold: false
@@ -119,6 +120,37 @@ plt.show()
 ```
 
 
+For each of the contrasts and each of the gene set categories we show four plots:
+
+1. Network plot
+2. Heatmap plot
+3. Upset plot
+4. Ridgeline plot
+
+```{python}
+#| vscode: {languageId: python}
+#| echo: false
+# print the contrasts
+contrasts = xd.get_column("contrast").unique().to_list()
+contrast_str = ", ".join(str(c) for c in contrasts)
+display(Markdown(f"**Contrasts:** {contrast_str}"))
+```
+```{python}
+#| vscode: {languageId: python}
+#| echo: false
+# print the categories
+categories = xd.get_column("category").unique().to_list()
+category_str = ", ".join(str(c) for c in categories)
+display(Markdown(f"**Categories:** {category_str}"))
+```
+
+
+
+
+
+
+
+
 
 ```{python}
 #| vscode: {languageId: python}
@@ -157,21 +189,36 @@ for cont in contrast_list:
             fig = plot_network_graph_plotly(G, f"{cont} – {cat}")
             fig.update_layout(width=800, height=800)
             fig.show()
-            display(Markdown(f"\nNetwork plot using bipartite hybrid layout.\n"))
+            display(Markdown("""\nNetwork plot using bipartite hybrid layout.
+            The proteins are the nodes, and the terms are the nodes.
+            The edges are the interactions between proteins and terms.
+            The color of the protein nodes represents the protein input value (log2FC, t-statistic, etc.). 
+            The color of the term nodes represents the mean of the protein input values of the proteins in the term.
+            The border of the term nodes represents the direction of enrichment (blue - bottom, yellow - top, green - both ends).\n
+            """))
             one_nested = nested[cont][cat]
             g = plot_term_distance_heatmap(one_nested)
             plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
             plt.show()
-            display(Markdown(f"\nHeatmap showing term and protein distances, using Jaccard index.\n"))
+            display(Markdown("""\nHeatmap showing term and protein distances, using Jaccard index.
+            Each row represents a protein, and each column represents a term.
+            The color of the cell represents the protein input value (log2FC, t-statistic, etc.).\n"""))
             binary = convert_to_binary(one_nested, to_boolean=True)
             upset = make_upset(binary, xdf)
             axes = upset.plot()
+            plt.show()
             display(Markdown(f"\n\n"))
-            display(Markdown(f"\nUpset plot showing the overlap of terms and proteins.\n"))
+            display(Markdown("""Upset plot showing the overlap of terms and proteins.
+            On the left you see the term size (number of proteins matching the term).
+            On the top you see the number of proteins unique to a term, or a combination of terms."""))
             display(Markdown(f"\n\n"))
             g = plot_term_ridges(xdf)
             plt.show(g.figure)
-            display(Markdown(f"\nRidgeline plot showing the distribution of protein input values (log2FC, t-statistic, etc.) for each term. \n"))
+            display(Markdown("""\nRidgeline plot showing the distribution of protein input values (log2FC, t-statistic, etc.) for each term.
+            The border color of the ridges corresponds to the direction of enrichment,
+            and the height of the bar at the right of each ridge corresponds to the -log10(FDR) (higher is better).
+            The color of the density plot is proportional to the gene ratio (number of proteins matching the term divided by the total number of proteins in the term).\n"""))
     display(Markdown(f":::\n"))
 ```
+
 
