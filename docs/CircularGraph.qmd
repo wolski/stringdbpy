@@ -65,14 +65,130 @@ df = pl.read_excel(file)
 # Select and explode protein columns
 ```
 
+# analysis for single contrast.
+
 ```{python}
 #| vscode: {languageId: python}
 #| include: false
 df = add_gene_ratio(df)
 xd = separate_pivot_longer(df)
 xd = summarize_terms(xd)
+```
+
+```{python}
+xd_a_smart =  xd.filter((pl.col("category") == "SMART") & (pl.col("contrast") == "Bait_NCP_pUbT12T14_results.tsv"))
+xd_s_smart = xd_a_smart.select(["contrast", "termID", "proteinLabels"])
 
 
+# Create a table with shared proteins between term pairs
+shared_proteins = (
+    # Self-join the table on proteinLabels to get all term pairs
+    xd_s_smart.join(
+        xd_s_smart,
+        on = "proteinLabels",
+        how = "inner",
+        suffix = "_b"
+    )
+    # Only keep pairs where termID_a != termID_b to avoid self-pairs
+    #.filter(pl.col("termID") != pl.col("termID_b"))
+    # Group by term pairs and count shared proteins
+    .group_by(["termID", "termID_b"])
+    .agg(
+        pl.count().alias("nr_proteins")
+    )
+    # Rename first termID column
+    .rename({"termID": "termID_a"})
+)
+
+shared_pairs = shared_proteins.filter(pl.col("termID_a") == pl.col("termID_b"))
+```
+
+
+# analysis for several contrasts.
+
+
+
+```{python}
+from string_gsea.TermNetworkBuilder import TermNetworkBuilder
+from string_gsea.TermNetworkPlotter import TermNetworkPlotter
+
+
+nb = TermNetworkBuilder(xd, category="SMART")
+within_df, cross_df, all_df = nb.build_shared_counts()
+contrast_counts, contrasts = nb.build_contrast_counts()
+node_sizes = nb.compute_node_sizes()
+
+plotter = TermNetworkPlotter(
+    node_sizes      = node_sizes,
+    contrast_counts = contrast_counts,
+    contrasts       = contrasts,
+    max_radius      = 0.1
+)
+
+
+fig, axes = plt.subplots(4, 1, figsize=(7,15))
+plotter.compute_full_layout(all_df, thresh=1)
+
+
+plotter.draw_panel(axes[0], all_df,   thresh=1, title="A) Full (T≥1)", use_fixed_layout=True)
+plotter.draw_panel(axes[1], all_df,   thresh=5, title="A) Full (T≥5)", use_fixed_layout=True)
+
+plotter.draw_panel(axes[2], cross_df, thresh=5, title="C) Cross (T≥5)", use_fixed_layout=True)
+plotter.draw_panel(axes[3], within_df,thresh=5, title="D) Within (T≥5)", use_fixed_layout=True)
+
+plt.tight_layout()
+plt.show()
+
+```
+
+
+# analysis for single contrast
+
+```{python}
+# crurious to see if the code above works for single contrast
+# filter for a single contrast
+single_contrast = xd.filter(pl.col("contrast") == contrasts[0])
+
+# create new network builder and plotter for single contrast
+nb_single = TermNetworkBuilder(single_contrast, category="SMART") 
+within_df_s, cross_df_s, all_df_s = nb_single.build_shared_counts()
+contrast_counts_s, contrasts_s = nb_single.build_contrast_counts()
+node_sizes_s = nb_single.compute_node_sizes()
+
+plotter_single = TermNetworkPlotter(
+    node_sizes      = node_sizes_s,
+    contrast_counts = contrast_counts_s, 
+    contrasts       = contrasts_s,
+    max_radius      = 0.1
+)
+
+# plot single contrast network
+fig, ax = plt.subplots(2, 1, figsize=(7,7))
+plotter_single.compute_full_layout(all_df_s, thresh=1)
+plotter_single.draw_panel(ax[0], all_df_s, thresh=1, title=f"Network for {contrasts[0]}, threshold = 1", use_fixed_layout=True)
+plotter_single.draw_panel(ax[1], all_df_s, thresh=5, title=f"Network for {contrasts[0]}, threshold = 5", use_fixed_layout=True)
+
+plt.tight_layout()
+plt.show()
+
+
+```
+
+
+# plotting comparison of enrichment results for SMART terms
+
+```{python}
+xd_smart = xd.drop([col for col in xd.columns if col.startswith("protein")]).unique()
+xd_smart = xd_smart.filter(pl.col("category") == "SMART")
+
+from string_gsea.gsea_plotting import plot_gene_set_enrichment
+plot_gene_set_enrichment(xd_smart)
+
+```
+
+```{python}
+#| vscode: {languageId: python}
+#| include: false
 nested = make_nested_dict(xd)
 ```
 
