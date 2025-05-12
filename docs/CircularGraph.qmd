@@ -75,34 +75,6 @@ xd = separate_pivot_longer(df)
 xd = summarize_terms(xd)
 ```
 
-```{python}
-xd_a_smart =  xd.filter((pl.col("category") == "SMART") & (pl.col("contrast") == "Bait_NCP_pUbT12T14_results.tsv"))
-xd_s_smart = xd_a_smart.select(["contrast", "termID", "proteinLabels"])
-
-
-# Create a table with shared proteins between term pairs
-shared_proteins = (
-    # Self-join the table on proteinLabels to get all term pairs
-    xd_s_smart.join(
-        xd_s_smart,
-        on = "proteinLabels",
-        how = "inner",
-        suffix = "_b"
-    )
-    # Only keep pairs where termID_a != termID_b to avoid self-pairs
-    #.filter(pl.col("termID") != pl.col("termID_b"))
-    # Group by term pairs and count shared proteins
-    .group_by(["termID", "termID_b"])
-    .agg(
-        pl.count().alias("nr_proteins")
-    )
-    # Rename first termID column
-    .rename({"termID": "termID_a"})
-)
-
-shared_pairs = shared_proteins.filter(pl.col("termID_a") == pl.col("termID_b"))
-```
-
 
 # analysis for several contrasts.
 
@@ -111,7 +83,7 @@ shared_pairs = shared_proteins.filter(pl.col("termID_a") == pl.col("termID_b"))
 ```{python}
 from string_gsea.TermNetworkBuilder import TermNetworkBuilder
 from string_gsea.TermNetworkPlotter import TermNetworkPlotter
-
+from matplotlib import pyplot as plt
 
 nb = TermNetworkBuilder(xd, category="SMART")
 within_df, cross_df, all_df = nb.build_shared_counts()
@@ -126,20 +98,57 @@ plotter = TermNetworkPlotter(
 )
 
 
-fig, axes = plt.subplots(4, 1, figsize=(7,15))
+fig, axes = plt.subplots(3, 1, figsize=(7,10))
 plotter.compute_full_layout(all_df, thresh=1)
 
 
+#plotter.draw_panel(axes[0], all_df,   thresh=1, title="A) Full (T≥1)", use_fixed_layout=True)
 plotter.draw_panel(axes[0], all_df,   thresh=1, title="A) Full (T≥1)", use_fixed_layout=True)
-plotter.draw_panel(axes[1], all_df,   thresh=5, title="A) Full (T≥5)", use_fixed_layout=True)
-
-plotter.draw_panel(axes[2], cross_df, thresh=5, title="C) Cross (T≥5)", use_fixed_layout=True)
-plotter.draw_panel(axes[3], within_df,thresh=5, title="D) Within (T≥5)", use_fixed_layout=True)
+plotter.draw_panel(axes[2], cross_df, thresh=1, title="C) Cross (T≥5)", use_fixed_layout=True)
+plotter.draw_panel(axes[1], within_df,thresh=1, title="D) Within (T≥1)", use_fixed_layout=True)
 
 plt.tight_layout()
 plt.show()
 
 ```
+
+# upset 
+
+```{python}
+import polars as pl
+import pandas as pd
+import matplotlib.pyplot as plt
+from upsetplot import from_indicators, UpSet
+
+# 1) Grab just the term–contrast pairs (ensure uniqueness)
+xd_s_smart = (
+    xd
+    .filter(pl.col("category") == "SMART")
+    .select(["termID", "contrast"])
+    .unique()
+)
+
+# 2) Convert to a pandas indicator matrix: index=termID, columns=contrast, True if present
+df_pd = xd_s_smart.to_pandas()
+indicator = pd.crosstab(df_pd['termID'], df_pd['contrast']).astype(bool)
+
+# 3) Build the UpSet data structure
+upset_data = from_indicators(indicator.columns.tolist(), indicator)
+
+# 4) Plot
+plt.figure(figsize=(8,5))
+u = UpSet(
+    upset_data,
+    show_counts=True,
+    sort_by='degree',        # orders intersections by size
+    sort_categories_by=None,
+)
+
+u.plot()
+plt.suptitle("SMART‐Term Presence Across Contrasts")
+plt.show()
+```
+
 
 
 # analysis for single contrast
