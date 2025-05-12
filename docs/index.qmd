@@ -1,5 +1,5 @@
 ---
-title: "stringdbpy Documentation"
+title: "Visualizing string-db GSEA results"
 ---
 
 # Welcome to stringdbpy Docs
@@ -7,6 +7,9 @@ title: "stringdbpy Documentation"
 This site contains interactive tutorials and documentation for the **stringdbpy** package, including:
 
 - [Visualize Networks](VisualizeNetworks.qmd)
+- [Compare Contrasts](CircularGraph.qmd)
+
+
 
 Feel free to explore the examples and reach out with questions!
 

@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 from scipy.stats import gaussian_kde
-
+import pandas as pd
+from upsetplot import from_indicators, UpSet
 
 def make_upset(df_binary: pl.DataFrame, df_values: pl.DataFrame, max_category = 25,max_subset_rank = 35) -> None:
     df_values = df_values.select(pl.col("proteinLabels"), pl.col("proteinInputValues")).unique()
@@ -167,3 +168,38 @@ def plot_term_ridges(df_long, ridge_height=0.4, ridge_width=6, left_margin=0.2, 
     sns.despine(left=True, bottom=True)
     return fig
 
+
+def make_upset_contrasts_terms(xd:pl.DataFrame, category:str="SMART"):
+    """
+    Make an upset plot of the contrasts and terms
+
+    Args:
+        xd: The dataframe to plot
+        category: The category of the terms to plot
+    """
+    xd_s_smart = (
+        xd
+        .filter(pl.col("category") == category)
+        .select(["termID", "contrast"])
+        .unique()
+    )
+
+    # 2) Convert to a pandas indicator matrix: index=termID, columns=contrast, True if present
+    df_pd = xd_s_smart.to_pandas()
+    indicator = pd.crosstab(df_pd['termID'], df_pd['contrast']).astype(bool)
+
+    # 3) Build the UpSet data structure
+    upset_data = from_indicators(indicator.columns.tolist(), indicator)
+
+    # 4) Plot
+    plt.figure(figsize=(8,5))
+    u = UpSet(
+        upset_data,
+        show_counts=True,
+        sort_by='degree',        # orders intersections by size
+        sort_categories_by=None,
+    )
+
+    u.plot()
+    plt.suptitle(f"{category} term Presence Across Contrasts")
+    plt.show()

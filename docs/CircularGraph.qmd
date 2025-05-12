@@ -1,6 +1,6 @@
 ---
-title: Circular Graphs
-date: '2025-04-10'
+title: Comparing Contrasts
+date: today
 format:
   html:
     code-fold: false
@@ -35,7 +35,12 @@ from string_gsea.network import make_network_with_colors, plot_network_graph
 from string_gsea.network import interactive_cytoscape, plot_network_graph_plotly, add_gene_ratio
 from string_gsea.cluster_genesets import make_nested_dict, convert_to_binary, plot_term_distance_heatmap
 from string_gsea.gsea_plotting import make_upset, plot_term_ridges
-
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message="A value is trying to be set on a copy of a DataFrame or Series through chained assignment",
+    category=FutureWarning,
+)
 ```
 
 ```{python}
@@ -65,7 +70,6 @@ df = pl.read_excel(file)
 # Select and explode protein columns
 ```
 
-# analysis for single contrast.
 
 ```{python}
 #| vscode: {languageId: python}
@@ -75,167 +79,97 @@ xd = separate_pivot_longer(df)
 xd = summarize_terms(xd)
 ```
 
-
-# analysis for several contrasts.
-
-
-
-```{python}
-from string_gsea.TermNetworkBuilder import TermNetworkBuilder
-from string_gsea.TermNetworkPlotter import TermNetworkPlotter
-from matplotlib import pyplot as plt
-
-nb = TermNetworkBuilder(xd, category="SMART")
-within_df, cross_df, all_df = nb.build_shared_counts()
-contrast_counts, contrasts = nb.build_contrast_counts()
-node_sizes = nb.compute_node_sizes()
-
-plotter = TermNetworkPlotter(
-    node_sizes      = node_sizes,
-    contrast_counts = contrast_counts,
-    contrasts       = contrasts,
-    max_radius      = 0.1
-)
-
-
-fig, axes = plt.subplots(3, 1, figsize=(7,10))
-plotter.compute_full_layout(all_df, thresh=1)
-
-
-#plotter.draw_panel(axes[0], all_df,   thresh=1, title="A) Full (T≥1)", use_fixed_layout=True)
-plotter.draw_panel(axes[0], all_df,   thresh=1, title="A) Full (T≥1)", use_fixed_layout=True)
-plotter.draw_panel(axes[2], cross_df, thresh=1, title="C) Cross (T≥5)", use_fixed_layout=True)
-plotter.draw_panel(axes[1], within_df,thresh=1, title="D) Within (T≥1)", use_fixed_layout=True)
-
-plt.tight_layout()
-plt.show()
-
-```
-
 # upset 
 
 ```{python}
-import polars as pl
-import pandas as pd
-import matplotlib.pyplot as plt
-from upsetplot import from_indicators, UpSet
+#| echo: false
+from string_gsea.gsea_plotting import make_upset_contrasts_terms
 
 # 1) Grab just the term–contrast pairs (ensure uniqueness)
-xd_s_smart = (
-    xd
-    .filter(pl.col("category") == "SMART")
-    .select(["termID", "contrast"])
-    .unique()
-)
 
-# 2) Convert to a pandas indicator matrix: index=termID, columns=contrast, True if present
-df_pd = xd_s_smart.to_pandas()
-indicator = pd.crosstab(df_pd['termID'], df_pd['contrast']).astype(bool)
-
-# 3) Build the UpSet data structure
-upset_data = from_indicators(indicator.columns.tolist(), indicator)
-
-# 4) Plot
-plt.figure(figsize=(8,5))
-u = UpSet(
-    upset_data,
-    show_counts=True,
-    sort_by='degree',        # orders intersections by size
-    sort_categories_by=None,
-)
-
-u.plot()
-plt.suptitle("SMART‐Term Presence Across Contrasts")
-plt.show()
+make_upset_contrasts_terms(xd, category="SMART")
 ```
 
 
-
-# analysis for single contrast
-
-```{python}
-# crurious to see if the code above works for single contrast
-# filter for a single contrast
-single_contrast = xd.filter(pl.col("contrast") == contrasts[0])
-
-# create new network builder and plotter for single contrast
-nb_single = TermNetworkBuilder(single_contrast, category="SMART") 
-within_df_s, cross_df_s, all_df_s = nb_single.build_shared_counts()
-contrast_counts_s, contrasts_s = nb_single.build_contrast_counts()
-node_sizes_s = nb_single.compute_node_sizes()
-
-plotter_single = TermNetworkPlotter(
-    node_sizes      = node_sizes_s,
-    contrast_counts = contrast_counts_s, 
-    contrasts       = contrasts_s,
-    max_radius      = 0.1
-)
-
-# plot single contrast network
-fig, ax = plt.subplots(2, 1, figsize=(7,7))
-plotter_single.compute_full_layout(all_df_s, thresh=1)
-plotter_single.draw_panel(ax[0], all_df_s, thresh=1, title=f"Network for {contrasts[0]}, threshold = 1", use_fixed_layout=True)
-plotter_single.draw_panel(ax[1], all_df_s, thresh=5, title=f"Network for {contrasts[0]}, threshold = 5", use_fixed_layout=True)
-
-plt.tight_layout()
-plt.show()
-
-
-```
-
-
-# plotting comparison of enrichment results for SMART terms
+# plotting comparison of enrichment results for  terms
 
 ```{python}
 xd_smart = xd.drop([col for col in xd.columns if col.startswith("protein")]).unique()
 xd_smart = xd_smart.filter(pl.col("category") == "SMART")
 
-from string_gsea.gsea_plotting import plot_gene_set_enrichment
-plot_gene_set_enrichment(xd_smart)
+from string_gsea.dotplot_endrichment import dotplot_enrichment
+dotplot_enrichment(xd_smart)
 
 ```
 
-```{python}
-#| vscode: {languageId: python}
-#| include: false
-nested = make_nested_dict(xd)
-```
 
-
-```{python}
-#| vscode: {languageId: python}
-#| include: false
-
-
-
-cont = "Bait_NCP_pUbT12T14_results.tsv"
-cat = "Publications"
-df_long = xd.filter((pl.col("contrast") == cont) & (pl.col("category") == cat))
-one_nested = nested[cont][cat]
-binary = convert_to_binary(one_nested, to_boolean=True)
-
-```
-
+# network for several contrasts.
 
 
 
 ```{python}
-upset = make_upset(binary, df_long, max_category=25)
-axes = upset.plot()
-
-```
-
-
-```{python}
+#| vscode: {languageId: python}
+#| include: true
+#| echo: false
+from string_gsea.TermNetworkBuilder import TermNetworkBuilder
+from string_gsea.TermNetworkPlotter import TermNetworkPlotter
 from matplotlib import pyplot as plt
-g = plot_term_ridges(df_long)
-plt.show(g.figure)
+
+def plot_network(xd, category:str="SMART", contrast:str=None, thresh:int=3):
+    if contrast is None:
+        nb = TermNetworkBuilder(xd, category=category)
+    else:
+        nb = TermNetworkBuilder(xd.filter(pl.col("contrast") == contrast), category=category)
+    
+    within_df, cross_df, all_df = nb.build_shared_counts()
+    contrast_counts, contrasts = nb.build_contrast_counts()
+    node_sizes = nb.compute_node_sizes()
+
+    plotter = TermNetworkPlotter(
+        node_sizes      = node_sizes,
+        contrast_counts = contrast_counts,
+        contrasts       = contrasts,
+        max_radius      = 0.1
+    )
+
+
+    plotter.compute_full_layout(all_df, thresh=1)
+
+
+    #plotter.draw_panel(axes[0], all_df,   thresh=1, title="A) Full (T≥1)", use_fixed_layout=True)
+    if contrast is None:
+        fig, axes = plt.subplots(4, 1, figsize=(7,18))
+        plotter.draw_panel(axes[0], all_df,   thresh=thresh, title=f"A) Full (T≥{thresh})", use_fixed_layout=True)
+        plotter.draw_panel(axes[2], cross_df, thresh=thresh, title=f"C) Cross (T≥{thresh})", use_fixed_layout=True)
+        plotter.draw_panel(axes[1], within_df,thresh=thresh, title=f"D) Within (T≥{thresh})", use_fixed_layout=True)
+        plotter.draw_legend_panel(axes[3], title="Contrast", loc="center")
+    else:
+        fig, axes = plt.subplots(1, 1, figsize=(7,7))
+    
+        plotter.draw_panel(axes, all_df, thresh=thresh, title=f"Network for {contrasts[0]}, threshold = {thresh}", use_fixed_layout=True)
+    
+    plt.tight_layout()
+    plt.show()
+
+
+
+plot_network(xd, category="SMART", thresh=1)
 
 ```
+
+
+
+
+# graph for single contrast
+
 
 ```{python}
+#| echo: false
+# crurious to see if the code above works for single contrast
+# filter for a single contrast
 
+plot_network(xd, category="SMART", contrast=xd.get_column("contrast").unique()[0], thresh=1)
 
-g = plot_term_ridges(df_long)
-plt.show(g.figure)
 ```
+
+
