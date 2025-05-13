@@ -111,64 +111,25 @@ dotplot_enrichment(xd_smart)
 #| vscode: {languageId: python}
 #| include: true
 #| echo: false
-from string_gsea.TermNetworkBuilder import TermNetworkBuilder
-from string_gsea.TermNetworkPlotter import TermNetworkPlotter
 from matplotlib import pyplot as plt
-
-def plot_network(xd, category:str="SMART", contrast:str=None, thresh:int=3):
-    if contrast is None:
-        nb = TermNetworkBuilder(xd, category=category)
-    else:
-        nb = TermNetworkBuilder(xd.filter(pl.col("contrast") == contrast), category=category)
-    
-    within_df, cross_df, all_df = nb.build_shared_counts()
-    contrast_counts, contrasts = nb.build_contrast_counts()
-    node_sizes = nb.compute_node_sizes()
-
-    plotter = TermNetworkPlotter(
-        node_sizes      = node_sizes,
-        contrast_counts = contrast_counts,
-        contrasts       = contrasts,
-        max_radius      = 0.1
-    )
-
-
-    plotter.compute_full_layout(all_df, thresh=1)
-
-
-    #plotter.draw_panel(axes[0], all_df,   thresh=1, title="A) Full (T≥1)", use_fixed_layout=True)
-    if contrast is None:
-        fig, axes = plt.subplots(4, 1, figsize=(7,18))
-        plotter.draw_panel(axes[0], all_df,   thresh=thresh, title=f"A) Full (T≥{thresh})", use_fixed_layout=True)
-        plotter.draw_panel(axes[2], cross_df, thresh=thresh, title=f"C) Cross (T≥{thresh})", use_fixed_layout=True)
-        plotter.draw_panel(axes[1], within_df,thresh=thresh, title=f"D) Within (T≥{thresh})", use_fixed_layout=True)
-        plotter.draw_legend_panel(axes[3], title="Contrast", loc="center")
-    else:
-        fig, axes = plt.subplots(1, 1, figsize=(7,7))
-    
-        plotter.draw_panel(axes, all_df, thresh=thresh, title=f"Network for {contrasts[0]}, threshold = {thresh}", use_fixed_layout=True)
-    
-    plt.tight_layout()
-    plt.show()
-
-
-
-plot_network(xd, category="SMART", thresh=1)
+from string_gsea import TermNetworkPlotter
+TermNetworkPlotter.plot_network(xd, category="SMART", thresh=1)
 
 ```
 
-
-
-
+```{python}
+#| vscode: {languageId: python}
+#| include: true
+#| echo: false
+TermNetworkPlotter.plot_network(xd, category="SMART", thresh=4, use_fixed_layout=False)
 # graph for single contrast
-
+```
 
 ```{python}
 #| echo: false
 # crurious to see if the code above works for single contrast
 # filter for a single contrast
-
-plot_network(xd, category="SMART", contrast=xd.get_column("contrast").unique()[0], thresh=1)
+TermNetworkPlotter.plot_network(xd, category="SMART", contrast=xd.get_column("contrast").unique()[0], thresh=1)
 
 ```
 

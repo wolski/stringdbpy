@@ -38,7 +38,7 @@ from string_gsea.network import make_network
 from string_gsea.network import make_network_with_colors, plot_network_graph
 from string_gsea.network import interactive_cytoscape, plot_network_graph_plotly, add_gene_ratio
 from string_gsea.cluster_genesets import make_nested_dict, convert_to_binary, plot_term_distance_heatmap
-
+from string_gsea import TermNetworkPlotter
 ```
 
 ```{python}
@@ -148,10 +148,6 @@ display(Markdown(f"**Categories:** {category_str}"))
 
 
 
-
-
-
-
 ```{python}
 #| vscode: {languageId: python}
 #| echo: false
@@ -185,17 +181,23 @@ for cont in contrast_list:
         if xdf.is_empty():
             display(Markdown("_No data for this category_"))
         else:
-            G = make_network_with_colors(xdf)
-            fig = plot_network_graph_plotly(G, f"{cont} – {cat}")
-            fig.update_layout(width=800, height=800)
-            fig.show()
-            display(Markdown("""\nNetwork plot using bipartite hybrid layout.
-            The proteins are the nodes, and the terms are the nodes.
-            The edges are the interactions between proteins and terms.
-            The color of the protein nodes represents the protein input value (log2FC, t-statistic, etc.). 
-            The color of the term nodes represents the mean of the protein input values of the proteins in the term.
-            The border of the term nodes represents the direction of enrichment (blue - bottom, yellow - top, green - both ends).\n
-            """))
+            TermNetworkPlotter.plot_network(xd, category=cat, contrast=cont, thresh=1)
+            
+            display(Markdown("\n"))
+            display(Markdown(TermNetworkPlotter.TermNetworkPlotter.get_figure_legend()))
+            display(Markdown("\n"))
+
+            #G = make_network_with_colors(xdf)
+            #fig = plot_network_graph_plotly(G, f"{cont} – {cat}")
+            #fig.update_layout(width=800, height=800)
+            #fig.show()
+            #display(Markdown("""\nNetwork plot using bipartite hybrid layout.
+            #The proteins are the nodes, and the terms are the nodes.
+            #The edges are the interactions between proteins and terms.
+            #The color of the protein nodes represents the protein input value (log2FC, t-statistic, etc.). 
+            #The color of the term nodes represents the mean of the protein input values of the proteins in the term.
+            #The border of the term nodes represents the direction of enrichment (blue - bottom, yellow - top, green - both ends).\n
+            #"""))
             one_nested = nested[cont][cat]
             g = plot_term_distance_heatmap(one_nested)
             plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
@@ -220,5 +222,4 @@ for cont in contrast_list:
             The color of the density plot is proportional to the gene ratio (number of proteins matching the term divided by the total number of proteins in the term).\n"""))
     display(Markdown(f":::\n"))
 ```
-
 
