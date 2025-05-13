@@ -158,8 +158,8 @@ display(Markdown(f"**Categories:** {category_str}"))
 from matplotlib import pyplot as plt
 from string_gsea.gsea_plotting import make_upset, plot_term_ridges
 
-contrast_list = xd.get_column("contrast").unique().to_list()
-category_list = xd.get_column("category").unique().to_list()
+contrast_list = sorted(xd.get_column("contrast").unique().to_list())
+category_list = sorted(xd.get_column("category").unique().to_list())
 
 for cont in contrast_list:
     # make this a tab‐set
@@ -182,22 +182,9 @@ for cont in contrast_list:
             display(Markdown("_No data for this category_"))
         else:
             TermNetworkPlotter.plot_network(xd, category=cat, contrast=cont, thresh=1)
-            
             display(Markdown("\n"))
-            display(Markdown(TermNetworkPlotter.TermNetworkPlotter.get_figure_legend()))
+            display(Markdown(TermNetworkPlotter.TermNetworkPlotter.get_figure_legend(category=cat, thresh=1)))
             display(Markdown("\n"))
-
-            #G = make_network_with_colors(xdf)
-            #fig = plot_network_graph_plotly(G, f"{cont} – {cat}")
-            #fig.update_layout(width=800, height=800)
-            #fig.show()
-            #display(Markdown("""\nNetwork plot using bipartite hybrid layout.
-            #The proteins are the nodes, and the terms are the nodes.
-            #The edges are the interactions between proteins and terms.
-            #The color of the protein nodes represents the protein input value (log2FC, t-statistic, etc.). 
-            #The color of the term nodes represents the mean of the protein input values of the proteins in the term.
-            #The border of the term nodes represents the direction of enrichment (blue - bottom, yellow - top, green - both ends).\n
-            #"""))
             one_nested = nested[cont][cat]
             g = plot_term_distance_heatmap(one_nested)
             plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
@@ -223,3 +210,10 @@ for cont in contrast_list:
     display(Markdown(f":::\n"))
 ```
 
+```{python}
+#| vscode: {languageId: python}
+#| include: false
+print("hellos")
+
+
+```

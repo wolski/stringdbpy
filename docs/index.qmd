@@ -7,7 +7,7 @@ title: "Visualizing string-db GSEA results"
 This site contains interactive tutorials and documentation for the **stringdbpy** package, including:
 
 - [Visualize Networks](VisualizeNetworks.qmd)
-- [Compare Contrasts](CircularGraph.qmd)
+- [Compare Contrasts](VisualizeMultipleContrastsGSEA.qmd)
 
 
 
