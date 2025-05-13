@@ -5,9 +5,14 @@ date: today
 format:
   html:
     code-fold: false
+    toc: true
+    toc-depth: 3
+    toc-title: "Contents"
 jupyter: python3
 params:
   data_file: null    # or "~"
+execute:
+  echo: true
 ---
 
 
@@ -22,22 +27,27 @@ data_file: str | None = None
 ```{python}
 #| vscode: {languageId: python}
 #| include: false
-import polars as pl
-import glob, os
-import networkx as nx
-import matplotlib.pyplot as plt
-from pyvis.network import Network
+# Standard library imports
 from pathlib import Path
-from string_gsea.network import separate_pivot_longer
-from IPython.display import display
-from IPython.display import Markdown, display
-import seaborn as sns
 
-from string_gsea.network import summarize_terms
-from string_gsea.network import make_network
-from string_gsea.network import make_network_with_colors, plot_network_graph
-from string_gsea.network import interactive_cytoscape, plot_network_graph_plotly, add_gene_ratio
-from string_gsea.cluster_genesets import make_nested_dict, convert_to_binary, plot_term_distance_heatmap
+# Third-party imports
+import polars as pl
+import matplotlib.pyplot as plt
+import seaborn as sns
+from IPython.display import Markdown, display
+
+# Local imports
+from string_gsea.network import (
+    separate_pivot_longer,
+    summarize_terms,
+    add_gene_ratio
+)
+from string_gsea.cluster_genesets import (
+    make_nested_dict,
+    convert_to_binary,
+    plot_term_distance_heatmap
+)
+from string_gsea.gsea_plotting import make_upset, plot_term_ridges
 from string_gsea import TermNetworkPlotter
 ```
 
@@ -75,6 +85,17 @@ with open(file_links, "r") as f:
     }
 
 ```
+
+
+The imported file is:
+
+```{python}
+#| echo: false
+#| output: asis
+
+print(str(file))
+```
+
 
 ```{python}
 #| vscode: {languageId: python}
@@ -155,8 +176,6 @@ display(Markdown(f"**Categories:** {category_str}"))
 #| include: true
 #| warning: false
 
-from matplotlib import pyplot as plt
-from string_gsea.gsea_plotting import make_upset, plot_term_ridges
 
 contrast_list = sorted(xd.get_column("contrast").unique().to_list())
 category_list = sorted(xd.get_column("category").unique().to_list())
