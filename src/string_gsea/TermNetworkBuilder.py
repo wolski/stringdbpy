@@ -52,12 +52,6 @@ class TermNetworkBuilder:
             .agg(pl.col("nr_proteins").sum().alias("w"))
         )
 
-        # 4) All edges = union of within+cross
-        all_df_2 = (
-            pl.concat([within_df, cross_df])
-            .group_by(["termID_a", "termID_b"])
-            .agg(pl.col("w").sum().alias("w"))
-        )
         
         all_df = (
             sp

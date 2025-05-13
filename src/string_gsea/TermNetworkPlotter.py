@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Wedge
 from matplotlib import cm
 import polars as pl
+from string_gsea.TermNetworkBuilder import TermNetworkBuilder
+from string_gsea.network import plot_network_graph_plotly
+import plotly.graph_objs as go
+
 
 class TermNetworkPlotter:
     def __init__(self,
@@ -34,22 +38,61 @@ class TermNetworkPlotter:
             palette *= ((n // len(palette)) + 1)
             self.colors = palette[:n]
 
+    def _prepare_graph(
+        self,
+        edge_df: pl.DataFrame,
+        thresh: int = 2,
+        include_all: bool = False
+    ) -> tuple[nx.Graph, pl.DataFrame, list[str]]:
+        """
+        Shared helper: filter edges at `thresh`, determine node set,
+        and build NetworkX graph with those nodes and edges.
 
-    def compute_full_layout(self, edge_df, thresh: int = 2, k: float = 0.8, seed: int = 0):
+        If include_all=True, include all self.node_sizes keys as nodes;
+        otherwise only nodes that appear in filtered edges.
         """
-        Build the graph from edge_df at threshold and compute a fixed spring layout.
-        Stores positions in self.fixed_pos.
-        """
+        # filter edges once
+        edges_sub = edge_df.filter(pl.col("w") >= thresh)
+
+        # decide which nodes to add
+        if include_all:
+            nodes = list(self.node_sizes.keys())
+        else:
+            nodes = (
+                edges_sub
+                .select(["termID_a","termID_b"])
+                .melt(value_name="node")
+                .select("node")
+                .unique()
+                .to_series()
+                .to_list()
+            )
+
+        # build the graph of those nodes + edges
         G = nx.Graph()
-        for term, sz in self.node_sizes.items():
-            G.add_node(term, size=sz)
-        for termA, termB, w in edge_df.select(["termID_a","termID_b","w"]).iter_rows():
-            if w >= thresh:
-                G.add_edge(termA, termB, weight=w)
-        G.remove_nodes_from(list(nx.isolates(G)))
+        G.add_nodes_from(nodes)
+        for a,b,w in edges_sub.select(["termID_a","termID_b","w"]).iter_rows():
+            if a != b:
+                G.add_edge(a, b, weight=w)
+        return G, edges_sub, nodes
+    
+
+    def compute_full_layout(
+        self,
+        edge_df: pl.DataFrame,
+        thresh: int = 2,
+        k: float = 0.8,
+        seed: int = 0
+    ) -> dict[str,tuple[float,float]]:
+        """
+        Compute and store a spring layout over the *full* term set.
+        """
+        G, _, _ = self._prepare_graph(edge_df, thresh=thresh, include_all=True)
+        # compute layout once (includes isolates)
         self.fixed_pos = nx.spring_layout(G, k=k, seed=seed)
         return self.fixed_pos
 
+    
 
     def _draw_pies(self,
                    ax: plt.Axes,
@@ -89,31 +132,15 @@ class TermNetworkPlotter:
         """
         Draw a network panel with nodes sized/pie colored and edges filtered by thresh.
         """
-        # 1) filter edges
-        edges_sub = edge_df.filter(pl.col("w") >= thresh)
-
-        # 2) participating nodes via Polars
-        nodes = (
-            edges_sub
-            .select(["termID_a", "termID_b"])
-            .melt(value_name="node")
-            .select("node")
-            .unique()
-            .to_series()
-            .to_list()
+        # use helper to get graph, filtered edges, and node list
+        G, edges_sub, nodes = self._prepare_graph(
+            edge_df, thresh=thresh, include_all=False
         )
-
         # 3) build temp sizes dict for those nodes
         temp_sizes = {n: self.node_sizes[n] for n in nodes}
         temp_max   = max(temp_sizes.values()) if temp_sizes else 1
 
-        # 4) build graph
-        G = nx.Graph()
-        G.add_nodes_from(nodes)
-        for a, b, w in edges_sub.select(["termID_a","termID_b","w"]).iter_rows():
-            if a != b:
-                G.add_edge(a, b, weight=w)
-            
+                 
         # 5) layout
         if use_fixed_layout and self.fixed_pos is not None:
             full_pos = self.fixed_pos
@@ -126,13 +153,15 @@ class TermNetworkPlotter:
             pos = nx.spring_layout(G, k=0.8, seed=0)
 
         # 6) draw edges
-        ec = nx.draw_networkx_edges(
-            G, pos,
-            width=[edge_attrs['weight']/5 for _, _, edge_attrs in G.edges(data=True)],
-            edge_color="#888888",
-            ax=ax
-        )
-        ec.set_zorder(1)
+        if G.edges():
+            ec = nx.draw_networkx_edges(
+                G, pos,
+                width=[edge_attrs['weight']/5 for _, _, edge_attrs in G.edges(data=True)],
+                edge_color="#888888",
+                ax=ax
+            )
+            if ec is not None:  # Check if ec is not None before setting zorder
+                ec.set_zorder(1)
 
         # 7) draw pies
         self._draw_pies(ax, pos, temp_sizes, temp_max)
@@ -147,13 +176,21 @@ class TermNetworkPlotter:
 
     
     @staticmethod
-    def get_figure_legend():
-        text = """
-            Figure:. Network representations of SMART‐term co-enrichment across two contrasts (T ≥ 2 proteins).
-            (A) Full network: all term–term pairs that share at least two proteins either within a single contrast or across both experiments. Node size is proportional to the total number of proteins annotated to each term; edge width reflects the number of shared proteins.
-            (B) Cross‐contrast subnetwork: only those edges supported by the same proteins in contrast 1 and contrast 2, highlighting pathway relationships that persist between conditions.
-            (C) Within‐contrast subnetwork: only edges observed within a single experiment, revealing context-specific functional links that may dissolve upon perturbation.
-            """
+    def get_figure_legend(one_contrast:bool = True, category:str = "SMART", thresh:int = 1) -> str:
+        if one_contrast:
+            text = f"""Network representations of {category} co-enrichment across contrasts (T ≥ {thresh} proteins).
+                    Node size is proportional to the total number of proteins annotated to each term; edge width reflects the number of shared proteins.
+                    """
+        else:
+            text = (
+                    f"""Network representations of {category} co-enrichment across contrasts (T ≥ {thresh} proteins).\n
+                    (A) Full network: all term–term pairs that share at least {thresh} proteins either within a single contrast or across distinct contrasts.
+                    Node size is proportional to the total number of proteins annotated to each term; edge width reflects the number of shared proteins.\n
+                    (B) Cross‐contrast subnetwork: links between two categories (terms) where one term comes from contrast X and the other comes from contrast Y, but they share the same proteins,
+                    highlighting pathway relationships that persist between contrasts.\n
+                    (C) Within‐contrast subnetwork: links between two terms (categories) that come from the same contrast.
+                    revealing context-specific functional links that may dissolve upon perturbation.\n"""
+            )
         return text
 
     def draw_legend_panel(
@@ -179,4 +216,45 @@ class TermNetworkPlotter:
             title_fontsize=9
         )
         ax.axis("off")
+    
+
+
+def plot_network(xd, category:str="SMART", contrast:str=None, thresh:int=3, use_fixed_layout:bool=True):
+    if contrast is None:
+        nb = TermNetworkBuilder(xd, category=category)
+    else:
+        nb = TermNetworkBuilder(xd.filter(pl.col("contrast") == contrast), category=category)
+    
+    within_df, cross_df, all_df = nb.build_shared_counts()
+    contrast_counts, contrasts = nb.build_contrast_counts()
+    node_sizes = nb.compute_node_sizes()
+
+    plotter = TermNetworkPlotter(
+        node_sizes      = node_sizes,
+        contrast_counts = contrast_counts,
+        contrasts       = contrasts,
+        max_radius      = 0.1
+    )
+    plotter.compute_full_layout(all_df, thresh=1)
+
+    # Set higher DPI for better resolution
+    plt.rcParams['figure.dpi'] = 300  # Default is usually 100
+
+    if contrast is None:
+        fig, axes = plt.subplots(4, 1, figsize=(7,18))
+        plotter.draw_panel(axes[0], all_df,   thresh=thresh, title=f"A) Full (T≥{thresh})",
+                            use_fixed_layout=use_fixed_layout)
+        plotter.draw_panel(axes[2], cross_df, thresh=thresh, title=f"C) Cross (T≥{thresh})",
+                            use_fixed_layout=use_fixed_layout)
+        plotter.draw_panel(axes[1], within_df,thresh=thresh, title=f"D) Within (T≥{thresh})",
+                            use_fixed_layout=use_fixed_layout)
+        plotter.draw_legend_panel(axes[3], title="Contrast", loc="center")
+    else:
+        fig, axes = plt.subplots(1, 1, figsize=(7,7))
+        plotter.draw_panel(axes, all_df, thresh=thresh, title=f"Network for {contrasts[0]}, threshold = {thresh}",
+                          use_fixed_layout=use_fixed_layout)
+    
+    plt.tight_layout()
+    plt.show()
+
 

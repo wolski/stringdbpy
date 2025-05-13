@@ -49,7 +49,7 @@ def plot_enrichment_scatter(ax, pdf) -> plt.scatter:
     ax.margins(y=0)
     # 2) explicitly clamp the y‐limits to your term count
     n_terms = pdf['termLabel'].nunique()
-    # if you’ve inverted the y‐axis to show first term on top:
+    # if you've inverted the y‐axis to show first term on top:
     ax.set_ylim(n_terms - 0.5, -0.5)
 
     ax.set_xlabel('Contrast')
@@ -57,23 +57,21 @@ def plot_enrichment_scatter(ax, pdf) -> plt.scatter:
     return sc
 
 def add_custom_legends(fig, ax, direction_colors):
-    # Ensure space for legends
-    #fig.subplots_adjust(right=0.75)
     # Border legend (Direction)
     border_handles = [
         mlines.Line2D([], [], marker='o', linestyle='None', markersize=10,
                       markerfacecolor='white', markeredgecolor=color, label=label)
         for label, color in direction_colors.items()
     ]
-    legend1 = ax.legend(
+    legend1 = fig.legend(
         handles=border_handles,
         title='Direction',
-        loc='upper left',
-        bbox_to_anchor=(1., 1),
+        loc='center right',
+        bbox_to_anchor=(0.98, 0.7),
         borderaxespad=0,
         frameon=True
     )
-    ax.add_artist(legend1)
+    fig.add_artist(legend1)
 
     # Size legend (Gene Ratio)
     example_ratios = [0.25, 0.6, 1.0]
@@ -81,15 +79,15 @@ def add_custom_legends(fig, ax, direction_colors):
         plt.scatter([], [], s=ratio * 500, color='grey', edgecolor='black', label=f"{ratio:.2f}")
         for ratio in example_ratios
     ]
-    legend2 = ax.legend(
+    legend2 = fig.legend(
         handles=size_handles,
         title='Gene Ratio',
-        loc='upper left',
-        bbox_to_anchor=(1., 0.8),
+        loc='center right',
+        bbox_to_anchor=(0.98, 0.3),
         borderaxespad=0,
         frameon=True
     )
-    ax.add_artist(legend2)
+    fig.add_artist(legend2)
 
 
 def dotplot_enrichment(xd_smart:pl.DataFrame):
@@ -98,29 +96,33 @@ def dotplot_enrichment(xd_smart:pl.DataFrame):
         xd_smart
         .group_by("termDescription")
         .agg(pl.median("falseDiscoveryRate").alias("medianFDR"))
-        .sort("medianFDR")
+        .sort("medianFDR")  # This sorts ascending (smallest FDR first)
         .with_row_index(name="term_order")  # assign integer order
     )
     # Step 2: Join back to original data
     xd_smart = xd_smart.join(term_order_df.select(["termDescription", "term_order"]), on="termDescription", how="left")
-    # Step 3: Sort by the new 'term_order' column
-    xd_smart = xd_smart.sort("term_order", descending=True)
+    # Step 3: Sort by the new 'term_order' column - remove descending=True to keep smallest FDR at top
+    xd_smart = xd_smart.sort("term_order")  # Removed descending=True
 
     pdf = xd_smart.to_pandas()
     # Step 1: Preprocess
     pdf, direction_colors = prepare_data_for_plotting(pdf)
 
-    # after you have your prepped pandas df `pdf`:
-    n_terms        = pdf['termDescription'].nunique()
-    height_per_term = 0.3        # inches per term
-    max_height      = 20         # cap so it doesn’t grow unbounded
-    fig_height      = min(n_terms * height_per_term, max_height)
-    fig_height = n_terms * height_per_term
-    fig, ax = plt.subplots(figsize=(10, fig_height),gridspec_kw={'right': 0.70})
- 
+    # Calculate figure height
+    n_terms = pdf['termDescription'].nunique()
+    height_per_term = 0.5      # inches per term
+    max_height = 50         # cap so it doesn't grow unbounded
+    fig_height = min(n_terms * height_per_term, max_height)
+    
+    # Create figure with proper spacing for legends
+    fig, ax = plt.subplots(figsize=(16, fig_height))  # Increased width
+    
     # Main scatter
     sc = plot_enrichment_scatter(ax, pdf)
-    fig.subplots_adjust(left=0.3, right=0.75)
+    
+    # Adjust layout to make space for legends - leave more space on the right
+    fig.subplots_adjust(left=0.3, right=0.70)  # Reduced right margin to leave more space
+    
     # Colorbar
     sm = plt.cm.ScalarMappable(
         cmap='coolwarm',
@@ -128,14 +130,15 @@ def dotplot_enrichment(xd_smart:pl.DataFrame):
     )
     sm.set_array([])
     
-    cbar = plt.colorbar(sm, orientation='horizontal', ax=ax,fraction=0.03, pad=0.15, shrink=0.8)
+    cbar = plt.colorbar(sm, orientation='horizontal', ax=ax, fraction=0.03, pad=0.15, shrink=0.8)
     cbar.set_label('-log10(FDR)')
-    # move ticks and label to the top
     cbar.ax.xaxis.set_ticks_position('top')
     cbar.ax.xaxis.set_label_position('top')
 
-        # 1) grab the axes’ original position
     # Legends
     add_custom_legends(fig, ax, direction_colors)
-
+    
+    # Ensure the figure is properly laid out
+    plt.tight_layout()
+    
     plt.show()
