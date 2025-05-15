@@ -21,8 +21,8 @@ def write_config( caller_identity: str, fdr: float = 0.25,):
     """
     try:
         config_path = write_initial_configuration(caller_identity, fdr)
-        logger.info(f"Configuration file created successfully at: {config_path}")
-        logger.info("Please edit the file to add your API key and other configuration values.")
+        #logger.info(f"Configuration file created successfully at: {config_path}")
+        
     except Exception as e:
         logger.error(f"Failed to create configuration file: {e}")
         raise

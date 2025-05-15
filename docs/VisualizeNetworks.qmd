@@ -11,6 +11,7 @@ format:
 jupyter: python3
 params:
   data_file: null    # or "~"
+  links_file: null
 execute:
   echo: true
 ---
@@ -66,16 +67,17 @@ print(Path(wd))
 
 if data_file is None:
     # fallback, or raise, or skip
-    file = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"WUabcd_string_gsea_results_long.xlsx"
+    file_data = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"WUabcd_string_gsea_results_long.xlsx"
     file_links = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"links.txt"
 else:
-    file = Path(data_file)
-
-print("Using file:", file)
+    file_data = Path(data_file)
+    file_links = Path(links_file)
+print("Using file:", file_data, "\n")
+print("Using links file:", file_links, "\n")
 
 # Read Excel and convert to Polars
 # Read Excel file directly with polars
-df = pl.read_excel(file)
+df = pl.read_excel(file_data)
 # Select and explode protein columns
 # read the links.txt into a dict
 with open(file_links, "r") as f:
@@ -93,7 +95,7 @@ The imported file is:
 #| echo: false
 #| output: asis
 
-print(str(file))
+print(str(file_data))
 ```
 
 

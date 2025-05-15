@@ -81,7 +81,7 @@ class StringGSEAResults:
         """Download and save all result graphs as PNGs."""
         return self._write_gsea_files('graph', 'graph_url', '_results.png')
 
-    def serialize_results(self) -> Path:
+    def save_session(self) -> Path:
         """
         Dump the full session (config + results) to JSON in the results folder.
         """

@@ -119,7 +119,7 @@ def run_string_gsea_bfabric(
     logger.info(f"Session YAML written to {session_yaml}")
 
     #   - JSON results
-    serialized_json = results.serialize_results()
+    serialized_json = results.save_session()
     logger.info(f"Results JSON written to {serialized_json}")
 
     #   - links, TSVs, graphs

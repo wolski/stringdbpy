@@ -30,46 +30,36 @@
 
 ```shell
 # Clone the repo and install in editable mode
-git clone https://github.com/yourorg/A373_STRING_GSEA.git
-cd A373_STRING_GSEA
-pip install -e .
+git clone https://github.com/wolski/stringdbpy.
+cd stringdbpy
+uv pip install -e .
 ```
 
-## Quick Start
-
-```python
-from pathlib import Path
-from string_gsea.string_gsea_builder import StringGSEABuilder
-from string_gsea.gsea_utilities import get_rank_files
-
-# Prepare inputs
-zip_path = Path("/path/to/your/rank_files.zip")
-workunit = "WU123"
-config = {
-  "api_key": "YOUR_API_KEY",
-  "fdr": 0.25,
-  "caller_identity": "your.tool.name",
-  "ge_enrichment_rank_direction": -1
-}
-
-# Run builder & poll
-builder = StringGSEABuilder(
-  rank_dataframes=get_rank_files(zip_path),
-  config_dict=config,
-  workunit_id=workunit,
-  species=9606,
-  base_path=Path("./output")
-)
-results = builder.get_result()
-builder.save_session()               # YAML
-
-# Export outputs
-results.write_links()
-results.write_gsea_tsv()
-results.write_gsea_graphs()
-```
 
 ## Command‑Line Interface
+
+Create a config file:
+
+```sh
+string_gsea_write_config --help
+```
+
+This writes a configuratiton file into : `$HOME/.config/string_gsea/config.toml`
+this file contains an api_key, fdr threshold, and caller_identity and will be used in subsequent calls to the string-db api.
+
+
+```sh
+string_gsea_run --help
+string_gsea_run  "./tests/data/DE_mouse_fasta_xlsx.zip" 12345 ./tests/data/dummy_2_out --from-rnk
+
+
+```
+
+```sh
+render_reports --help
+
+```
+
 
 Once installed, you can run from the shell:
 

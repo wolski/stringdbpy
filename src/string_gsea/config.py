@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from loguru import logger
 from typing import Dict, Any, Optional
+from datetime import datetime
 
 def get_configuration() -> Dict[str, Any]:
     """
@@ -90,6 +91,13 @@ def write_initial_configuration(caller_identity: str = "www.fgcz.ch", fdr: float
     
     # Path to the config file
     config_path = config_dir / 'config.toml'
+
+    # Check if the config file already exists and prompt user to enter Y to overwrite
+    if config_path.exists():
+        logger.info(f"Configuration file already exists at {config_path}. Overwrite? (y/n)")
+        if input().lower() != 'y':
+            logger.info("Exiting without overwriting the existing configuration file.")
+            return config_path
     
     # Fetch API key from STRING-DB
     try:
@@ -116,9 +124,10 @@ def write_initial_configuration(caller_identity: str = "www.fgcz.ch", fdr: float
     
     # Configuration with fetched API key
     config = {
+        'creation_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         'api_key': api_key,
         'fdr': fdr,
-        "ge_enrichment_rank_direction": -1,
+        "ge_enrichment_rank_direction": 1,
         "caller_identity": caller_identity,
     }
     

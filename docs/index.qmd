@@ -2,6 +2,7 @@
 title: "Visualizing string-db GSEA results"
 params:
   data_file: null    # or "~"
+  links_file: null
 ---
 
 ```{python}
@@ -10,6 +11,7 @@ params:
 
 # declare the parameter (default None)
 data_file: str | None = None
+links_file: str | None = None
 ```
 ```{python}
 #| vscode: {languageId: python}
@@ -22,11 +24,11 @@ from pathlib import Path
 
 if data_file is None:
     # fallback, or raise, or skip
-    file = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"WUabcd_string_gsea_results_long.xlsx"
+    file_data = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"WUabcd_string_gsea_results_long.xlsx"
     file_links = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"links.txt"
 else:
-    file = Path(data_file)
-
+    file_data = Path(data_file)
+    file_links = Path(links_file)
 
 ```
 
@@ -35,7 +37,8 @@ The input file used is:
 ```{python}
 #| echo: false
 #| output: asis
-print(str(file))
+print(str(file_data) + "\n")
+print(str(file_links) + "\n")
 ```
 
 

@@ -8,6 +8,7 @@ class GSEASession:
     Data class representing a STRING-GSEA session, with support for YAML serialization.
     Keys for res_job_id and res_data are tuple(str, str).
     """
+    current_date: str
     workunit_id: str
     species: int
     config_dict: dict
@@ -24,6 +25,7 @@ class GSEASession:
         Serialize this session to a YAML string or file, converting tuple keys to strings.
         """
         dump_dict = {
+            'current_date': self.current_date,
             'workunit_id': self.workunit_id,
             'species': self.species,
             'config_dict': self.config_dict,
@@ -61,6 +63,7 @@ class GSEASession:
             tuple(k.split('~', 1)): v for k, v in raw_res.items()
         }
         return cls(
+            current_date=data['current_date'],
             workunit_id=data['workunit_id'],
             species=data['species'],
             config_dict=data['config_dict'],

@@ -5,7 +5,7 @@ import requests
 import time
 from loguru import logger
 from pathlib import Path
-
+from datetime import datetime
 from string_gsea.get_species import OxFieldsZip
 from string_gsea.gsea_session import GSEASession
 from string_gsea.gsea_utilities import get_rank_files
@@ -17,7 +17,7 @@ class StringGSEABuilder:
     constructing a results object, and serializing/deserializing the build state via YAML.
     """
 
-    VALID_CONFIG_KEYS = {'api_key', 'ge_enrichment_rank_direction', 'fdr', 'caller_identity'}
+    VALID_CONFIG_KEYS = {'creation_date', 'api_key', 'ge_enrichment_rank_direction', 'fdr', 'caller_identity'}
 
     def __init__(
         self,
@@ -38,6 +38,7 @@ class StringGSEABuilder:
 
         # Initialize session data class
         self.session = GSEASession(
+            current_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             workunit_id=workunit_id,
             species=species,
             config_dict=config_dict,
@@ -131,7 +132,7 @@ class StringGSEABuilder:
 
     def save_session(self, filepath: Path = None) -> Path:
         out_dir = self.get_res_path()
-        path = filepath or (out_dir / 'session.yml')
+        path = filepath or (out_dir / 'gsea_session.yml')
         self.session.to_yaml(path)
         return path
 
@@ -173,7 +174,7 @@ if __name__ == '__main__':
     results.write_gsea_tsv()
     results.write_gsea_graphs()
     builder.save_session()
-    results.serialize_results()
+    #results.save_session()
     # copy session_path file into tests/data/dummy_d
     shutil.copy(session_path, project_root / "tests" / "data" / "dummy_d" / "session.yml")
     results2 = StringGSEAResults(GSEASession.from_yaml(session_path))

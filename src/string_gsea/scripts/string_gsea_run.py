@@ -66,8 +66,8 @@ def string_gsea_run(
     logger.info(f"Session YAML written to {session_yaml}")
 
     #   - JSON results
-    serialized_json = results.serialize_results()
-    logger.info(f"Results JSON written to {serialized_json}")
+    # serialized_json = results.save_session()
+    # logger.info(f"Results JSON written to {serialized_json}")
 
     #   - links, TSVs, graphs
     links = results.write_links()
