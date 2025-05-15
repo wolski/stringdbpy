@@ -55,7 +55,9 @@ class DiffXLSX:
 
 
     @staticmethod
-    def _get_ranks_by_contrast(df: pl.DataFrame, id_col: str = "IDcolumn", rank_col: str = "statistic",
+    def _get_ranks_by_contrast(df: pl.DataFrame,
+                              id_col: str = "IDcolumn",
+                              rank_col: str = "statistic",
                               prefix: str = "") -> dict:
         """
         Get rank dataframes by contrast.
@@ -75,8 +77,18 @@ class DiffXLSX:
         }
         return df_dict
 
+    def validate_arguments(valid_options):
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                if 'which' in kwargs and kwargs['which'] not in valid_options:
+                    raise ValueError(f"which must be one of: {', '.join(valid_options)}")
+                return func(*args, **kwargs)
+            return wrapper
+        return decorator
 
-    def rank_dict(self, id_col: str = "IDcolumn", rank_col: str = "statistic") -> dict:
+
+    @validate_arguments(["all", "pep_1", "pep_1_no_imputed", "pep_2", "pep_2_no_imputed"])
+    def rank_dict(self, id_col: str = "IDcolumn", rank_col: str = "statistic", which:str = "all") -> dict:
         """
         Create rank lists from the differential expression DataFrame.
         
@@ -103,8 +115,10 @@ class DiffXLSX:
         for outer_key, subdict in combined_dict.items():
             for inner_key, rank_df in subdict.items():
                 flattened[(outer_key, inner_key)] = rank_df
-
-        return flattened
+        if which == "all":
+            return flattened
+        else:
+            return {k: v for k, v in flattened.items() if k[0] == which}
 
 
 if __name__ == '__main__':
@@ -113,5 +127,8 @@ if __name__ == '__main__':
     logger.info(f"Zip path: {zip_path}")
     df_xlsx = DiffXLSX(zip_path)
     rank_files = df_xlsx.rank_dict()
+    print(len(rank_files))
+    rank_files = df_xlsx.rank_dict(which="pep_1")
+    print(len(rank_files))
 
 
