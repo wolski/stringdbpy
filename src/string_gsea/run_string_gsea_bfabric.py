@@ -12,7 +12,7 @@ from string_gsea.get_species import get_species_taxon
 import subprocess
 import tempfile
 
-from string_gsea.postprocess import GSEAResultProcessor
+from string_gsea.gsea_result_processor import GSEAResultProcessor
 from string_gsea.string_gsea_builder import StringGSEABuilder
 from string_gsea.string_gsea_results import StringGSEAResults
 

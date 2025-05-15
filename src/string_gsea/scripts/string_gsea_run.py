@@ -7,8 +7,9 @@ from string_gsea.gsea_utilities import get_rank_files
 from string_gsea.get_species import get_species_taxon
 from string_gsea.string_gsea_builder import StringGSEABuilder
 from string_gsea.string_gsea_results import StringGSEAResults
-from string_gsea.postprocess import GSEAResultProcessor
+from string_gsea.gsea_result_processor import GSEAResultProcessor
 from string_gsea.ranks_from_dea_xlsx import DiffXLSX
+
 app = App()
 
 @app.default()

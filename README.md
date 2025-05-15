@@ -51,13 +51,13 @@ this file contains an api_key, fdr threshold, and caller_identity and will be us
 ```sh
 string_gsea_run --help
 string_gsea_run  "./tests/data/DE_mouse_fasta_xlsx.zip" 12345 ./tests/data/dummy_2_out --from-rnk
-
+string_gsea_run ./tests/data/2848501.zip abcd ./tests/data/dummy_out --from-rnk
 
 ```
 
 ```sh
 render_reports --help
-
+render_reports ./tests/data/dummy_out ./tests/data/dummy_out
 ```
 
 

@@ -22,7 +22,8 @@ execute:
 #| tags: [parameters]
 
 # declare the parameter (default None)
-data_file: str | None = None
+data_file: str = None
+links_file: str = None
 ```
 
 ```{python}
