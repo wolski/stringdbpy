@@ -12,7 +12,7 @@ from string_gsea.get_species import get_species_taxon
 import subprocess
 import tempfile
 
-from string_gsea.postprocess import result_to_xlsx
+from string_gsea.postprocess import GSEAResultProcessor
 from string_gsea.string_gsea_builder import StringGSEABuilder
 from string_gsea.string_gsea_results import StringGSEAResults
 
@@ -129,7 +129,7 @@ def run_string_gsea_bfabric(
     logger.info(f"Wrote links to {links}\nTSVs to {tsv_dir}\nGraphs to {graph_dir}")
 
     # 4) Post‑processing
-    result_to_xlsx(tsv_dir, workunit_id)
+    GSEAResultProcessor.result_to_xlsx(tsv_dir, workunit_id)
     path = StringGSEAResults.zip_folder(results.get_res_path())
     logger.info(f"Zipped results to {path}")
 

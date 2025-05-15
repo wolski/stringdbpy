@@ -9,12 +9,14 @@ from string_gsea.gsea_session import GSEASession
 def sample_session(tmp_path):
     # Create a sample GSEASession with tuple keys
     cfg = {
+        'current_date': '2025-05-15 10:00:00',
         'api_key': 'test_key',
         'fdr': 0.05,
         'caller_identity': 'pytest',
         'ge_enrichment_rank_direction': 1
     }
     session = GSEASession(
+        current_date='2025-05-15 10:00:00',
         workunit_id='WU_test',
         species=9606,
         config_dict=cfg,

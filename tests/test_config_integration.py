@@ -74,7 +74,7 @@ def test_write_initial_configuration(temp_config_dir, mock_api_response):
         assert config['api_key'] == "test_api_key_123"
         assert config['fdr'] == fdr
         assert config['caller_identity'] == caller_identity
-        assert config['ge_enrichment_rank_direction'] == -1
+        assert config['ge_enrichment_rank_direction'] == 1
 
 
 def test_get_configuration(temp_config_dir):
