@@ -37,7 +37,9 @@ dependencies = [
     'scipy',
     'seaborn',
     'IPython',
-    'numpy'
+    'numpy',
+    "papermill",
+    "upsetplot",
 ]
 
 [project.optional-dependencies]
