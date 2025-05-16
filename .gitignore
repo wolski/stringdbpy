@@ -5,6 +5,7 @@ testing_examples
 __pycache__/
 
 .quarto
+*.quarto_ipynb
 *_site
 *_files
 *.html
