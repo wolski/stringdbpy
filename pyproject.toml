@@ -63,6 +63,11 @@ extra-dependencies = [
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:src/string_gsea tests}"
 
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/string_gsea/data/mappings/*.zip",
+]
+
 [tool.coverage.run]
 source_pkgs = ["string_gsea", "tests"]
 branch = true

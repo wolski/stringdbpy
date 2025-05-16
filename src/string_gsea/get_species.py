@@ -138,8 +138,7 @@ class TaxonUtils:
     
     def __init__(self):
         # Define paths relative to the project root
-        self.base_dir = Path(__file__).resolve().parent.parent.parent  # moves two levels up
-        self.data_mappings_dir = self.base_dir / 'data' / 'mappings'
+        self.data_mappings_dir = Path(__file__).resolve().parent / 'data' / 'mappings'
         logger.info(f"Data mappings directory: {self.data_mappings_dir}")
         self.species_zip_path = self.data_mappings_dir / "species.v12.0.zip"
         self.species_file_name = "species.v12.0.txt"

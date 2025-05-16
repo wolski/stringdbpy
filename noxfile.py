@@ -7,4 +7,4 @@ nox.options.default_venv_backend = "uv"
 def test(session):
     session.install(".[test]")
     session.run("uv", "pip", "list")
-    session.run("pytest", "--durations=50", "tests")
+    session.run("pytest", "--durations=50", "tests", *session.posargs)
