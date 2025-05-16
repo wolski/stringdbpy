@@ -10,4 +10,3 @@ __pycache__/
 *.html
 *.ipynb
 site_libs/
-*.zip
