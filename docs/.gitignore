@@ -1,7 +1,0 @@
-/.quarto/
-*_site
-*_files
-*.html
-*.ipynb
-site_libs/
-*.zip
