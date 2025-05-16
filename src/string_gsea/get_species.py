@@ -5,6 +5,7 @@ import requests
 from loguru import logger
 import polars as pl
 import zipfile
+import importlib.resources
 from pathlib import Path
 from string_gsea.gsea_utilities import get_rank_files
 
@@ -137,46 +138,42 @@ class TaxonUtils:
     """A class for handling taxon-related utilities and data processing."""
     
     def __init__(self):
-        # Define paths relative to the project root
-        self.base_dir = Path(__file__).resolve().parent.parent.parent  # moves two levels up
-        self.data_mappings_dir = self.base_dir / 'data' / 'mappings'
-        logger.info(f"Data mappings directory: {self.data_mappings_dir}")
-        self.species_zip_path = self.data_mappings_dir / "species.v12.0.zip"
+        # Define resource names and packages
+        self.mappings_package = "string_gsea.data.mappings"
+        self.species_zip_name = "species.v12.0.zip"
         self.species_file_name = "species.v12.0.txt"
-        self.ncbi_zip_path = self.data_mappings_dir / "NCBI_nodes.zip"
-        self.ncbi_file_name = "nodes.tsv"  # Assuming this is the correct file name inside NCBI_nodes.zip
+        self.ncbi_zip_name = "NCBI_nodes.zip"
+        self.ncbi_file_name = "nodes.tsv"
         
         # Load data during initialization
         self.string_species_df = self._read_species_string_data()
         self.ncbi_nodes_df = self._read_ncbi_nodes_data()
-        
-        if self.string_species_df is None or self.ncbi_nodes_df is None:
-            logger.error("Failed to load necessary data during initialization.")
-    
-    def _read_species_string_data(self) -> pl.DataFrame | None:
+     
+    def _read_species_string_data(self) -> pl.DataFrame:
         """Reads the species data from the STRING zip file.
 
         Returns:
             pl.DataFrame: A Polars DataFrame containing the species data.
         """
-        with zipfile.ZipFile(self.species_zip_path, 'r') as zip_file:
-            # Open and read the file content using Polars.
-            with zip_file.open(self.species_file_name) as file_obj:
-                df = pl.read_csv(file_obj, encoding="utf8", truncate_ragged_lines=True, separator="\t")
-                df = df.rename({"#taxon_id": "taxon_id"})
-                return df
+        with importlib.resources.path(self.mappings_package, self.species_zip_name) as zip_path:
+            with zipfile.ZipFile(zip_path, 'r') as zip_file:
+                with zip_file.open(self.species_file_name) as file_obj:
+                    df = pl.read_csv(file_obj, encoding="utf8", truncate_ragged_lines=True, separator="\t")
+                    df = df.rename({"#taxon_id": "taxon_id"})
+                    return df
 
-    def _read_ncbi_nodes_data(self) -> pl.DataFrame | None:
+    def _read_ncbi_nodes_data(self) -> pl.DataFrame:
         """Reads the NCBI nodes data from the zip file.
 
         Returns:
             pl.DataFrame: A Polars DataFrame containing the NCBI nodes data.
         """
-        with zipfile.ZipFile(self.ncbi_zip_path, 'r') as zip_file:
-            # Open and read the file content using Polars.
-            with zip_file.open(self.ncbi_file_name) as file_obj:
-                df = pl.read_csv(file_obj, encoding="utf8", separator="\t")
-                return df
+        # Get path to the resource
+        with importlib.resources.path(self.mappings_package, self.ncbi_zip_name) as zip_path:
+            with zipfile.ZipFile(zip_path, 'r') as zip_file:
+                with zip_file.open(self.ncbi_file_name) as file_obj:
+                    df = pl.read_csv(file_obj, encoding="utf8", separator="\t")
+                    return df
 
     def get_organism_for_string(self, spec_id: int) -> int | None:
         """

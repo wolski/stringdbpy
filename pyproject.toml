@@ -40,6 +40,12 @@ dependencies = [
     'numpy'
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-mock",
+]
+
 [project.scripts]
 "string_gsea_bfabric" = "string_gsea.scripts.string_gsea_bfabric:app"
 "string_gsea_write_config" = "string_gsea.scripts.write_config:app"
@@ -56,6 +62,11 @@ extra-dependencies = [
 ]
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:src/string_gsea tests}"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/string_gsea/data/mappings/*.zip",
+]
 
 [tool.coverage.run]
 source_pkgs = ["string_gsea", "tests"]
@@ -75,3 +86,6 @@ exclude_lines = [
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
+
+[tool.uv]
+reinstall-package = ["stringdbpy"]
