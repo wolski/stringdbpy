@@ -57,21 +57,15 @@ string_gsea_run ./tests/data/2848501.zip abcd ./tests/data/dummy_out --from-rnk
 
 ```sh
 render_reports --help
-render_reports ./tests/data/dummy_out ./tests/data/dummy_out
+render_reports ./tests/data/dummy_out ./tests/data/rendered_results
+# or if you wan to render into thhe input folder
+render_reports ./tests/data/dummy_out 
+
 ```
 
-
-Once installed, you can run from the shell:
-
-```bash
-string-gsea-builder \
-  tests/data/2848501.zip \
-  --workunit-id WU123 \
-  --fdr 0.25 \
-  --out-dir ./results
-```
 
 ## Python API Usage
+
 
 1. **Instantiate the builder**: supply rank DataFrames and config.  
 2. **Write rank files** (optional): `builder.write_rank_files()`  
@@ -84,6 +78,7 @@ string-gsea-builder \
 
 Your `config_dict` must include:
 
+- `current_date`: creation date of the config
 - `api_key`: your STRING‑DB API key  
 - `fdr`: false discovery rate cutoff  
 - `caller_identity`: a unique caller name  

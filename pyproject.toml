@@ -31,7 +31,13 @@ dependencies = [
     'matplotlib',
     'pyvis',
     'notebook>=7.4.1',
-    'plotly'
+    'plotly',
+    'ipycytoscape',
+    'pandas',
+    'scipy',
+    'seaborn',
+    'IPython',
+    'numpy'
 ]
 
 [project.scripts]
