@@ -3,3 +3,11 @@ testing_examples
 .idea
 # Byte-compiled / optimized / DLL files
 __pycache__/
+
+.quarto
+*_site
+*_files
+*.html
+*.ipynb
+site_libs/
+*.zip

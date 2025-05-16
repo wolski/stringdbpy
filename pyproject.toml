@@ -44,6 +44,7 @@ dependencies = [
 test = [
     "pytest",
     "pytest-mock",
+    "dirty-equals",
 ]
 
 [project.scripts]
@@ -66,6 +67,8 @@ check = "mypy --install-types --non-interactive {args:src/string_gsea tests}"
 [tool.hatch.build.targets.sdist]
 include = [
   "src/string_gsea/data/mappings/*.zip",
+  "src/string_gsea/docs/**/*.qmd",
+  "src/string_gsea/docs/**/*.yml",
 ]
 
 [tool.coverage.run]
