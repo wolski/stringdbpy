@@ -16,6 +16,7 @@ ALL_SCRIPTS = [
     "string_gsea.run_string_gsea_bfabric",
     "string_gsea.string_gsea_builder",
     "string_gsea.string_gsea_results",
+    "string_gsea.gsea_result_processor",
 ]
 
 @nox.session(name="run-internal-scripts")

@@ -1,7 +1,6 @@
 #%% md
 
 import shlex
-import os
 from pathlib import Path
 
 import yaml
@@ -11,11 +10,10 @@ from string_gsea.gsea_utilities import get_rank_files, find_zip_files
 from string_gsea.get_species import get_species_taxon
 import subprocess
 import tempfile
-
-from string_gsea.gsea_result_processor import GSEAResultProcessor
+from string_gsea.gsea_config import GSEAConfig, get_configuration
 from string_gsea.string_gsea_builder import StringGSEABuilder
 from string_gsea.string_gsea_results import StringGSEAResults
-from string_gsea.gsea_config import GSEAConfig, get_configuration
+from string_gsea.gsea_result_processor import GSEAResultProcessor
 
 
 def extract_workunit_id_from_file(file_path: Path) -> str | None:
