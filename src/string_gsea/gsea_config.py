@@ -9,6 +9,9 @@ from typing import Tuple, Optional
 from datetime import datetime
 from dataclasses import dataclass, asdict
 
+from string_gsea.config import GSEAConfig
+
+
 @dataclass
 class GSEAConfig:
     api_key: str
@@ -17,6 +20,8 @@ class GSEAConfig:
     caller_identity: str
     creation_date: Optional[str] = None
 
+    required = ['api_key', 'fdr', 'ge_enrichment_rank_direction', 'caller_identity']
+
     @classmethod
     def read_toml(cls, path: Path) -> "GSEAConfig":
         """
@@ -24,14 +29,30 @@ class GSEAConfig:
         """
         with open(path, 'rb') as f:
             data = tomli.load(f)
-
-        required = ['api_key', 'fdr', 'ge_enrichment_rank_direction', 'caller_identity']
-        missing = [key for key in required if key not in data]
+        missing = [key for key in cls.required if key not in data]
         if missing:
             raise ValueError(
                 f"Configuration file is missing required keys: {', '.join(missing)}"
             )
 
+        return cls(
+            api_key=data['api_key'],
+            fdr=data['fdr'],
+            ge_enrichment_rank_direction=data['ge_enrichment_rank_direction'],
+            caller_identity=data['caller_identity'],
+            creation_date=data.get('creation_date')
+        )
+
+    @classmethod
+    def from_dict(cls, data: dict) -> GSEAConfig:
+        """
+        Initialize GSEAConfig from dict.
+        """
+        missing = [key for key in cls.required if key not in data]
+        if missing:
+            raise ValueError(
+                f"Configuration file is missing required keys: {', '.join(missing)}"
+            )
         return cls(
             api_key=data['api_key'],
             fdr=data['fdr'],

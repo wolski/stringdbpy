@@ -1,6 +1,8 @@
 import yaml
 from dataclasses import dataclass, field
 from pathlib import Path
+from string_gsea.gsea_config import GSEAConfig
+from dataclasses import asdict
 
 @dataclass
 class GSEASession:
@@ -11,7 +13,7 @@ class GSEASession:
     current_date: str
     workunit_id: str
     species: int
-    config_dict: dict
+    config_dict: GSEAConfig
     base_path: Path
     res_job_id: dict[tuple[str, str], str] = field(default_factory=dict)
     res_data: dict[tuple[str, str], dict] = field(default_factory=dict)
@@ -28,7 +30,7 @@ class GSEASession:
             'current_date': self.current_date,
             'workunit_id': self.workunit_id,
             'species': self.species,
-            'config_dict': self.config_dict,
+            'config_dict': asdict(self.config_dict),
             'base_path': str(self.base_path),
             'res_job_id': {f"{k[0]}~{k[1]}": v for k, v in self.res_job_id.items()},
             'res_data': {f"{k[0]}~{k[1]}": v for k, v in self.res_data.items()}
@@ -66,7 +68,7 @@ class GSEASession:
             current_date=data['current_date'],
             workunit_id=data['workunit_id'],
             species=data['species'],
-            config_dict=data['config_dict'],
+            config_dict=GSEAConfig.from_dict(data['config_dict']),
             base_path=data['base_path'],
             res_job_id=data['res_job_id'],
             res_data=data['res_data']

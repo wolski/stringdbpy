@@ -15,6 +15,7 @@ import tempfile
 from string_gsea.gsea_result_processor import GSEAResultProcessor
 from string_gsea.string_gsea_builder import StringGSEABuilder
 from string_gsea.string_gsea_results import StringGSEAResults
+from string_gsea.gsea_config import GSEAConfig, get_configuration
 
 
 def extract_workunit_id_from_file(file_path: Path) -> str | None:
@@ -90,12 +91,15 @@ def run_string_gsea_bfabric(
     base_dir: Path = Path(".")
 ) -> None:
     # 1) Prepare config & workspace
-    config = {
-        "api_key": "b36F8oaRJwFZ",
-        "fdr": fdr,
-        "caller_identity": "www.fgcz.ch",
-        "ge_enrichment_rank_direction": -1,
-    }
+    base_config = get_configuration()
+    # Create new config with provided fdr value
+    config = GSEAConfig(
+        api_key=base_config.api_key,
+        fdr=fdr,
+        caller_identity=base_config.caller_identity,
+        ge_enrichment_rank_direction=base_config.ge_enrichment_rank_direction,
+        creation_date=base_config.creation_date
+    )
     base_dir.mkdir(exist_ok=True)
     species = get_species_taxon(zip_path)
     dataframes = get_rank_files(zip_path)
@@ -103,7 +107,7 @@ def run_string_gsea_bfabric(
     # 2) Build, write inputs, submit & poll
     builder = StringGSEABuilder(
         rank_dataframes=dataframes,
-        config_dict=config,
+        config=config,
         workunit_id=workunit_id,
         species=species,
         base_path=base_dir

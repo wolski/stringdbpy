@@ -2,7 +2,7 @@ from cyclopts import App
 from pathlib import Path
 from loguru import logger
 
-from string_gsea.config import write_initial_configuration
+from string_gsea.gsea_config import write_initial_configuration
 
 app = App()
 
@@ -29,4 +29,5 @@ def write_config( caller_identity: str, fdr: float = 0.25,):
 
 
 if __name__ == '__main__':
+    
     app() 

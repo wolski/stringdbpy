@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from unittest.mock import patch, MagicMock
 
-from string_gsea.config import get_configuration, write_initial_configuration
+from string_gsea.gsea_config import get_configuration, write_initial_configuration
 
 
 @pytest.fixture
@@ -97,11 +97,11 @@ def test_get_configuration(temp_config_dir):
     # Get the configuration
     config = get_configuration()
     
-    # Verify the configuration
-    assert config['api_key'] == 'test_api_key_456'
-    assert config['fdr'] == 0.15
-    assert config['ge_enrichment_rank_direction'] == -1
-    assert config['caller_identity'] == 'test.caller.com'
+    # Verify the configuration using attribute access
+    assert config.api_key == 'test_api_key_456'
+    assert config.fdr == 0.15
+    assert config.ge_enrichment_rank_direction == -1
+    assert config.caller_identity == 'test.caller.com'
 
 
 def test_get_configuration_missing_file(temp_config_dir):

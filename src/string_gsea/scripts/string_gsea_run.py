@@ -2,7 +2,7 @@ from cyclopts import App
 from pathlib import Path
 from loguru import logger
 
-from string_gsea.config import get_configuration
+from string_gsea.gsea_config import get_configuration
 from string_gsea.gsea_utilities import get_rank_files
 from string_gsea.get_species import get_species_taxon
 from string_gsea.string_gsea_builder import StringGSEABuilder
@@ -106,6 +106,6 @@ def test_run():
     )
 
 if __name__ == '__main__':
-    # test_run()
-    #else:
-    app()
+    test_run()
+    # else:
+    # app()

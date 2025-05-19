@@ -3,18 +3,18 @@ import yaml
 from pathlib import Path
 
 from string_gsea.gsea_session import GSEASession
-
+from string_gsea.gsea_config import GSEAConfig
 
 @pytest.fixture
 def sample_session(tmp_path):
     # Create a sample GSEASession with tuple keys
-    cfg = {
-        'current_date': '2025-05-15 10:00:00',
-        'api_key': 'test_key',
-        'fdr': 0.05,
-        'caller_identity': 'pytest',
-        'ge_enrichment_rank_direction': 1
-    }
+    cfg = GSEAConfig(
+        api_key='test_key',
+        fdr=0.05,
+        caller_identity='pytest',
+        ge_enrichment_rank_direction=1
+    )
+
     session = GSEASession(
         current_date='2025-05-15 10:00:00',
         workunit_id='WU_test',
@@ -29,15 +29,15 @@ def sample_session(tmp_path):
 
 def test_to_yaml_string(sample_session):
     yaml_str = sample_session.to_yaml()
-    data = yaml.safe_load(yaml_str)
+    data = sample_session.from_yaml(yaml_str)
 
     # Verify core fields
-    assert data['workunit_id'] == sample_session.workunit_id
-    assert data['species'] == sample_session.species
-    assert data['config_dict'] == sample_session.config_dict
+    assert data.workunit_id == sample_session.workunit_id
+    assert data.species == sample_session.species
+    assert data.config_dict == sample_session.config_dict
     # Serialized keys use 'outer~inner'
-    assert data['res_job_id'] == {'outer~inner': 'job123'}
-    assert data['res_data'] == {'outer~inner': {'status': 'success', 'page_url': 'http://example.com'}}
+    assert data.res_job_id == {("outer","inner"): 'job123'}
+    assert data.res_data == {("outer","inner"): {'status': 'success', 'page_url': 'http://example.com'}}
 
 
 def test_to_yaml_file(tmp_path, sample_session):

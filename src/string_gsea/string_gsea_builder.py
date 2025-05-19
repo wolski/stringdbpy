@@ -10,6 +10,8 @@ from string_gsea.get_species import OxFieldsZip
 from string_gsea.gsea_session import GSEASession
 from string_gsea.gsea_utilities import get_rank_files
 from string_gsea.string_gsea_results import StringGSEAResults
+from string_gsea.gsea_config import GSEAConfig
+from dataclasses import asdict
 
 class StringGSEABuilder:
     """
@@ -17,31 +19,23 @@ class StringGSEABuilder:
     constructing a results object, and serializing/deserializing the build state via YAML.
     """
 
-    VALID_CONFIG_KEYS = {'creation_date', 'api_key', 'ge_enrichment_rank_direction', 'fdr', 'caller_identity'}
-
     def __init__(
         self,
         rank_dataframes: dict,
-        config_dict: dict,
+        config: GSEAConfig,
         workunit_id: str = "12345",
         species: int = 9606,
         base_path: Path = Path('.')
     ):
-        # Validate config
-        if not config_dict:
-            raise ValueError("config_dict is None or empty")
-        for key, val in config_dict.items():
-            if key not in self.VALID_CONFIG_KEYS:
-                raise ValueError(f"Invalid configuration key: {key}")
-            if val is None or (isinstance(val, str) and not val):
-                raise ValueError(f"Configuration value for {key} is invalid: {val}")
+        if not config:
+            raise ValueError("config is None")
 
         # Initialize session data class
         self.session = GSEASession(
             current_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             workunit_id=workunit_id,
             species=species,
-            config_dict=config_dict,
+            config_dict=asdict(config),
             base_path=base_path,
             res_job_id={},
             res_data={}
@@ -137,14 +131,13 @@ class StringGSEABuilder:
         return path
 
 
-
 if __name__ == '__main__':
-    config_dict = {
-        'api_key': "b36F8oaRJwFZ",
-        'fdr': 0.25,
-        'caller_identity': "www.fgcz.ch",
-        'ge_enrichment_rank_direction': -1
-    }
+    config = GSEAConfig(
+        api_key="b36F8oaRJwFZ",
+        fdr=0.25,
+        caller_identity="www.fgcz.ch",
+        ge_enrichment_rank_direction=-1
+    )
     print("Current working directory:", os.getcwd())
     script_dir = Path(__file__).resolve().parent
     project_root = script_dir.parent.parent
@@ -159,7 +152,7 @@ if __name__ == '__main__':
 
     builder = StringGSEABuilder(
         rank_dataframes=dataframes,
-        config_dict=config_dict,
+        config=config,
         workunit_id=workunit_id,
         species=species,
         base_path=tempdir
