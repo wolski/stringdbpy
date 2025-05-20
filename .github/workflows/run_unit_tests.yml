@@ -14,6 +14,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.13
+            # ← Add it here, before you install or run anything that might need the config
+      - name: Write STRING-GSEA config
+        env:
+          CONFIG_TOML: ${{ secrets.CONFIG_TOML }}
+        run: |
+          mkdir -p ~/.config/string_gsea
+          # Dump the entire TOML blob from the secret into the right file
+          printf '%s\n' "$CONFIG_TOML" > ~/.config/string_gsea/config.toml
+
       - name: Install nox
         run: pip install nox uv
       - name: Run checks
