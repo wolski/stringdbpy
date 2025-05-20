@@ -35,7 +35,7 @@ class StringGSEABuilder:
             current_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             workunit_id=workunit_id,
             species=species,
-            config_dict=asdict(config),
+            config_dict=config,
             base_path=base_path,
             res_job_id={},
             res_data={}
@@ -48,11 +48,11 @@ class StringGSEABuilder:
         url = f"{base}/json/valuesranks_enrichment_submit"
         params = {
             "species": self.session.species,
-            "caller_identity": self.session.config_dict['caller_identity'],
+            "caller_identity": asdict(self.session.config_dict)['caller_identity'],
             "identifiers": rank_data,
-            "api_key": self.session.config_dict['api_key'],
-            "ge_fdr": self.session.config_dict['fdr'],
-            "ge_enrichment_rank_direction": self.session.config_dict['ge_enrichment_rank_direction'],
+            "api_key": asdict(self.session.config_dict)['api_key'],
+            "ge_fdr": asdict(self.session.config_dict)['fdr'],
+            "ge_enrichment_rank_direction" : asdict(self.session.config_dict)['ge_enrichment_rank_direction'],
         }
         resp = requests.post(url, data=params)
         resp.raise_for_status()
@@ -74,7 +74,7 @@ class StringGSEABuilder:
     def _poll_single(self, job_id: str, sleep_t: int = 10, max_time: int = 3600) -> dict:
         status_url = (
             self.session.end_point_status
-            + f"?api_key={self.session.config_dict['api_key']}&job_id={job_id}"
+            + f"?api_key={asdict(self.session.config_dict)['api_key']}&job_id={job_id}"
         )
         elapsed = 0
         while elapsed < max_time:

@@ -1,4 +1,4 @@
-current_date: '2025-05-18 17:46:08'
+current_date: '2025-05-20 17:06:00'
 workunit_id: abcd
 species: 9606
 config_dict:
@@ -7,26 +7,26 @@ config_dict:
   ge_enrichment_rank_direction: -1
   caller_identity: www.fgcz.ch
   creation_date: null
-base_path: /var/folders/5v/30q3lqxs6_b88gc005sg2t7c0000gn/T/tmpuop_0zuc
+base_path: /var/folders/5v/30q3lqxs6_b88gc005sg2t7c0000gn/T/tmpr43yx_as
 res_job_id:
-  from_rnk~Bait_NCP_pUbT12: bUo0yGmGTavL
-  from_rnk~Bait_NCP_pUbT12T14: bK54mxErbwC8
+  from_rnk~Bait_NCP_pUbT12: bHOkIJoM5X6S
+  from_rnk~Bait_NCP_pUbT12T14: b7t5sTWOeA1X
 res_data:
   from_rnk~Bait_NCP_pUbT12:
-    job_id: bUo0yGmGTavL
-    creation_time: '2025-05-18 15:46:09'
+    job_id: bHOkIJoM5X6S
+    creation_time: '2025-05-20 15:06:00'
     string_version: '12.0'
     status: success
     message: Job finished
-    page_url: https://version-12-0.string-db.org/cgi/globalenrichment?networkId=bzPqR6dsuJ5R
-    download_url: https://version-12-0.string-db.org/api/tsv/downloadenrichmentresults?networkId=bzPqR6dsuJ5R
-    graph_url: https://version-12-0.string-db.org/api/image/enrichmentfigure?networkId=bzPqR6dsuJ5R
+    page_url: https://version-12-0.string-db.org/cgi/globalenrichment?networkId=bG9uAkQnDgjt
+    download_url: https://version-12-0.string-db.org/api/tsv/downloadenrichmentresults?networkId=bG9uAkQnDgjt
+    graph_url: https://version-12-0.string-db.org/api/image/enrichmentfigure?networkId=bG9uAkQnDgjt
   from_rnk~Bait_NCP_pUbT12T14:
-    job_id: bK54mxErbwC8
-    creation_time: '2025-05-18 15:46:09'
+    job_id: b7t5sTWOeA1X
+    creation_time: '2025-05-20 15:06:01'
     string_version: '12.0'
     status: success
     message: Job finished
-    page_url: https://version-12-0.string-db.org/cgi/globalenrichment?networkId=bBnbLFnz52Yh
-    download_url: https://version-12-0.string-db.org/api/tsv/downloadenrichmentresults?networkId=bBnbLFnz52Yh
-    graph_url: https://version-12-0.string-db.org/api/image/enrichmentfigure?networkId=bBnbLFnz52Yh
+    page_url: https://version-12-0.string-db.org/cgi/globalenrichment?networkId=bsRXzo8uGVpT
+    download_url: https://version-12-0.string-db.org/api/tsv/downloadenrichmentresults?networkId=bsRXzo8uGVpT
+    graph_url: https://version-12-0.string-db.org/api/image/enrichmentfigure?networkId=bsRXzo8uGVpT

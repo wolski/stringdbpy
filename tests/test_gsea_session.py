@@ -64,9 +64,11 @@ def test_from_yaml_file(tmp_path, sample_session):
     loaded = GSEASession.from_yaml(yaml_input=yaml_file)
     assert loaded == sample_session
 
-
+#%%
 def test_endpoint_status():
     # Ensure the class attribute is set correctly
     assert hasattr(GSEASession, 'end_point_status')
     assert isinstance(GSEASession.end_point_status, str)
     assert 'valuesranks_enrichment_status' in GSEASession.end_point_status
+
+#%%

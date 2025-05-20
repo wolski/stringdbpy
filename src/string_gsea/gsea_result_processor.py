@@ -3,6 +3,7 @@ import polars as pl
 from pyexcelerate import Workbook
 from typing import Dict, List
 from loguru import logger
+import tempfile
 
 class GSEAResultProcessor:
     @staticmethod
@@ -108,6 +109,14 @@ class GSEAResultProcessor:
 
 if __name__ == '__main__':
     # Define the directory
-    w_directory = Path('./WU_234567_GSEA')
+    current_dir = Path(__file__).parent.parent.parent
+    w_directory = current_dir / 'tests' / 'data' / 'dummy_out'/'WU_abcd_GSEA'
+    # check if the directory exists
+    if not w_directory.exists():
+        raise FileNotFoundError(f"Directory {w_directory} does not exist")
+    # get proper temp directory
     GSEAResultProcessor.result_to_xlsx(w_directory, "234567")
-    print("done writing excel")
+        
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
+        print("done writing excel")
