@@ -12,7 +12,6 @@ def add_gene_ratio(df: pl.DataFrame) -> pl.DataFrame:
     return df.with_columns(
         (pl.col("genesMapped") / pl.col("genesInSet")).alias("geneRatio")
     )
-    return df
 
 
 def separate_pivot_longer(df: pl.DataFrame) -> pl.DataFrame:
