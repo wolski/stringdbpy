@@ -2,6 +2,7 @@ import polars as pl
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+import altair as alt
 import numpy as np
 
 def prepare_data_for_plotting(pdf:pd.DataFrame, label_length:int=40):
@@ -142,3 +143,81 @@ def dotplot_enrichment(xd_smart:pl.DataFrame):
     plt.tight_layout()
     
     plt.show()
+
+
+def altair_dotplot_enrichment(xd_smart: pl.DataFrame) -> alt.Chart:
+    """Return an Altair chart equivalent of :func:`dotplot_enrichment`.
+
+    Parameters
+    ----------
+    xd_smart:
+        Long-format Polars DataFrame with the same columns expected by
+        :func:`dotplot_enrichment`.
+
+    Returns
+    -------
+    alt.Chart
+        Interactive Altair scatter plot.
+    """
+
+    term_order_df = (
+        xd_smart
+        .group_by("termDescription")
+        .agg(pl.median("falseDiscoveryRate").alias("medianFDR"))
+        .sort("medianFDR")
+        .with_row_index(name="term_order")
+    )
+    xd_smart = xd_smart.join(
+        term_order_df.select(["termDescription", "term_order"]),
+        on="termDescription",
+        how="left",
+    )
+    xd_smart = xd_smart.sort("term_order")
+
+    pdf = xd_smart.to_pandas()
+    pdf, direction_colors = prepare_data_for_plotting(pdf)
+
+    chart_height = min(pdf["termDescription"].nunique() * 20, 1000)
+
+    direction_scale = alt.Scale(
+        domain=list(direction_colors.keys()),
+        range=list(direction_colors.values()),
+    )
+
+    chart = (
+        alt.Chart(pdf, height=chart_height, width=600)
+        .mark_circle(strokeWidth=2)
+        .encode(
+            x=alt.X("contrast:N", title="Contrast"),
+            y=alt.Y(
+                "termLabel:N",
+                sort=pdf["termLabel"].tolist(),
+                title="Gene Set Terms",
+            ),
+            size=alt.Size(
+                "geneRatio:Q",
+                legend=alt.Legend(title="Gene Ratio"),
+                scale=alt.Scale(range=[0, 500]),
+            ),
+            color=alt.Color(
+                "-log10FDR:Q",
+                scale=alt.Scale(scheme="redblue"),
+                legend=alt.Legend(title="-log10(FDR)"),
+            ),
+            stroke=alt.Color(
+                "direction:N",
+                scale=direction_scale,
+                legend=alt.Legend(title="Direction"),
+            ),
+            tooltip=[
+                "termID",
+                "termDescription",
+                "contrast",
+                "geneRatio",
+                "falseDiscoveryRate",
+                "direction",
+            ],
+        )
+    )
+
+    return chart
