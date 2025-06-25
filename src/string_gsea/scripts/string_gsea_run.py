@@ -49,7 +49,7 @@ def string_gsea_run(
     # 3) Build, write inputs, submit & poll
     builder = StringGSEABuilder(
         rank_dataframes=dataframes,
-        config_dict=config,
+        config=config,
         workunit_id=workunit_id,
         species=species,
         base_path=base_dir
@@ -106,6 +106,6 @@ def test_run():
     )
 
 if __name__ == '__main__':
-    test_run()
+    # test_run()
     # else:
-    # app()
+    app()

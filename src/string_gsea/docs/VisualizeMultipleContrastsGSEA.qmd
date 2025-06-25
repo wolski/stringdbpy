@@ -11,10 +11,11 @@ jupyter: python3
 params:
   data_file: null    # or "~"
   links_file: null
+  FDR_threshold: 0.05
+  genes_mapped_threshold: 10
 execute:
   echo: true
 ---
-
 
 
 ```{python}
@@ -24,6 +25,8 @@ execute:
 # declare the parameter (default None)
 data_file: str  = None
 links_file: str  = None
+FDR_threshold: float = 0.05
+genes_mapped_threshold: int = 10
 ```
 
 ```{python}
@@ -41,8 +44,9 @@ from IPython.display import Markdown, display
 # Local imports
 from string_gsea.network import (
     summarize_terms,
-    separate_pivot_longer,
-    add_gene_ratio
+    explode_protein_columns,
+    add_gene_ratio,
+    filter_by_FDR
 )
 from string_gsea.gsea_plotting import make_upset_contrasts_terms
 from string_gsea.dotplot_endrichment import dotplot_enrichment
@@ -76,9 +80,9 @@ if data_file is None:
 else:
     file_data = Path(data_file)
     file_links = Path(links_file)
+    FDR_threshold = FDR_threshold
+    genes_mapped_threshold = genes_mapped_threshold
 
-print("Using file:", file_data, "\n")
-print("Using links file:", file_links, "\n")
 
 # Read Excel and convert to Polars
 # Read Excel file directly with polars
@@ -105,8 +109,9 @@ print(str(file_links) + "\n")
 ```{python}
 #| vscode: {languageId: python}
 #| include: false
+df = filter_by_FDR(df, FDR_threshold, genes_mapped_threshold)
 df = add_gene_ratio(df)
-xd = separate_pivot_longer(df)
+xd = explode_protein_columns(df)
 xd = summarize_terms(xd)
 
 # Sort the category list alphabetically

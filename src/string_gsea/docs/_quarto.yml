@@ -5,6 +5,7 @@ project:
     - "!**/*.ipynb"
     - "!python_notebooks/"
 
+
 website:
   title: "stringdbpy Network Visualizations"
   navbar:

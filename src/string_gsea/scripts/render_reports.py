@@ -4,13 +4,19 @@ from cyclopts import App
 from loguru import logger
 import importlib.resources
 import shlex
+import shutil
 
 
 app = App(
     help="Render Quarto reports in the package's docs/ directory, passing input_dir as a data_file param."
 )
 
-def execute_quarto_command(docs_path, output_dir, xlsx_file, links_file):
+def execute_quarto_command(docs_path,
+ output_dir,
+ xlsx_file,
+ links_file,
+ FDR_threshold: float = 0.05,
+ genes_mapped_threshold: int = 10):
     """
     Build and execute the quarto command with the given parameters.
     
@@ -26,7 +32,9 @@ def execute_quarto_command(docs_path, output_dir, xlsx_file, links_file):
         "--to", "html",
         "--output-dir", str(output_dir),
         "-P", f"data_file:{xlsx_file}",
-        "-P", f"links_file:{links_file}"
+        "-P", f"links_file:{links_file}",
+        "-P", f"FDR_threshold:{FDR_threshold}",
+        "-P", f"genes_mapped_threshold:{genes_mapped_threshold}"
     ]
     
     logger.info(f"Running command: {shlex.join(cmd)}")
@@ -48,7 +56,10 @@ def execute_quarto_command(docs_path, output_dir, xlsx_file, links_file):
         raise
 
 @app.default()
-def render_quarto_docs(data_dir: Path, output_dir: Path | None = None):
+def render_quarto_docs(data_dir: Path,
+ output_dir: Path | None = None,
+ FDR_threshold: float = 0.05,
+ genes_mapped_threshold: int = 10):
     """
     Render Quarto reports using data from the specified directory.
     
@@ -74,7 +85,11 @@ def render_quarto_docs(data_dir: Path, output_dir: Path | None = None):
     with importlib.resources.path("string_gsea", "docs") as docs_path:
         if not (docs_path / "_quarto.yml").exists():
             raise FileNotFoundError(f"Missing _quarto.yml in: {docs_path}")
-
+        # Copy .qmd and .yaml files to output directory
+        for file in docs_path.glob("*.qmd"):
+            shutil.copy2(file, output_dir)
+        for file in docs_path.glob("*.yml"):
+            shutil.copy2(file, output_dir)
         # Find data files
         xlsx_files = sorted(data_dir.glob("**/*_string_gsea_results_long.xlsx"))
         links_files = sorted(data_dir.glob("**/*links.txt"))
@@ -87,10 +102,12 @@ def render_quarto_docs(data_dir: Path, output_dir: Path | None = None):
 
         # Execute quarto command with the appropriate files
         execute_quarto_command(
-            docs_path=docs_path,
+            docs_path=output_dir,
             output_dir=output_dir,
             xlsx_file=xlsx_files[0],
-            links_file=links_files[0]
+            links_file=links_files[0],
+            FDR_threshold=FDR_threshold,
+            genes_mapped_threshold=genes_mapped_threshold
         )
 
 

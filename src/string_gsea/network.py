@@ -7,6 +7,14 @@ import plotly.graph_objs as go
 import matplotlib.pyplot as plt
 import networkx as nx
 
+def filter_by_FDR(xd: pl.DataFrame,
+ FDR_threshold: float = 0.05,
+ genes_mapped_threshold: int = 10) -> pl.DataFrame:
+    return xd.filter(
+        (pl.col("falseDiscoveryRate") < FDR_threshold) &
+        (pl.col("genesMapped") > genes_mapped_threshold)
+    )
+
 
 def add_gene_ratio(df: pl.DataFrame) -> pl.DataFrame:
     return df.with_columns(
@@ -15,7 +23,26 @@ def add_gene_ratio(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def separate_pivot_longer(df: pl.DataFrame) -> pl.DataFrame:
+#def explode_protein_columns(df: pl.DataFrame) -> pl.DataFrame:
+    # Rename function to be more descriptive
+def explode_protein_columns(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Separate protein columns that contain comma-separated values into individual rows.
+
+    This function takes a DataFrame with protein-related columns containing comma-separated values
+    and splits them into separate rows, with one protein per row. The affected columns are:
+    - proteinIDs
+    - proteinLabels  
+    - proteinInputLabels
+    - proteinInputValues
+    - proteinRanks
+
+    Args:
+        df (pl.DataFrame): Input DataFrame with comma-separated protein columns
+
+    Returns:
+        pl.DataFrame: DataFrame with protein data split into separate rows
+    """
     xd = (
         df
         # 1) split into list-columns, replacing the originals

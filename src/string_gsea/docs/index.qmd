@@ -3,6 +3,8 @@ title: "Visualizing string-db GSEA results"
 params:
   data_file: null    # or "~"
   links_file: null
+  FDR_threshold: 0.05
+  genes_mapped_threshold: 10
 ---
 
 ```{python}
@@ -12,7 +14,10 @@ params:
 # declare the parameter (default None)
 data_file: str  = None
 links_file: str  = None
+
 ```
+
+
 ```{python}
 #| vscode: {languageId: python}
 #| include: false
@@ -29,22 +34,47 @@ if data_file is None:
 else:
     file_data = Path(data_file)
     file_links = Path(links_file)
-
+    FDR_threshold = FDR_threshold
+    genes_mapped_threshold = genes_mapped_threshold
 ```
 
-The input file used is:
+
+```{python}
+#| vscode: {languageId: python}
+#| include: false
+import os
+from pathlib import Path
+
+data_file = Path(data_file)
+links_file = Path(links_file)
+output_dir = Path.cwd()
+
+
+data_file_rel = os.path.relpath(data_file, output_dir)
+links_file_rel = os.path.relpath(links_file, output_dir)
+session_file = Path(data_file_rel).parent.parent/"gsea_session.yml"
+```
+
+The parameters used to render this report are:
 
 ```{python}
 #| echo: false
 #| output: asis
-print(str(file_data) + "\n")
-print(str(file_links) + "\n")
+
+Markdown(f"""
+- FDR threshold: {FDR_threshold}
+- Genes mapped threshold: {genes_mapped_threshold}
+- [Data file with enrchiment results]({data_file_rel})
+- [Links file with STRING-db links]({links_file_rel})
+- [Session file]({session_file})
+""")
+
 ```
 
+## Visualization of enrichment results
 
-
-- [Visualize Networks](VisualizeNetworks.qmd)
-- [Compare Contrasts](VisualizeMultipleContrastsGSEA.qmd)
+- [EACH contrast](VisualizeNetworks.qmd)
+- [ALL contrast](VisualizeMultipleContrastsGSEA.qmd)
 
 
 

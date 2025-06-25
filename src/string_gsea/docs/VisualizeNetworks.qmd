@@ -12,6 +12,8 @@ jupyter: python3
 params:
   data_file: null    # or "~"
   links_file: null
+  FDR_threshold: 0.05
+  genes_mapped_threshold: 10
 execute:
   echo: true
 ---
@@ -24,6 +26,8 @@ execute:
 # declare the parameter (default None)
 data_file: str = None
 links_file: str = None
+FDR_threshold: float = None
+
 ```
 
 ```{python}
@@ -36,13 +40,15 @@ from pathlib import Path
 import polars as pl
 import matplotlib.pyplot as plt
 import seaborn as sns
-from IPython.display import Markdown, display
-
+from IPython.display import Markdown, display, HTML
+import re
+    
 # Local imports
 from string_gsea.network import (
-    separate_pivot_longer,
+    explode_protein_columns,
     summarize_terms,
-    add_gene_ratio
+    add_gene_ratio,
+    filter_by_FDR
 )
 from string_gsea.cluster_genesets import (
     make_nested_dict,
@@ -51,6 +57,13 @@ from string_gsea.cluster_genesets import (
 )
 from string_gsea.gsea_plotting import make_upset, plot_term_ridges
 from string_gsea import TermNetworkPlotter
+
+def pandoc_anchor(text):
+    anchor = text.strip().lower()
+    anchor = re.sub(r'[^\w\s-]', '', anchor)
+    anchor = anchor.replace(' ', '-').replace('_', '-')
+    return anchor
+
 ```
 
 ```{python}
@@ -68,13 +81,14 @@ print(Path(wd))
 
 if data_file is None:
     # fallback, or raise, or skip
-    file_data = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"WUabcd_string_gsea_results_long.xlsx"
-    file_links = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"links.txt"
+    file_data = "/Users/witoldwolski/__checkout/stringdbpy/tests/marshli/2881871.res/WU_1234_GSEA/pep_2_no_imputed/WU1234_string_gsea_results_long.xlsx"
+    file_links = "/Users/witoldwolski/__checkout/stringdbpy/tests/marshli/2881871.res/WU_1234_GSEA/pep_2_no_imputed/links.txt"
 else:
     file_data = Path(data_file)
     file_links = Path(links_file)
-print("Using file:", file_data, "\n")
-print("Using links file:", file_links, "\n")
+    FDR_threshold = FDR_threshold
+    genes_mapped_threshold = genes_mapped_threshold
+
 
 # Read Excel and convert to Polars
 # Read Excel file directly with polars
@@ -90,22 +104,16 @@ with open(file_links, "r") as f:
 ```
 
 
-The imported file is:
-
-```{python}
-#| echo: false
-#| output: asis
-
-print(str(file_data))
-```
-
 
 ```{python}
 #| vscode: {languageId: python}
 #| include: false
+#| echo: false
+df = filter_by_FDR(df, FDR_threshold, genes_mapped_threshold)
 df = add_gene_ratio(df)
-xd = separate_pivot_longer(df)
+xd = explode_protein_columns(df)
 xd = summarize_terms(xd)
+nested = make_nested_dict(xd)
 
 ```
 
@@ -117,7 +125,7 @@ xd = summarize_terms(xd)
 
 #pdf = xd.select(['contrast','proteinRanks','proteinInputValues']).to_pandas()
 
-g = sns.FacetGrid(xd, col='contrast', col_wrap=3, sharex=False, sharey=False)
+g = sns.FacetGrid(xd, col='contrast', col_wrap=4, sharex=False, sharey=False)
 g.map_dataframe(sns.scatterplot, x='proteinRanks', y='proteinInputValues')
 g.set_axis_labels('proteinRanks', 'proteinInputValues')
 for ax in g.axes.flatten():
@@ -130,17 +138,46 @@ plt.show()
 
 
 ```{python}
-#| vscode: {languageId: python}
 #| include: false
-nested = make_nested_dict(xd)
-cont = "Bait_NCP_pUbT12T14_results.tsv"
-cat = "SMART"
-fc = nested[cont][cat]
+#| eval: false
+if False:
+    
+    cont = "Bait_NCP_pUbT12T14_results.tsv"
+    cat = "SMART"
+    fc = nested[cont][cat]
 
-g = plot_term_distance_heatmap(fc)
-plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
-plt.show()
+    g = plot_term_distance_heatmap(fc)
+    plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
+    plt.show()
             
+```
+
+
+
+## Table of Contents
+
+```{python}
+#| vscode: {languageId: python}
+#| echo: false
+contrast_list =  sorted(xd.get_column("contrast").unique().to_list())
+
+toc_html = "<ul>"
+for cont in contrast_list:
+    anchor = pandoc_anchor(cont)
+    toc_html += f'<li><a href="#{anchor}">{cont}</a></li>'
+toc_html += "</ul>"
+
+display(HTML(toc_html))
+
+```
+
+```{python}
+#| vscode: {languageId: python}
+#| echo: false
+# print the categories
+categories =  sorted(xd.get_column("category").unique().to_list())
+category_str = ", ".join(str(c) for c in categories)
+display(Markdown(f"**Categories:** {category_str}"))
 ```
 
 
@@ -150,24 +187,6 @@ For each of the contrasts and each of the gene set categories we show four plots
 2. Heatmap plot
 3. Upset plot
 4. Ridgeline plot
-
-```{python}
-#| vscode: {languageId: python}
-#| echo: false
-# print the contrasts
-contrasts = xd.get_column("contrast").unique().to_list()
-contrast_str = ", ".join(str(c) for c in contrasts)
-display(Markdown(f"**Contrasts:** {contrast_str}"))
-```
-```{python}
-#| vscode: {languageId: python}
-#| echo: false
-# print the categories
-categories = xd.get_column("category").unique().to_list()
-category_str = ", ".join(str(c) for c in categories)
-display(Markdown(f"**Categories:** {category_str}"))
-```
-
 
 
 
@@ -185,7 +204,8 @@ category_list = sorted(xd.get_column("category").unique().to_list())
 
 for cont in contrast_list:
     # make this a tab‐set
-    display(Markdown(f"## Contrast: {cont}\n"))
+    anchor = pandoc_anchor(cont)
+    display(HTML(f'<h2 id="{anchor}">Contrast: {cont}</h2>\n'))
 
     # show the enrichment URL for this contrast, if present
     url = link_map.get(cont.removesuffix("_results.tsv"))
@@ -236,6 +256,5 @@ for cont in contrast_list:
 #| vscode: {languageId: python}
 #| include: false
 print("hellos")
-
 
 ```
