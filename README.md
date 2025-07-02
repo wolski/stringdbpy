@@ -153,7 +153,8 @@ string_gsea_run "./data/experiment.zip" "exp001" "./results" --which "pep_1"
 Create interactive HTML reports from analysis results:
 
 ```bash
-render_reports --help
+string_gsea_run --help
+string_gsea_render_reports --help
 ```
 
 #### Basic Usage
