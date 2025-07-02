@@ -75,13 +75,23 @@ print(Path(wd))
 
 if data_file is None:
     # fallback, or raise, or skip
-    file_data  = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"WUabcd_string_gsea_results_long.xlsx"
-    file_links = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"links.txt"
+    #file_data  = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"WUabcd_string_gsea_results_long.xlsx"
+    #file_links = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"links.txt"
+    file_data  = Path(wd).parent.parent.parent/"tests/marshli/o38224/DEA_dataset_KD_vs_Scr_Peptide/WU_DEA_dataset_KD_vs_Scr_Peptide_GSEA/pep_2_no_imputed"/"WUDEA_dataset_KD_vs_Scr_Peptide_string_gsea_results_long.xlsx"
+    file_links = Path(wd).parent.parent.parent/"tests/marshli/o38224/DEA_dataset_KD_vs_Scr_Peptide/WU_DEA_dataset_KD_vs_Scr_Peptide_GSEA/pep_2_no_imputed"/"links.txt"
+
+
 else:
     file_data = Path(data_file)
     file_links = Path(links_file)
     FDR_threshold = FDR_threshold
     genes_mapped_threshold = genes_mapped_threshold
+
+# Check that file_data exists and is readable
+if not file_data.exists():
+    raise FileNotFoundError(f"Data file not found: {file_data}")
+if not file_links.exists():
+    raise FileNotFoundError(f"Links file not found: {file_links}")
 
 
 # Read Excel and convert to Polars
@@ -90,18 +100,6 @@ df = pl.read_excel(file_data)
 # Select and explode protein columns
 ```
 
-
-# Comparing GSEA results for multiple contrasts
-
-The imported file is:
-
-```{python}
-#| echo: false
-#| output: asis
-
-print(str(file_data) + "\n")
-print(str(file_links) + "\n")
-```
 
 
 # Gene Set Categories
@@ -118,6 +116,17 @@ xd = summarize_terms(xd)
 category_list = sorted(xd.get_column("category").unique().to_list())
 ```
 
+```{python}
+#| vscode: {languageId: python}
+#| include: false
+
+# Get a single category for debugging
+cat = category_list[0]
+print(f"Debugging with category: {cat}")
+xd_debug = xd.filter(pl.col("category") == "Monarch")
+make_upset_contrasts_terms(xd_debug, category=cat)
+
+```
 
 ```{python}
 #| vscode: {languageId: python}
@@ -133,7 +142,7 @@ for cat in category_list:
     display(Markdown(f"## Cat.: {cat}\n"))
 
     xdf = xd.filter((pl.col("category") == cat))
-    if xdf.is_empty():
+    if xdf.is_empty() or xdf["contrast"].n_unique() < 2:
         display(Markdown("_No data for this category_"))
     else:
         display(Markdown("### Upset plot"))

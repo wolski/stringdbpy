@@ -1,0 +1,206 @@
+@startuml GSEA_Results_Normalized_ER
+
+!define table(x) class x << (T,#FFAAAA) >>
+!define primary_key(x) <u>x</u>
+!define foreign_key(x) <i>x</i>
+!define composite_key(x,y) <u>x,y</u>
+
+title GSEA Results Dataframes - Normalized Entity Relationship Diagram
+
+' Normalized Terms Table
+table(Terms) {
+  composite_key(category, termID) : String
+  --
+  termDescription : String
+  num_contrasts : Integer
+  --
+  <b>Composite PK:</b> (category, termID)
+}
+
+' Normalized Term Results Table
+table(Term_Results) {
+  primary_key(contrast) : String
+  composite_key(category,termID) : String
+  --
+  genesMapped : Integer
+  genesInSet : Integer
+  enrichmentScore : Float
+  direction : String
+  directionNR : Integer
+  falseDiscoveryRate : Float
+  method : String
+}
+
+' Normalized Proteins Table
+table(Proteins) {
+  primary_key(proteinID) : String
+  --
+  proteinLabel : String
+  proteinInputLabel : String
+}
+
+' Normalized Term-Protein Associations Table
+table(Contrast_Term_Protein_Associations) {
+  primary_key(contrast) : String
+  composite_key(category,termID) : String
+  primary_key(proteinID) : String
+}
+
+' Normalized Protein Input Values Table
+table(Contrast_Protein_Input_Values_DEA) {
+  primary_key(proteinID) : String
+  primary_key(contrast) : String
+  --
+  nr_of_peptides : Integer
+  model_name : String
+  log2FoldChange : Float
+  pValue : Float
+  qValue : Float
+  meanOfContrast : Float
+  stdOfContrast : Float
+  tStatistic : Float
+}
+
+
+' Normalized Protein Input Values Table
+table(Contrast_Protein_Rank_Values) {
+  primary_key(proteinID) : String
+  primary_key(contrast) : String
+  --
+  proteinInputValue : Float
+  proteinRank : Integer
+}
+
+' Pivoted Results Table (Wide Format) - Unchanged
+table(Pivoted_Results_Wide) {
+  primary_key(category) : String
+  primary_key(termID) : String
+  termDescription : String
+  num_contrasts : Integer
+  --
+  enrichmentScore_<contrast> : Float
+  genesInSet_<contrast> : Integer
+  genesMapped_<contrast> : Integer
+  directionNR_<contrast> : Integer
+  falseDiscoveryRate_<contrast> : Float
+}
+
+' Term Within Contrast Overlaps Table
+table(Term_Within_Contrast_Overlaps) {
+  composite_key(category, termID_a) : String
+  composite_key(category, termID_b) : String
+  primary_key(contrast) : String
+  --
+  nr_shared_proteins : Integer
+}
+
+' Term Cross Contrast Overlaps Table
+table(Term_Cross_Contrast_Overlaps) {
+  composite_key(category, termID_a) : String
+  composite_key(category, termID_b) : String
+  primary_key(contrast_a) : String
+  primary_key(contrast_b) : String
+  --
+  nr_shared_proteins : Integer
+}
+
+' Relationships
+Terms ||--o{ Term_Results : "term results"
+Terms ||--o{ Contrast_Term_Protein_Associations : "protein associations"
+Proteins ||--o{ Contrast_Term_Protein_Associations : "term associations"
+Term_Results ||--o{ Contrast_Term_Protein_Associations : "protein details"
+
+Contrast_Protein_Input_Values_DEA ||--o{ Contrast_Protein_Rank_Values : "rank values"
+Contrast_Term_Protein_Associations ||--o{ Contrast_Protein_Input_Values_DEA : "input values"
+Contrast_Term_Protein_Associations ||--o{ Contrast_Protein_Rank_Values : "rank values"
+
+' Denormalized Views (for compatibility)
+Terms ||--o{ Pivoted_Results_Wide : "pivots by contrast"
+
+' Notes
+note top of Terms
+  Normalized terms table
+  One row per unique term
+  Eliminates term description redundancy
+  num_contrasts: computed field
+  <b>Composite PK:</b> (category, termID)
+end note
+
+note top of Term_Results
+  Term-level results per contrast
+  No protein information
+  Links to Terms table
+  <b>Composite PK:</b> (contrast, category, termID)
+end note
+
+note top of Proteins
+  Normalized proteins table
+  One row per unique protein
+  Eliminates protein label redundancy
+  <b>Simple PK:</b> proteinID
+end note
+
+note top of Contrast_Term_Protein_Associations
+  Junction table for many-to-many
+  One row per protein-term-contrast
+  Atomic protein values (no comma-separated)
+  Links Terms, Proteins, and Term_Results
+  <b>Composite PK:</b> (contrast, category, termID, proteinID)
+end note
+
+note top of Pivoted_Results_Wide
+  Denormalized view for analysis
+  Created by joining normalized tables
+  Wide format for cross-contrast comparison
+  <b>Composite PK:</b> (category, termID)
+end note
+
+note top of Term_Within_Contrast_Overlaps
+  Protein overlaps within same contrast
+  One row per term pair per contrast
+  <b>Composite PK:</b> (category, termID_a, category, termID_b, contrast)
+  <b>Examples:</b>
+  • GO Process | GO:0006364 | GO:0016072 | Bait_NCP_pUbT12T14_results | 170
+  • GO Process | GO:0006364 | GO:0042273 | Bait_NCP_pUbT12T14_results | 64
+  • SMART | SM00001 | SM00002 | Bait_NCP_pUbT12_results | 45
+end note
+
+' Data Flow Notes
+note right of Terms
+  <b>Normalization Benefits:</b>
+  • Eliminates term description redundancy
+  • Atomic protein values
+  • Referential integrity
+  • Easier queries and joins
+  • Data consistency
+end note
+
+note right of Contrast_Term_Protein_Associations
+  <b>Junction Table Benefits:</b>
+  • Many-to-many relationships
+  • No comma-separated values
+  • Atomic protein input values
+  • Proper normalization
+end note
+
+note bottom of Terms
+  <b>Composite Key Examples:</b>
+  • ("GO Process", "GO:0006364")
+  • ("SMART", "SM00001")
+  • ("KEGG", "hsa00010")
+end note
+
+note top of Contrast_Protein_Input_Values_DEA
+    This is taken from the DEA analysis
+end note
+
+note top of Contrast_Protein_Rank_Values
+    This is returned from the GSEA analysis
+end note
+
+Terms ||--o{ Term_Within_Contrast_Overlaps : "term_a overlaps"
+Terms ||--o{ Term_Within_Contrast_Overlaps : "term_b overlaps"
+Terms ||--o{ Term_Cross_Contrast_Overlaps : "term_a overlaps"
+Terms ||--o{ Term_Cross_Contrast_Overlaps : "term_b overlaps"
+
+@enduml 

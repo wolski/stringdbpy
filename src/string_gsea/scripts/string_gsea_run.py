@@ -1,6 +1,7 @@
 from cyclopts import App
 from pathlib import Path
 from loguru import logger
+from typing import Literal
 
 from string_gsea.gsea_config import get_configuration
 from string_gsea.gsea_utilities import get_rank_files
@@ -12,13 +13,17 @@ from string_gsea.ranks_from_dea_xlsx import DiffXLSX
 
 app = App()
 
+
+
+
 @app.default()
 def string_gsea_run(
     zip_path: str,
     workunit_id: str,
     out_dir: str = ".",
     from_rnk: bool = False,
-    which: str = "pep_2_no_imputed"
+    which: Literal["pep_1", "pep_1_no_imputed", "pep_2", "pep_2_no_imputed"] = "pep_2_no_imputed",
+    zip: bool = False
 ):
     """
     Run STRING GSEA analysis on the provided zip file.
@@ -35,7 +40,8 @@ def string_gsea_run(
     # 1) Get configuration from config file
     config = get_configuration()
     base_dir.mkdir(exist_ok=True)
-    
+    if not zip_path.exists():
+        raise FileNotFoundError(f"Zip file not found: {zip_path}")
     # 2) Get species and rank data
     species = get_species_taxon(zip_path)
 
@@ -78,8 +84,9 @@ def string_gsea_run(
 
     # 5) Post‑processing
     GSEAResultProcessor.result_to_xlsx(tsv_dir, workunit_id)
-    path = StringGSEAResults.zip_folder(results.get_res_path())
-    logger.info(f"Zipped results to {path}")
+    if zip:
+        path = StringGSEAResults.zip_folder(results.get_res_path())
+        logger.info(f"Zipped results to {path}")
 
 def test_run():
     # Test code

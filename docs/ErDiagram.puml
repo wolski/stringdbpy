@@ -1,0 +1,153 @@
+@startuml GSEA_Results_Dataframes_ER
+
+!define table(x) class x << (T,#FFAAAA) >>
+!define primary_key(x) <u>x</u>
+!define foreign_key(x) <i>x</i>
+
+title GSEA Results Dataframes - Entity Relationship Diagram
+
+' Main GSEA Results Table (from .tsv files)
+table(Combined_Results_Long) {
+  primary_key(contrast) : String
+  primary_key(category) : String
+  primary_key(termID) : String
+  --
+  termDescription : String
+  genesMapped : Integer
+  genesInSet : Integer
+  enrichmentScore : Float
+  direction : String
+  falseDiscoveryRate : Float
+  method : String
+  proteinIDs : String
+  proteinLabels : String
+  proteinInputLabels : String
+  proteinInputValues : String
+  proteinRanks : String
+}
+
+class "num_contrasts Calculation" {
+  group_by: ["category", "termID"]
+  aggregate: count("contrast")
+}
+
+' Pivoted Results Table (Wide Format)
+table(Pivoted_Results_Wide) {
+  primary_key(category) : String
+  primary_key(termID) : String
+  termDescription : String
+  num_contrasts : Integer
+  --
+  enrichmentScore_<contrast> : Float
+  genesInSet_<contrast> : Integer
+  genesMapped_<contrast> : Integer
+  directionNR_<contrast> : Integer
+  falseDiscoveryRate_<contrast> : Float
+}
+
+' Exploded Protein Table (Network Analysis)
+table(Exploded_Protein_Data) {
+  primary_key(contrast) : String
+  primary_key(category) : String
+  primary_key(termID) : String
+  primary_key(proteinIDs) : String
+  --
+  proteinLabels : String
+  proteinInputLabels : String
+  proteinInputValues : Float
+  proteinRanks : Float
+}
+
+' Summarized Terms Table (Filtered for Network)
+table(Summarized_Terms_Data) {
+  primary_key(contrast) : String
+  primary_key(category) : String
+  primary_key(termID) : String
+  termDescription : String
+  genesMapped : Integer
+  genesInSet : Integer
+  enrichmentScore : Float
+  direction : String
+  directionNR : Integer
+  falseDiscoveryRate : Float
+  method : String
+  primary_key(proteinIDs) : String
+  primary_key(proteinLabels) : String
+  proteinInputLabels : String
+  proteinInputValues : Float
+  proteinRanks : Float
+  num_contrasts : Integer
+  meanInputValues : Float
+}
+
+' Network Nodes Table
+table(Network_Nodes) {
+  primary_key(name) : String
+  nodeType : String
+  falseDiscoveryRate : Float
+  meanInputValues : Float
+  proteinInputValues : Float
+  direction : String
+  termDescription : String
+  size : Float
+  color : String
+}
+
+' Network Edges Table
+table(Network_Edges) {
+  primary_key(from) : String
+  primary_key(to) : String
+}
+
+' Relationships
+GSEA_Results_TSV ||--o{ Combined_Results_Long : "adds contrast"
+Combined_Results_Long ||--o{ Pivoted_Results_Wide : "pivots by contrast"
+Combined_Results_Long ||--o{ Exploded_Protein_Data : "explodes proteins"
+Exploded_Protein_Data ||--o{ Summarized_Terms_Data : "filters & summarizes"
+Summarized_Terms_Data ||--o{ Network_Nodes : "creates nodes"
+Summarized_Terms_Data ||--o{ Network_Edges : "creates edges"
+
+' Notes
+note top of GSEA_Results_TSV
+  Raw GSEA results from STRING-db API
+  One table per constrast
+end note
+
+note top of Combined_Results_Long
+  Long format with contrast column
+  Multiple contrasts combined
+  Added directionNR and num_contrasts
+end note
+
+note top of Pivoted_Results_Wide
+  Wide format for comparison
+  One row per term across all contrasts
+  Separate columns for each contrast
+end note
+
+note top of Exploded_Protein_Data
+  One row per protein-term combination
+  Protein data split into individual rows
+  Numeric conversion of protein values
+end note
+
+note top of Summarized_Terms_Data
+  Filtered: FDR < 0.05, genesMapped > 10
+  Added meanInputValues per term
+  Ready for network analysis
+end note
+
+note top of Network_Nodes
+  Both term and protein nodes
+  Term nodes: FDR, meanInputValues
+  Protein nodes: proteinInputValues
+  Added size and color attributes
+end note
+
+note top of Network_Edges
+  Bipartite graph edges
+  From term nodes to protein nodes
+  Represents protein-term associations
+end note
+
+@enduml 

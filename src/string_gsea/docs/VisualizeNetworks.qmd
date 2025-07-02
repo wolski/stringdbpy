@@ -81,8 +81,11 @@ print(Path(wd))
 
 if data_file is None:
     # fallback, or raise, or skip
-    file_data = "/Users/witoldwolski/__checkout/stringdbpy/tests/marshli/2881871.res/WU_1234_GSEA/pep_2_no_imputed/WU1234_string_gsea_results_long.xlsx"
-    file_links = "/Users/witoldwolski/__checkout/stringdbpy/tests/marshli/2881871.res/WU_1234_GSEA/pep_2_no_imputed/links.txt"
+    file_data = "/Users/witoldwolski/__checkout/stringdbpy/tests/marshli/o38224/DEA_dataset_KD_vs_Scr_Peptide/WU_DEA_dataset_KD_vs_Scr_Peptide_GSEA/pep_2_no_imputed/WUDEA_dataset_KD_vs_Scr_Peptide_string_gsea_results_long.xlsx"
+    
+    file_links = "/Users/witoldwolski/__checkout/stringdbpy/tests/marshli/o38224/DEA_dataset_KD_vs_Scr_Peptide/WU_DEA_dataset_KD_vs_Scr_Peptide_GSEA/pep_2_no_imputed/links.txt"
+    genes_mapped_threshold = 10
+    FDR_threshold = 0.05
 else:
     file_data = Path(data_file)
     file_links = Path(links_file)
@@ -142,8 +145,8 @@ plt.show()
 #| eval: false
 if False:
     
-    cont = "Bait_NCP_pUbT12T14_results.tsv"
-    cat = "SMART"
+    cont = "KD_vs_Scr_gv_Treatment_results.tsv"
+    cat = "GO Process"
     fc = nested[cont][cat]
 
     g = plot_term_distance_heatmap(fc)
@@ -228,21 +231,29 @@ for cont in contrast_list:
             display(Markdown(TermNetworkPlotter.TermNetworkPlotter.get_figure_legend(category=cat, thresh=1)))
             display(Markdown("\n"))
             one_nested = nested[cont][cat]
-            g = plot_term_distance_heatmap(one_nested)
-            plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
-            plt.show()
-            display(Markdown("""\nHeatmap showing term and protein distances, using Jaccard index.
-            Each row represents a protein, and each column represents a term.
-            The color of the cell represents the protein input value (log2FC, t-statistic, etc.).\n"""))
-            binary = convert_to_binary(one_nested, to_boolean=True)
-            upset = make_upset(binary, xdf)
-            axes = upset.plot()
-            plt.show()
-            display(Markdown(f"\n\n"))
-            display(Markdown("""Upset plot showing the overlap of terms and proteins.
-            On the left you see the term size (number of proteins matching the term).
-            On the top you see the number of proteins unique to a term, or a combination of terms."""))
-            display(Markdown(f"\n\n"))
+            
+            # Check if we have enough terms for heatmap (need at least 2)
+            num_terms = len(one_nested.columns) - 1  # subtract 1 for proteinLabels column
+            if num_terms < 2:
+                display(Markdown(f"_Heatmap skipped: Only {num_terms} term(s) found. Clustering requires at least 2 terms to compute distances._"))
+            else:
+                g = plot_term_distance_heatmap(one_nested)
+                plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
+                plt.show()
+                display(Markdown("""\nHeatmap showing term and protein distances, using Jaccard index.
+                Each row represents a protein, and each column represents a term.
+                The color of the cell represents the protein input value (log2FC, t-statistic, etc.).\n"""))
+            
+                binary = convert_to_binary(one_nested, to_boolean=True)
+                upset = make_upset(binary, xdf)
+                axes = upset.plot()
+                plt.show()
+                display(Markdown(f"\n\n"))
+                display(Markdown("""Upset plot showing the overlap of terms and proteins.
+                On the left you see the term size (number of proteins matching the term).
+                On the top you see the number of proteins unique to a term, or a combination of terms."""))
+                display(Markdown(f"\n\n"))
+            
             g = plot_term_ridges(xdf)
             plt.show(g.figure)
             display(Markdown("""\nRidgeline plot showing the distribution of protein input values (log2FC, t-statistic, etc.) for each term.

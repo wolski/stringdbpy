@@ -184,12 +184,22 @@ def make_upset_contrasts_terms(xd:pl.DataFrame, category:str="SMART"):
         .unique()
     )
 
+    # Check if we have multiple contrasts
+    unique_contrasts = xd_s_smart.get_column("contrast").unique()
+    if len(unique_contrasts) < 2:
+        print(f"Upset plot skipped: Only {len(unique_contrasts)} contrast(s) found for category '{category}'. Upset plots require at least 2 contrasts to show intersections.")
+        return
+
     # 2) Convert to a pandas indicator matrix: index=termID, columns=contrast, True if present
     df_pd = xd_s_smart.to_pandas()
     indicator = pd.crosstab(df_pd['termID'], df_pd['contrast']).astype(bool)
 
     # 3) Build the UpSet data structure
-    upset_data = from_indicators(indicator.columns.tolist(), indicator)
+    upset_data = from_indicators(indicator.columns.tolist(), indicator)  # This causes index issues
+    # Create a DataFrame with MultiIndex like the working make_upset function
+    # Reset index to make termID a column, then set it as index along with contrast columns
+    #upset_data = indicator.reset_index()
+    # upset_data = upset_data.set_index(['termID'] + indicator.columns.tolist())
 
     # 4) Plot
     plt.figure(figsize=(8,5))

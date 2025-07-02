@@ -6,6 +6,8 @@ import importlib.resources
 import shlex
 import shutil
 
+from string_gsea.string_gsea_results import StringGSEAResults
+
 
 app = App(
     help="Render Quarto reports in the package's docs/ directory, passing input_dir as a data_file param."
@@ -59,7 +61,9 @@ def execute_quarto_command(docs_path,
 def render_quarto_docs(data_dir: Path,
  output_dir: Path | None = None,
  FDR_threshold: float = 0.05,
- genes_mapped_threshold: int = 10):
+ genes_mapped_threshold: int = 10,
+ zip: bool = False
+ ):
     """
     Render Quarto reports using data from the specified directory.
     
@@ -78,8 +82,8 @@ def render_quarto_docs(data_dir: Path,
     else:
         output_dir = output_dir.absolute()
     
-    output_dir = output_dir / "rendered_reports"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir_dest = output_dir / "rendered_reports"
+    output_dir_dest.mkdir(parents=True, exist_ok=True)
 
     # Find docs path and verify it contains required files
     with importlib.resources.path("string_gsea", "docs") as docs_path:
@@ -87,9 +91,9 @@ def render_quarto_docs(data_dir: Path,
             raise FileNotFoundError(f"Missing _quarto.yml in: {docs_path}")
         # Copy .qmd and .yaml files to output directory
         for file in docs_path.glob("*.qmd"):
-            shutil.copy2(file, output_dir)
+            shutil.copy2(file, output_dir_dest)
         for file in docs_path.glob("*.yml"):
-            shutil.copy2(file, output_dir)
+            shutil.copy2(file, output_dir_dest)
         # Find data files
         xlsx_files = sorted(data_dir.glob("**/*_string_gsea_results_long.xlsx"))
         links_files = sorted(data_dir.glob("**/*links.txt"))
@@ -102,14 +106,18 @@ def render_quarto_docs(data_dir: Path,
 
         # Execute quarto command with the appropriate files
         execute_quarto_command(
-            docs_path=output_dir,
-            output_dir=output_dir,
+            docs_path=output_dir_dest,
+            output_dir=output_dir_dest,
             xlsx_file=xlsx_files[0],
             links_file=links_files[0],
             FDR_threshold=FDR_threshold,
             genes_mapped_threshold=genes_mapped_threshold
         )
 
+        if zip:
+            # Zip the output directory
+            zip_path = StringGSEAResults.zip_folder(output_dir)
+            logger.info(f"Zipped reports to {zip_path}")
 
 if __name__ == "__main__":
     app()
