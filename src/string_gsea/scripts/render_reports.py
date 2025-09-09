@@ -5,6 +5,7 @@ from loguru import logger
 import importlib.resources
 import shlex
 import shutil
+import zipfile
 
 from string_gsea.string_gsea_results import StringGSEAResults
 
@@ -57,34 +58,79 @@ def execute_quarto_command(docs_path,
             logger.error(f"Stderr:\n{e.stderr}")
         raise
 
-@app.default()
-def render_quarto_docs(data_dir: Path,
- output_dir: Path | None = None,
- FDR_threshold: float = 0.05,
- genes_mapped_threshold: int = 10,
- zip: bool = False
- ):
+
+def prepare_data_input(data_dir: Path, output_dir: Path) -> Path:
     """
-    Render Quarto reports using data from the specified directory.
+    Prepare data input by extracting zip files or copying directories to output location.
     
     Args:
-        data_dir: path to your data folder (will be globbed for the .xlsx and links.txt).
+        data_dir: Input path that can be either a zip file or directory
+        output_dir: Output directory where data should be placed
+        
+    Returns:
+        Path: The actual data directory to use for finding xlsx and links files
+        
+    Raises:
+        FileNotFoundError: If the input data_dir doesn't exist
+        ValueError: If data_dir is neither a file nor directory
+    """
+    
+    
+    # If input and output are the same, no preparation needed
+    if data_dir == output_dir:
+        logger.info("Input and output directories are the same, no preparation needed")
+        return data_dir
+    
+    if data_dir.is_file() and data_dir.suffix.lower() == '.zip':
+        # Extract zip file to output directory
+        logger.info(f"Extracting zip file {data_dir} to {output_dir}")
+        with zipfile.ZipFile(data_dir, 'r') as zip_ref:
+            zip_ref.extractall(output_dir)
+        return output_dir
+    
+    elif data_dir.is_dir():
+        # Copy directory contents to output directory
+        logger.info(f"Copying directory {data_dir} to {output_dir}")
+        if output_dir.exists():
+            shutil.rmtree(output_dir)
+        shutil.copytree(data_dir, output_dir)
+        return output_dir
+    
+    else:
+        raise ValueError(f"Data input must be either a zip file or directory: {data_dir}")
+
+
+@app.default()
+def render_quarto_docs(
+    data_dir: Path,
+    output_dir: Path | None = None,
+    FDR_threshold: float = 0.05,
+    genes_mapped_threshold: int = 10,
+    zip: bool = False
+ ):
+    """
+    Render Quarto reports using data from the specified directory or zip file.
+    
+    Args:
+        data_dir: path to your data folder or zip file (will be globbed for the .xlsx and links.txt).
         output_dir: where the rendered HTML should go. Defaults to data_dir/rendered_reports.
     """
-    # Check if data_dir exists and make absolute path
-    if not data_dir.exists():
-        raise FileNotFoundError(f"Data directory does not exist: {data_dir}")
-    data_dir = data_dir.absolute()
-
     # Set up output directory
+    data_dir = data_dir.absolute()
+    if not data_dir.exists():
+        raise FileNotFoundError(f"Data input does not exist: {data_dir}")
+    
     if output_dir is None:
-        output_dir = data_dir 
+        output_dir = data_dir.with_suffix('') if data_dir.is_file() else data_dir
     else:
         output_dir = output_dir.absolute()
     
-    output_dir_dest = output_dir / "rendered_reports"
+    output_dir_dest = output_dir # / "rendered_reports"
     output_dir_dest.mkdir(parents=True, exist_ok=True)
-
+    
+    # Prepare data input (extract zip or copy directory)
+    actual_data_dir = prepare_data_input(data_dir, output_dir_dest)
+    
     # Find docs path and verify it contains required files
     with importlib.resources.path("string_gsea", "docs") as docs_path:
         if not (docs_path / "_quarto.yml").exists():
@@ -95,8 +141,8 @@ def render_quarto_docs(data_dir: Path,
         for file in docs_path.glob("*.yml"):
             shutil.copy2(file, output_dir_dest)
         # Find data files
-        xlsx_files = sorted(data_dir.glob("**/*_string_gsea_results_long.xlsx"))
-        links_files = sorted(data_dir.glob("**/*links.txt"))
+        xlsx_files = sorted(actual_data_dir.glob("**/*_string_gsea_results_long.xlsx"))
+        links_files = sorted(actual_data_dir.glob("**/*links.txt"))
 
         # Log warnings if file counts are unexpected
         if len(xlsx_files) != 1:

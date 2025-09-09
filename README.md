@@ -1,4 +1,8 @@
-# A373_STRING_GSEA
+# stringdbpy
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 **STRING‑GSEA** is a Python toolkit to submit gene set enrichment analyses (GSEA) to the STRING‑DB API, poll for completion, and fetch/export results (tables, graphs, links) with minimal boilerplate.
 

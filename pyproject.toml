@@ -51,7 +51,6 @@ test = [
 ]
 
 [project.scripts]
-"string_gsea_bfabric" = "string_gsea.scripts.string_gsea_bfabric:app"
 "string_gsea_write_config" = "string_gsea.scripts.write_config:app"
 "string_gsea_run" = "string_gsea.scripts.string_gsea_run:app"
 "string_gsea_render_reports" = "string_gsea.scripts.render_reports:app"
