@@ -23,7 +23,7 @@ dependencies = [
     "bfabric",
     'bfabric-scripts',
     'loguru',
-    'fastexcel',
+    'fastexcel[pyarrow,polars]',
     'cyclopts',
     'tomli',
     'tomli_w',
