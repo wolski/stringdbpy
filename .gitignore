@@ -1,4 +1,5 @@
 testing_examples
+uv.lock
 .vscode
 .idea
 # Byte-compiled / optimized / DLL files
@@ -11,3 +12,4 @@ __pycache__/
 *.html
 *.ipynb
 site_libs/
+tests/marshli/*

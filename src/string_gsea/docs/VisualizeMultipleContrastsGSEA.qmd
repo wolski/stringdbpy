@@ -134,6 +134,8 @@ make_upset_contrasts_terms(xd_debug, category=cat)
 #| output: asis
 #| include: true
 #| warning: false
+#| fig-width: 8
+#| fig-height: 8
 
 
 display(Markdown(f"::: {{.panel-tabset}}\n"))

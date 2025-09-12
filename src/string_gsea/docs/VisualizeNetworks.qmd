@@ -200,6 +200,8 @@ For each of the contrasts and each of the gene set categories we show four plots
 #| output: asis
 #| include: true
 #| warning: false
+#| fig-width: 8
+#| fig-height: 8
 
 
 contrast_list = sorted(xd.get_column("contrast").unique().to_list())
