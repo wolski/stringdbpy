@@ -77,7 +77,9 @@ class DiffXLSX:
         if not existing_id_cols:
             raise ValueError("No valid ID columns found")
         existing_id_cols = existing_id_cols[0]
+        logger.info(f"Using ID column: {existing_id_cols}")
 
+        df_dict = {}
         for contrast in df.select(pl.col("contrast")).unique().to_series().to_list():
             key = prefix + str(contrast)
             value = df.filter(pl.col("contrast") == contrast).select(
