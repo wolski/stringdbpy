@@ -17,37 +17,38 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "pyyaml",
-    "polars",
-    "requests",
     "bfabric",
     'bfabric-scripts',
-    'loguru',
-    'fastexcel[pyarrow,polars]',
     'cyclopts',
+    'fastexcel[pyarrow,polars]',
+    'IPython',
+    'ipycytoscape',
+    'loguru',
+    'matplotlib',
+    'networkx',
+    'notebook>=7.4.1',
+    'numpy',
+    'pandas',
+    "papermill",
+    'plotly',
+    "polars",
+    "pyexcelerate",
+    'pyvis',
+    "pyyaml",
+    "requests",
+    'seaborn',
+    'scipy',
     'tomli',
     'tomli_w',
-    'networkx',
-    'matplotlib',
-    'pyvis',
-    'notebook>=7.4.1',
-    'plotly',
-    'ipycytoscape',
-    'pandas',
-    'scipy',
-    'seaborn',
-    'IPython',
-    'numpy',
-    "papermill",
     "upsetplot",
-    "pyexcelerate",
 ]
 
 [project.optional-dependencies]
 test = [
+    "dirty-equals",
+    "nox"
     "pytest",
     "pytest-mock",
-    "dirty-equals",
 ]
 
 [project.scripts]

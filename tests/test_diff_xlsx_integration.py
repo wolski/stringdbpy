@@ -57,7 +57,7 @@ class TestDiffXLSXIntegration:
             assert df.width == 2, f"DataFrame for key {key} should have 2 columns"
             
             # Check that the DataFrame has the expected columns
-            assert "IDcolumn" in df.columns, f"Expected column 'IDcolumn' not found in DataFrame for key {key}"
+            assert "id" in df.columns, f"Expected column 'id' not found in DataFrame for key {key}"
             assert "statistic" in df.columns, f"Expected column 'statistic' not found in DataFrame for key {key}"
     
     def test_rank_dict_filtering(self, diff_xlsx):

@@ -56,7 +56,7 @@ class DiffXLSX:
 
     @staticmethod
     def _get_ranks_by_contrast(df: pl.DataFrame,
-                              id_col: str = "IDcolumn",
+                              id_col: list[str] = ["IDcolumn","proteinname"],
                               rank_col: str = "statistic",
                               prefix: str = "") -> dict:
         """
@@ -71,10 +71,21 @@ class DiffXLSX:
         Returns:
             dict: A dictionary mapping contrast names to rank DataFrames.
         """
-        df_dict = {
-            prefix + str(contrast): df.filter(pl.col("contrast") == contrast).select([id_col, rank_col])
-            for contrast in df.select(pl.col("contrast")).unique().to_series().to_list()
-        }
+
+        id_columns = ["IDcolumn", "proteinname"]
+        existing_id_cols = [col for col in id_columns if col in df.columns]
+        if not existing_id_cols:
+            raise ValueError("No valid ID columns found")
+        existing_id_cols = existing_id_cols[0]
+
+        for contrast in df.select(pl.col("contrast")).unique().to_series().to_list():
+            key = prefix + str(contrast)
+            value = df.filter(pl.col("contrast") == contrast).select(
+                    pl.col(existing_id_cols).alias("id"), pl.col(rank_col))
+            value
+            df_dict = {
+                key : value
+            }
         return df_dict
 
     def validate_arguments(valid_options):
@@ -88,7 +99,7 @@ class DiffXLSX:
 
 
     @validate_arguments(["all", "pep_1", "pep_1_no_imputed", "pep_2", "pep_2_no_imputed"])
-    def rank_dict(self, id_col: str = "IDcolumn", rank_col: str = "statistic", which:str = "all") -> dict:
+    def rank_dict(self, id_col: list[str] = ["IDcolumn","proteinname"], rank_col: list[str] = ["statistic"], which:str = "all") -> dict:
         """
         Create rank lists from the differential expression DataFrame.
         
