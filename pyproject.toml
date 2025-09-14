@@ -46,7 +46,7 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "dirty-equals",
-    "nox"
+    "nox",
     "pytest",
     "pytest-mock",
 ]
