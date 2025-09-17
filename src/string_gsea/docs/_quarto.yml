@@ -1,19 +1,9 @@
 project:
   type: website
-  render:
-    - "*.qmd"
-    - "!**/*.ipynb"
-    - "!python_notebooks/"
-
 
 website:
   title: "stringdbpy Network Visualizations"
-  navbar:
-    left:
-      - text: Home
-        href: index.qmd
-      - text: Visualize Networks
-        href: VisualizeNetworks.qmd
-      - text: Compare Contrasts
-        href: VisualizeMultipleContrastsGSEA.qmd
-      
+
+format:
+  html:
+    theme: cosmo
