@@ -1,0 +1,18 @@
+project:
+  type: website
+  render:
+    - index_multiple.qmd
+    - VisualizeNetworks.qmd
+    - VisualizeMultipleContrastsGSEA.qmd
+
+website:
+  title: "stringdbpy Network Visualizations"
+  navbar:
+    left:
+      - text: Home
+        href: index.html
+      - text: Visualize Networks
+        href: VisualizeNetworks.qmd
+      - text: Compare Contrasts
+        href: VisualizeMultipleContrastsGSEA.qmd
+      

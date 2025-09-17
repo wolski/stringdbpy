@@ -1,0 +1,15 @@
+project:
+  type: website
+  render:
+    - index_single.qmd
+    - VisualizeNetworks.qmd
+
+website:
+  title: "stringdbpy Network Visualizations"
+  navbar:
+    left:
+      - text: Home
+        href: index.html
+      - text: Visualize Networks
+        href: VisualizeNetworks.qmd
+      
