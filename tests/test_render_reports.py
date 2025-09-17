@@ -28,8 +28,8 @@ class TestRenderQuartoDocs:
         # Check that execute_quarto_command was called with the right arguments
         mock_execute_quarto.assert_called_once()
         exec_args = mock_execute_quarto.call_args.kwargs
-        assert exec_args['docs_path'].name == "test_data"
-        assert exec_args['output_dir'] == data_dir
+        assert exec_args['docs_path'].name == "reports"
+        assert exec_args['output_dir'] == data_dir / "reports"
         assert exec_args['xlsx_file'].name == "test_string_gsea_results_long.xlsx"
         assert exec_args['links_file'].name == "test_links.txt"
 
