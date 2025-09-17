@@ -164,16 +164,14 @@ def render_quarto_docs(
     else:
         output_dir = output_dir.absolute()
     
-    output_dir_dest = output_dir # / "rendered_reports"
-    output_dir_dest.mkdir(parents=True, exist_ok=True)
-    
-    # Create reports subfolder if requested
     if reports_subfolder:
-        reports_dir = output_dir_dest / "reports"
-        reports_dir.mkdir(parents=True, exist_ok=True)
-        
+    
+        output_dir_dest = output_dir  / "reports"# / "rendered_reports"
+        output_dir_dest.mkdir(parents=True, exist_ok=True)
     else:
-        reports_dir = output_dir_dest
+        output_dir_dest = output_dir
+        output_dir_dest.mkdir(parents=True, exist_ok=True)
+
     
     # Prepare data input (extract zip or copy directory)
     actual_data_dir = prepare_data_input(data_dir, output_dir_dest)
@@ -198,7 +196,7 @@ def render_quarto_docs(
         # Execute quarto command with the appropriate files
         execute_quarto_command(
             docs_path=output_dir_dest,
-            output_dir=reports_dir,
+            output_dir=output_dir_dest,
             xlsx_file=xlsx_files[0],
             links_file=links_files[0],
             FDR_threshold=FDR_threshold,
@@ -207,7 +205,7 @@ def render_quarto_docs(
         )
 
     if reports_subfolder:
-        create_minimal_index(output_dir_dest)
+        create_minimal_index(output_dir)
 
     if zip:
         # Zip the output directory
