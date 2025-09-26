@@ -81,9 +81,10 @@ print(Path(wd))
 
 if data_file is None:
     # fallback, or raise, or skip
-    file_data = "/Users/witoldwolski/__checkout/stringdbpy/tests/marshli/o38224/DEA_dataset_KD_vs_Scr_Peptide/WU_DEA_dataset_KD_vs_Scr_Peptide_GSEA/pep_2_no_imputed/WUDEA_dataset_KD_vs_Scr_Peptide_string_gsea_results_long.xlsx"
+    file_data = "/Users/witoldwolski/__checkout/stringdbpy/tests/errors/WU_333794_GSEA_OUT/reports/pep_1/WU333794_string_gsea_results_long.xlsx"
     
-    file_links = "/Users/witoldwolski/__checkout/stringdbpy/tests/marshli/o38224/DEA_dataset_KD_vs_Scr_Peptide/WU_DEA_dataset_KD_vs_Scr_Peptide_GSEA/pep_2_no_imputed/links.txt"
+
+    file_links = "/Users/witoldwolski/__checkout/stringdbpy/tests/errors/WU_333794_GSEA_OUT/reports/pep_1/links.txt"
     genes_mapped_threshold = 10
     FDR_threshold = 0.05
 else:

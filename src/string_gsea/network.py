@@ -43,27 +43,59 @@ def explode_protein_columns(df: pl.DataFrame) -> pl.DataFrame:
     Returns:
         pl.DataFrame: DataFrame with protein data split into separate rows
     """
-    xd = (
-        df
-        # 1) split into list-columns, replacing the originals
-    .with_columns([
-        pl.col("proteinIDs")        .str.split(",").alias("proteinIDs"),
-        pl.col("proteinLabels")     .str.split(",").alias("proteinLabels"),
+    
+    
+    # Step 1a: protect commas in proteinLabels that are followed by 1–2 digits and another comma
+    df_protected = df.with_columns([
+        pl.col("proteinLabels").str.replace_all(r",(\d{1,2},)", r"§COMMA§$1").alias("proteinLabels")
+    ])
+
+    # Step 1b: split all relevant columns (no chaining)
+    df_split = df_protected.with_columns([
+        pl.col("proteinIDs").str.split(",").alias("proteinIDs"),
+        pl.col("proteinLabels").str.split(",").alias("proteinLabels"),
         pl.col("proteinInputLabels").str.split(",").alias("proteinInputLabels"),
         pl.col("proteinInputValues").str.split(",").alias("proteinInputValues"),
         pl.col("proteinRanks").str.split(",").alias("proteinRanks"),
     ])
+
+    # Step 1c: restore protected commas inside the split proteinLabels lists (no chaining)
+    df_split = df_split.with_columns(
+        pl.col("proteinLabels").list.eval(
+            pl.element().str.replace_all("§COMMA§", ",")
+        ).alias("proteinLabels")
+    )
+
+    if False:
+            # Step 2: Check if all split lists have equal length
+        df_with_lengths = df_split.with_columns([
+            pl.col("proteinIDs").list.len().alias("proteinIDs_len"),
+            pl.col("proteinLabels").list.len().alias("proteinLabels_len"),
+            pl.col("proteinInputLabels").list.len().alias("proteinInputLabels_len"),
+            pl.col("proteinInputValues").list.len().alias("proteinInputValues_len"),
+            pl.col("proteinRanks").list.len().alias("proteinRanks_len"),
+        ])
+
+        # Find rows where lengths don't match
+        problematic_rows = df_with_lengths.filter(
+            (pl.col("proteinIDs_len") != pl.col("proteinLabels_len")) |
+            (pl.col("proteinIDs_len") != pl.col("proteinInputLabels_len")) |
+            (pl.col("proteinIDs_len") != pl.col("proteinInputValues_len")) |
+            (pl.col("proteinIDs_len") != pl.col("proteinRanks_len"))
+        )
+
+
     # 2) explode all four at once (DF now has 161 872 rows)
-    .explode([
+    df_exploded = df_split.explode([
         "proteinIDs",
         "proteinLabels",
         "proteinInputLabels",
         "proteinInputValues",
         "proteinRanks",
     ])
-    )
+    
         # 3) cast the exploded string→float
-    xd = xd.with_columns(
+    xd = df_exploded.with_columns(
             pl.col("proteinInputValues").cast(pl.Float64),
             pl.col("proteinRanks").cast(pl.Float64)
     )
