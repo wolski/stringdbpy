@@ -84,10 +84,7 @@ class DiffXLSX:
             key = prefix + str(contrast)
             value = df.filter(pl.col("contrast") == contrast).select(
                     pl.col(existing_id_cols).alias("id"), pl.col(rank_col))
-            value
-            df_dict = {
-                key : value
-            }
+            df_dict[key] = value
         return df_dict
 
     def validate_arguments(valid_options):
