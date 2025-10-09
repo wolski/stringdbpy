@@ -136,6 +136,16 @@ class TermNetworkPlotter:
         G, edges_sub, nodes = self._prepare_graph(
             edge_df, thresh=thresh, include_all=False
         )
+        
+        # If no nodes, just set title and return
+        if not nodes:
+            ax.set_title(title, fontsize=10, fontweight='bold')
+            ax.axis('off')
+            ax.text(0.5, 0.5, 'No terms meet threshold', 
+                   ha='center', va='center', transform=ax.transAxes,
+                   fontsize=10, color='gray')
+            return
+        
         # 3) build temp sizes dict for those nodes
         temp_sizes = {n: self.node_sizes[n] for n in nodes}
         temp_max   = max(temp_sizes.values()) if temp_sizes else 1

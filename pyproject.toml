@@ -50,6 +50,9 @@ test = [
     "pytest",
     "pytest-mock",
 ]
+notebooks = [
+    "marimo",
+]
 
 [project.scripts]
 "string_gsea_write_config" = "string_gsea.scripts.write_config:app"

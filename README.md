@@ -12,6 +12,7 @@
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Command‑Line Interface](#command-line-interface)
+- [Interactive Notebooks](#interactive-notebooks)
 - [Python API Usage](#python-api-usage)
 - [Configuration](#configuration)
 - [Session Workflow](#session-workflow)
@@ -91,6 +92,20 @@ The package automatically installs all required dependencies including:
 - `pyyaml` for configuration
 - `quarto` for report generation
 - And other scientific computing libraries
+
+### Optional: Interactive Notebooks with Marimo
+
+For interactive analysis and exploration, install the optional notebook dependencies:
+
+```bash
+# Using uv
+uv pip install -e ".[notebooks]"
+
+# Or using pip
+pip install -e ".[notebooks]"
+```
+
+This installs [Marimo](https://marimo.io/), a reactive Python notebook. See the [Quick Start guide](docs/marimo_notebooks/QUICKSTART.md) for more details.
 
 ## Command‑Line Interface
 
@@ -225,6 +240,46 @@ output_directory/
     ├── EnrichmentResults.html
     └── ...
 ```
+
+## Interactive Notebooks
+
+STRING-GSEA includes interactive [Marimo](https://marimo.io/) notebooks for exploratory analysis. Marimo provides a reactive, reproducible notebook experience that's stored as pure Python files.
+
+### Getting Started
+
+1. **Install Marimo:**
+   ```bash
+   uv pip install -e ".[notebooks]"
+   ```
+
+2. **Launch a notebook:**
+   ```bash
+   # Interactive tutorial
+   marimo run docs/marimo_notebooks/getting_started.py
+   
+   # GSEA results explorer
+   marimo run docs/marimo_notebooks/gsea_exploration.py
+   ```
+
+3. **Edit notebooks:**
+   ```bash
+   marimo edit docs/marimo_notebooks/gsea_exploration.py
+   ```
+
+### Available Notebooks
+
+- **`getting_started.py`** - Introduction to STRING-GSEA and Marimo basics
+- **`gsea_exploration.py`** - Interactive explorer for GSEA results with filtering and visualization
+
+### Features
+
+- 📊 **Interactive visualizations** with Plotly
+- 🔄 **Reactive updates** - changes automatically propagate
+- 📁 **Load and filter** GSEA results dynamically
+- 📥 **Export filtered** results to CSV
+- 🎛️ **Interactive controls** (sliders, dropdowns, file pickers)
+
+For detailed instructions, see the [Marimo Quick Start](docs/marimo_notebooks/QUICKSTART.md).
 
 ## TODO
 

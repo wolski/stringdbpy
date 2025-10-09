@@ -77,9 +77,10 @@ if data_file is None:
     # fallback, or raise, or skip
     #file_data  = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"WUabcd_string_gsea_results_long.xlsx"
     #file_links = Path(wd).parent/"tests/data/dummy_out/WU_abcd_GSEA/from_rnk"/"links.txt"
-    file_data  = Path(wd).parent.parent.parent/"tests/marshli/o38224/DEA_dataset_KD_vs_Scr_Peptide/WU_DEA_dataset_KD_vs_Scr_Peptide_GSEA/pep_2_no_imputed"/"WUDEA_dataset_KD_vs_Scr_Peptide_string_gsea_results_long.xlsx"
-    file_links = Path(wd).parent.parent.parent/"tests/marshli/o38224/DEA_dataset_KD_vs_Scr_Peptide/WU_DEA_dataset_KD_vs_Scr_Peptide_GSEA/pep_2_no_imputed"/"links.txt"
-
+    #file_data  = Path(wd).parent.parent.parent/"tests/marshli/o38224/DEA_dataset_KD_vs_Scr_Peptide/WU_DEA_dataset_KD_vs_Scr_Peptide_GSEA/pep_2_no_imputed"/"WUDEA_dataset_KD_vs_Scr_Peptide_string_gsea_results_long.xlsx"
+    #file_links = Path(wd).parent.parent.parent/"tests/marshli/o38224/DEA_dataset_KD_vs_Scr_Peptide/WU_DEA_dataset_KD_vs_Scr_Peptide_GSEA/pep_2_no_imputed"/"links.txt"
+    file_data = Path(wd).parent.parent.parent/"tests/errors/GSEA_STRING_GSEA_HTML_334883_2989749/reports/WU_334883_GSEA/pep_2/WU334883_string_gsea_results_long.xlsx"
+    file_links = Path(wd).parent.parent.parent/"tests/errors/GSEA_STRING_GSEA_HTML_334883_2989749/reports/WU_334883_GSEA/pep_2/links.txt"
 
 else:
     file_data = Path(data_file)
@@ -137,7 +138,7 @@ make_upset_contrasts_terms(xd_debug, category=cat)
 #| fig-width: 8
 #| fig-height: 8
 
-
+#cat = "WikiPathways"
 display(Markdown(f"::: {{.panel-tabset}}\n"))
 for cat in category_list:
     # each of these becomes a tab
