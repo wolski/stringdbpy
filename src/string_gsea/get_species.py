@@ -213,16 +213,28 @@ class TaxonUtils:
                 return self.get_organism_for_string(parent_taxon_id)
 
 
-def get_species_taxon(zip_path : Path, nr = 10) -> int:
+def get_species_taxon(zip_path : Path, df_list : dict, nr = 10) -> int:
+    """
+    Determine the species taxon ID from the zip file.
+    
+    First tries to extract from FASTA OX fields, then validates against STRING.
+    If not found in STRING, falls back to querying STRING API with protein identifiers.
+    
+    Args:
+        zip_path: Path to the zip file containing rank/FASTA data
+        df_list: Dictionary of dataframes with protein identifiers
+        nr: Number of identifiers to use for species determination (default: 10)
+        
+    Returns:
+        int: Valid STRING taxon ID
+    """
     taxon = OxFieldsZip.get_species_from_oxes(str(zip_path))
     taxon2 = TaxonUtils().get_organism_for_string(taxon)
     if taxon2 is not None:
         logger.info(f"Taxon : {taxon2} found in species_string")
         return taxon2
     else:
-        df_list = get_rank_files(YEAST_RNK_ZIP_PATH)
         df = list(df_list.values())[0]
-
         taxon3 = GetTaxonID.determine_species(df, nr = nr)
         logger.info(f"{taxon3} retrieved from string by searching {nr} identifiers.")
 
@@ -231,11 +243,14 @@ def get_species_taxon(zip_path : Path, nr = 10) -> int:
 
 # Example Usage (can be removed or kept for testing)
 if __name__ == "__main__":
+    from string_gsea.gsea_utilities import get_rank_files
+    
     TEST_DATA_DIR = Path(__file__).resolve().parent.parent.parent / 'tests/data'
     YEAST_RNK_ZIP_PATH = TEST_DATA_DIR / 'DE_yeast_fasta_rnk.zip' # Path for yeast rank file zip
 
     p = Path(YEAST_RNK_ZIP_PATH)
-    taxon = get_species_taxon(p, nr=5)
+    dataframes = get_rank_files(p)
+    taxon = get_species_taxon(p, dataframes, nr=5)
     logger.info(f"Taxon ID: {taxon}")
 
     

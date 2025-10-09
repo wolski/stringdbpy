@@ -43,7 +43,6 @@ def string_gsea_run(
     if not zip_path.exists():
         raise FileNotFoundError(f"Zip file not found: {zip_path}")
     # 2) Get species and rank data
-    species = get_species_taxon(zip_path)
 
     if from_rnk:
         dataframes = get_rank_files(zip_path)
@@ -51,7 +50,9 @@ def string_gsea_run(
         df_xlsx = DiffXLSX(zip_path)
         rank_files = df_xlsx.rank_dict(which=which)
         dataframes = rank_files
-    
+
+    species = get_species_taxon(zip_path, dataframes)
+
     # 3) Build, write inputs, submit & poll
     builder = StringGSEABuilder(
         rank_dataframes=dataframes,
