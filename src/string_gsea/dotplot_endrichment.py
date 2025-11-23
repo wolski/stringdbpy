@@ -115,7 +115,7 @@ def dotplot_enrichment(xd_smart:pl.DataFrame):
     fig_height = min(n_terms * height_per_term, max_height)
     
     # Create figure with proper spacing for legends
-    fig, ax = plt.subplots(figsize=(16, fig_height))  # Increased width
+    fig, ax = plt.subplots(figsize=(12, fig_height))  # Reasonable width for web display
     
     # Main scatter
     sc = plot_enrichment_scatter(ax, pdf)

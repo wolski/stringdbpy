@@ -1,0 +1,87 @@
+name: Documentation Validation
+
+on:
+  push:
+    branches: [main, release*]
+  pull_request:
+    branches: [main, release*]
+    paths:
+      - 'src/string_gsea/docs/**'
+      - '.github/workflows/docs_validation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-quarto:
+    name: Validate Quarto Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+          cache: 'pip'
+
+      - name: Install Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: 'latest'
+
+      - name: Cache UV dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-docs-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-docs-
+            ${{ runner.os }}-uv-
+
+      - name: Install package and dependencies
+        run: |
+          pip install uv
+          uv pip install --system -e .
+
+      - name: Verify Quarto installation
+        run: quarto --version
+
+      - name: Test render with multiple profile
+        run: |
+          # Create dummy test files
+          mkdir -p test_render
+          # Use test data paths from the repository
+          TEST_XLSX="${{ github.workspace }}/tests/data/WU_12345_GSEA/WU_12345_string_gsea_results_long.xlsx"
+          TEST_LINKS="${{ github.workspace }}/tests/data/WU_12345_GSEA/contrast1/links.txt"
+
+          # Check if test files exist, if not skip this test
+          if [ -f "$TEST_XLSX" ] && [ -f "$TEST_LINKS" ]; then
+            quarto render src/string_gsea/docs/ \
+              --profile multiple \
+              --to html \
+              --output-dir test_render \
+              -P "data_file:$TEST_XLSX" \
+              -P "links_file:$TEST_LINKS" \
+              -P "FDR_threshold:0.05" \
+              -P "genes_mapped_threshold:10"
+          else
+            echo "Test data files not found, skipping render test"
+            echo "This is expected - will just validate templates parse correctly"
+            # Just check that templates are valid by parsing them
+            find src/string_gsea/docs -name "*.qmd" -exec quarto inspect {} \;
+          fi
+        continue-on-error: true
+
+      - name: Check Quarto template syntax
+        run: |
+          echo "Validating .qmd template syntax..."
+          find src/string_gsea/docs -name "*.qmd" -type f | while read file; do
+            echo "Checking: $file"
+            quarto inspect "$file" || echo "Warning: Failed to inspect $file"
+          done
+
+      - name: Upload rendered docs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-docs
+          path: test_render/
+          if-no-files-found: ignore

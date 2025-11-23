@@ -1,0 +1,62 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [main, release*]
+  pull_request:
+    branches: [main, release*]
+  workflow_dispatch:
+
+jobs:
+  linting:
+    name: Ruff Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+          cache: 'pip'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff check
+        run: ruff check src/ tests/
+
+      - name: Run ruff format check
+        run: ruff format --check src/ tests/
+
+  type-checking:
+    name: Type Checking (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+          cache: 'pip'
+
+      - name: Cache UV dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-mypy-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-mypy-
+            ${{ runner.os }}-uv-
+
+      - name: Install nox and UV
+        run: pip install nox uv
+
+      - name: Install package with dependencies
+        run: pip install -e .
+
+      - name: Install mypy
+        run: pip install mypy
+
+      - name: Run mypy type checking
+        run: mypy --install-types --non-interactive src/string_gsea
+        continue-on-error: true

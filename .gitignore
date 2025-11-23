@@ -5,6 +5,7 @@ uv.lock
 # Byte-compiled / optimized / DLL files
 __pycache__/
 
+.DS_Store
 .quarto
 *.quarto_ipynb
 *_site
@@ -13,3 +14,4 @@ __pycache__/
 *.ipynb
 site_libs/
 tests/marshli/*
+tests/errors/*

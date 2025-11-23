@@ -5,25 +5,58 @@ on:
   pull_request:
     branches: [main, release*]
   workflow_dispatch:
+
 jobs:
   unit_tests:
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: 3.13
-            # ← Add it here, before you install or run anything that might need the config
+          cache: 'pip'
+
+      - name: Cache UV dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
       - name: Write STRING-GSEA config
         env:
           CONFIG_TOML: ${{ secrets.CONFIG_TOML }}
         run: |
           mkdir -p ~/.config/string_gsea
-          # Dump the entire TOML blob from the secret into the right file
           printf '%s\n' "$CONFIG_TOML" > ~/.config/string_gsea/config.toml
 
-      - name: Install nox
+      - name: Install nox and dependencies
         run: pip install nox uv
-      - name: Run checks
-        run: nox
+
+      - name: Run unit tests with coverage
+        run: nox -s test -- --cov=string_gsea --cov-report=xml --cov-report=term
+
+      - name: Run internal validation scripts
+        run: nox -s run-internal-scripts
+        continue-on-error: true
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml

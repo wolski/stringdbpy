@@ -164,11 +164,12 @@ for cat in category_list:
         display(Markdown("""Dotplot of enriched categories for all contrasts. The size of the dot represents the gene ratio (number of proteins matching the term divided by the total number of proteins in the term), the color represents the -log10(FDR) (higher is better), the border color represents the direction of enrichment (blue - bottom, yellow - top, green - both ends)."""))
         display(Markdown("\n"))
 
-        display(Markdown("### Network plot"))
-        TermNetworkPlotter.plot_network(xd, category=cat, thresh=1)
-        display(Markdown(f"""Network plot for {cat} category\n:"""))
-        display(Markdown(TermNetworkPlotter.TermNetworkPlotter.get_figure_legend(one_contrast = False, category=cat, thresh=1)))
-        display(Markdown("\n"))
+        if False:  # Temporarily disabled
+            display(Markdown("### Network plot"))
+            TermNetworkPlotter.plot_network(xd, category=cat, thresh=1)
+            display(Markdown(f"""Network plot for {cat} category\n:"""))
+            display(Markdown(TermNetworkPlotter.TermNetworkPlotter.get_figure_legend(one_contrast = False, category=cat, thresh=1)))
+            display(Markdown("\n"))
 
         
 display(Markdown(f":::\n"))
