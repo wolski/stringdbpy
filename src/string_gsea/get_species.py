@@ -1,6 +1,6 @@
 import io
-import re # Added missing import
-from collections import Counter # Corrected import
+import re  # Added missing import
+from collections import Counter  # Corrected import
 import requests
 from loguru import logger
 import polars as pl
@@ -84,7 +84,9 @@ class GetTaxonID:
 
         # Determine the sample size and sample identifiers.
         sample_size = min(nr, identifiers.height)
-        sampled_ids = identifiers.sample(n=sample_size, shuffle=True).to_series().to_list()
+        sampled_ids = (
+            identifiers.sample(n=sample_size, shuffle=True).to_series().to_list()
+        )
 
         # Fetch taxon IDs for sampled identifiers.
         taxon_ids = GetTaxonID._fetch_ncbi_taxon_ids(sampled_ids)
@@ -98,24 +100,24 @@ class GetTaxonID:
 class OxFieldsZip:
     @staticmethod
     def get_ox_fields(fasta_content: io.BytesIO) -> list[int]:
-        pattern = re.compile(r'OX=(\d+)') # re was not defined before
+        pattern = re.compile(r"OX=(\d+)")  # re was not defined before
         ox_values = []
 
-        fasta_content = io.TextIOWrapper(fasta_content, encoding='utf-8')
+        fasta_content = io.TextIOWrapper(fasta_content, encoding="utf-8")
         for line in fasta_content:
             # Check only header lines starting with '>'
-            if line.startswith('>'):
+            if line.startswith(">"):
                 match = pattern.search(line)
                 if match:
                     ox_values.append(int(match.group(1)))
 
         return ox_values
-    
+
     @staticmethod
-    def get_species_from_oxes(zip_path : str) -> int:
+    def get_species_from_oxes(zip_path: str) -> int:
         oxes = {}
-        with zipfile.ZipFile(zip_path, 'r') as z:
-            fasta_files = [f for f in z.namelist() if f.endswith(('.fas', '.fasta'))]
+        with zipfile.ZipFile(zip_path, "r") as z:
+            fasta_files = [f for f in z.namelist() if f.endswith((".fas", ".fasta"))]
             logger.info(f"Found {len(fasta_files)} fasta files in {zip_path}")
             for file in fasta_files:
                 logger.info(f"Processing file: {file}")
@@ -132,11 +134,9 @@ class OxFieldsZip:
         return int(species)
 
 
-
-
 class TaxonUtils:
     """A class for handling taxon-related utilities and data processing."""
-    
+
     def __init__(self):
         # Define resource names and packages
         self.mappings_package = "string_gsea.data.mappings"
@@ -144,21 +144,28 @@ class TaxonUtils:
         self.species_file_name = "species.v12.0.txt"
         self.ncbi_zip_name = "NCBI_nodes.zip"
         self.ncbi_file_name = "nodes.tsv"
-        
+
         # Load data during initialization
         self.string_species_df = self._read_species_string_data()
         self.ncbi_nodes_df = self._read_ncbi_nodes_data()
-     
+
     def _read_species_string_data(self) -> pl.DataFrame:
         """Reads the species data from the STRING zip file.
 
         Returns:
             pl.DataFrame: A Polars DataFrame containing the species data.
         """
-        with importlib.resources.path(self.mappings_package, self.species_zip_name) as zip_path:
-            with zipfile.ZipFile(zip_path, 'r') as zip_file:
+        with importlib.resources.path(
+            self.mappings_package, self.species_zip_name
+        ) as zip_path:
+            with zipfile.ZipFile(zip_path, "r") as zip_file:
                 with zip_file.open(self.species_file_name) as file_obj:
-                    df = pl.read_csv(file_obj, encoding="utf8", truncate_ragged_lines=True, separator="\t")
+                    df = pl.read_csv(
+                        file_obj,
+                        encoding="utf8",
+                        truncate_ragged_lines=True,
+                        separator="\t",
+                    )
                     df = df.rename({"#taxon_id": "taxon_id"})
                     return df
 
@@ -169,8 +176,10 @@ class TaxonUtils:
             pl.DataFrame: A Polars DataFrame containing the NCBI nodes data.
         """
         # Get path to the resource
-        with importlib.resources.path(self.mappings_package, self.ncbi_zip_name) as zip_path:
-            with zipfile.ZipFile(zip_path, 'r') as zip_file:
+        with importlib.resources.path(
+            self.mappings_package, self.ncbi_zip_name
+        ) as zip_path:
+            with zipfile.ZipFile(zip_path, "r") as zip_file:
                 with zip_file.open(self.ncbi_file_name) as file_obj:
                     df = pl.read_csv(file_obj, encoding="utf8", separator="\t")
                     return df
@@ -213,18 +222,18 @@ class TaxonUtils:
                 return self.get_organism_for_string(parent_taxon_id)
 
 
-def get_species_taxon(zip_path : Path, df_list : dict, nr = 10) -> int:
+def get_species_taxon(zip_path: Path, df_list: dict, nr=10) -> int:
     """
     Determine the species taxon ID from the zip file.
-    
+
     First tries to extract from FASTA OX fields, then validates against STRING.
     If not found in STRING, falls back to querying STRING API with protein identifiers.
-    
+
     Args:
         zip_path: Path to the zip file containing rank/FASTA data
         df_list: Dictionary of dataframes with protein identifiers
         nr: Number of identifiers to use for species determination (default: 10)
-        
+
     Returns:
         int: Valid STRING taxon ID
     """
@@ -235,7 +244,7 @@ def get_species_taxon(zip_path : Path, df_list : dict, nr = 10) -> int:
         return taxon2
     else:
         df = list(df_list.values())[0]
-        taxon3 = GetTaxonID.determine_species(df, nr = nr)
+        taxon3 = GetTaxonID.determine_species(df, nr=nr)
         logger.info(f"{taxon3} retrieved from string by searching {nr} identifiers.")
 
         return taxon3
@@ -244,13 +253,13 @@ def get_species_taxon(zip_path : Path, df_list : dict, nr = 10) -> int:
 # Example Usage (can be removed or kept for testing)
 if __name__ == "__main__":
     from string_gsea.gsea_utilities import get_rank_files
-    
-    TEST_DATA_DIR = Path(__file__).resolve().parent.parent.parent / 'tests/data'
-    YEAST_RNK_ZIP_PATH = TEST_DATA_DIR / 'DE_yeast_fasta_rnk.zip' # Path for yeast rank file zip
+
+    TEST_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "tests/data"
+    YEAST_RNK_ZIP_PATH = (
+        TEST_DATA_DIR / "DE_yeast_fasta_rnk.zip"
+    )  # Path for yeast rank file zip
 
     p = Path(YEAST_RNK_ZIP_PATH)
     dataframes = get_rank_files(p)
     taxon = get_species_taxon(p, dataframes, nr=5)
     logger.info(f"Taxon ID: {taxon}")
-
-    

@@ -25,12 +25,12 @@ def get_species_from_fasta(fasta_path: Path) -> int:
     Returns:
         int: NCBI Taxon ID validated against STRING-DB
     """
-    pattern = re.compile(r'OX=(\d+)')
+    pattern = re.compile(r"OX=(\d+)")
     ox_values = []
 
-    with open(fasta_path, 'r', encoding='utf-8') as f:
+    with open(fasta_path, "r", encoding="utf-8") as f:
         for line in f:
-            if line.startswith('>'):
+            if line.startswith(">"):
                 match = pattern.search(line)
                 if match:
                     ox_values.append(int(match.group(1)))
@@ -62,17 +62,14 @@ def read_id_list(filepath: Path) -> list[str]:
     Returns:
         list[str]: List of identifiers
     """
-    with open(filepath, 'r') as f:
+    with open(filepath, "r") as f:
         ids = [line.strip() for line in f if line.strip()]
     logger.info(f"Read {len(ids)} identifiers from {filepath}")
     return ids
 
 
 def map_to_string_ids(
-    identifiers: list[str],
-    species: int,
-    caller_identity: str,
-    batch_size: int = 500
+    identifiers: list[str], species: int, caller_identity: str, batch_size: int = 500
 ) -> dict[str, str]:
     """
     Map identifiers to STRING IDs using the STRING API.
@@ -91,7 +88,7 @@ def map_to_string_ids(
 
     # Process in batches to avoid URL length limits
     for i in range(0, len(identifiers), batch_size):
-        batch = identifiers[i:i + batch_size]
+        batch = identifiers[i : i + batch_size]
         params = {
             "identifiers": "\r".join(batch),
             "species": species,
@@ -109,15 +106,13 @@ def map_to_string_ids(
             if query_item and string_id:
                 mapping[query_item] = string_id
 
-    logger.info(f"Mapped {len(mapping)} of {len(identifiers)} identifiers to STRING IDs")
+    logger.info(
+        f"Mapped {len(mapping)} of {len(identifiers)} identifiers to STRING IDs"
+    )
     return mapping
 
 
-def get_string_link(
-    identifiers: list[str],
-    species: int,
-    caller_identity: str
-) -> str:
+def get_string_link(identifiers: list[str], species: int, caller_identity: str) -> str:
     """
     Get a link to view the network on STRING-DB web interface.
 
@@ -150,7 +145,7 @@ def run_enrichment(
     identifiers: list[str],
     background_string_ids: list[str],
     species: int,
-    caller_identity: str
+    caller_identity: str,
 ) -> list[dict]:
     """
     Run functional enrichment analysis via STRING-DB API with custom background.
@@ -172,7 +167,9 @@ def run_enrichment(
         "caller_identity": caller_identity,
     }
 
-    logger.info(f"Running enrichment for {len(identifiers)} identifiers with {len(background_string_ids)} background")
+    logger.info(
+        f"Running enrichment for {len(identifiers)} identifiers with {len(background_string_ids)} background"
+    )
     resp = requests.post(url, data=params)
     resp.raise_for_status()
 
@@ -180,8 +177,8 @@ def run_enrichment(
 
     # Check for error response
     if isinstance(data, list) and len(data) > 0:
-        if data[0].get('error'):
-            msg = data[0].get('message', 'Unknown error')
+        if data[0].get("error"):
+            msg = data[0].get("message", "Unknown error")
             raise RuntimeError(f"STRING-DB error: {msg}")
 
     logger.info(f"Received {len(data)} enrichment terms")
@@ -204,9 +201,9 @@ def save_results(results: list[dict], out_dir: Path) -> dict:
 
     # Save JSON
     json_path = out_dir / "enrichment_results.json"
-    with open(json_path, 'w') as f:
+    with open(json_path, "w") as f:
         json.dump(results, f, indent=2)
-    paths['json'] = json_path
+    paths["json"] = json_path
     logger.info(f"Saved JSON: {json_path}")
 
     # Convert to TSV using polars
@@ -215,12 +212,10 @@ def save_results(results: list[dict], out_dir: Path) -> dict:
         # Convert list columns to comma-separated strings for TSV compatibility
         for col in df.columns:
             if df[col].dtype == pl.List:
-                df = df.with_columns(
-                    pl.col(col).list.join(",").alias(col)
-                )
+                df = df.with_columns(pl.col(col).list.join(",").alias(col))
         tsv_path = out_dir / "enrichment_results.tsv"
-        df.write_csv(tsv_path, separator='\t')
-        paths['tsv'] = tsv_path
+        df.write_csv(tsv_path, separator="\t")
+        paths["tsv"] = tsv_path
         logger.info(f"Saved TSV: {tsv_path}")
 
     return paths
@@ -232,7 +227,7 @@ def string_ora_run(
     background: str,
     fasta: str,
     out_dir: str = ".",
-    workunit_id: str = "ORA"
+    workunit_id: str = "ORA",
 ):
     """
     Run STRING ORA (Over-Representation Analysis) on the provided gene lists.
@@ -293,14 +288,16 @@ def string_ora_run(
     if not bg_string_ids:
         raise ValueError("No background identifiers could be mapped to STRING IDs")
 
-    logger.info(f"Mapped {len(sig_string_ids)} significant and {len(bg_string_ids)} background to STRING IDs")
+    logger.info(
+        f"Mapped {len(sig_string_ids)} significant and {len(bg_string_ids)} background to STRING IDs"
+    )
 
     # Run enrichment with background
     results = run_enrichment(
         identifiers=sig_string_ids,
         background_string_ids=bg_string_ids,
         species=species,
-        caller_identity=config.caller_identity
+        caller_identity=config.caller_identity,
     )
 
     # Save results
@@ -311,30 +308,34 @@ def string_ora_run(
     string_link = get_string_link(
         identifiers=sig_string_ids,
         species=species,
-        caller_identity=config.caller_identity
+        caller_identity=config.caller_identity,
     )
     if string_link:
         links_path = result_dir / "links.txt"
-        with open(links_path, 'w') as f:
+        with open(links_path, "w") as f:
             f.write(f"STRING-DB Network: {string_link}\n")
-        paths['links'] = links_path
+        paths["links"] = links_path
         logger.info(f"Saved link: {links_path}")
 
     # Save mapping info
     mapping_path = result_dir / "id_mapping.json"
-    with open(mapping_path, 'w') as f:
-        json.dump({
-            "significant": sig_mapping,
-            "background": bg_mapping,
-            "unmapped_significant": [x for x in sig_ids if x not in sig_mapping],
-            "unmapped_background": [x for x in bg_ids if x not in bg_mapping],
-        }, f, indent=2)
-    paths['mapping'] = mapping_path
+    with open(mapping_path, "w") as f:
+        json.dump(
+            {
+                "significant": sig_mapping,
+                "background": bg_mapping,
+                "unmapped_significant": [x for x in sig_ids if x not in sig_mapping],
+                "unmapped_background": [x for x in bg_ids if x not in bg_mapping],
+            },
+            f,
+            indent=2,
+        )
+    paths["mapping"] = mapping_path
     logger.info(f"Saved ID mapping: {mapping_path}")
 
     logger.info(f"ORA analysis complete. Results in: {result_dir}")
     return paths
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app()

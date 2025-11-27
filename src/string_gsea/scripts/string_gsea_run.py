@@ -14,16 +14,16 @@ from string_gsea.ranks_from_dea_xlsx import DiffXLSX
 app = App()
 
 
-
-
 @app.default()
 def string_gsea_run(
     zip_path: str,
     workunit_id: str,
     out_dir: str = ".",
     from_rnk: bool = False,
-    which: Literal["pep_1", "pep_1_no_imputed", "pep_2", "pep_2_no_imputed"] = "pep_2_no_imputed",
-    zip: bool = False
+    which: Literal[
+        "pep_1", "pep_1_no_imputed", "pep_2", "pep_2_no_imputed"
+    ] = "pep_2_no_imputed",
+    zip: bool = False,
 ):
     """
     Run STRING GSEA analysis on the provided zip file.
@@ -36,7 +36,7 @@ def string_gsea_run(
     # Convert paths to Path objects
     zip_path = Path(zip_path)
     base_dir = Path(out_dir)
-    
+
     # 1) Get configuration from config file
     config = get_configuration()
     base_dir.mkdir(exist_ok=True)
@@ -59,7 +59,7 @@ def string_gsea_run(
         config=config,
         workunit_id=workunit_id,
         species=species,
-        base_path=base_dir
+        base_path=base_dir,
     )
     xd = builder.get_res_path()
     print(xd)
@@ -89,11 +89,12 @@ def string_gsea_run(
         path = StringGSEAResults.zip_folder(results.get_res_path())
         logger.info(f"Zipped results to {path}")
 
+
 def test_run():
     # Test code
     wd = Path(__file__).parent.parent.parent.parent
     zip_path = wd / "tests/data/DE_mouse_fasta_xlsx.zip"
-    base_dir = Path(wd/"tests/data/dummy_res_2")
+    base_dir = Path(wd / "tests/data/dummy_res_2")
     workunit_id = 1234
     which = "pep_1"
     from_rnk = False
@@ -110,10 +111,11 @@ def test_run():
         workunit_id=workunit_id,
         out_dir=base_dir,
         which=which,
-        from_rnk=from_rnk
+        from_rnk=from_rnk,
     )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # test_run()
     # else:
     app()

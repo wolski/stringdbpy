@@ -49,6 +49,7 @@ test = [
     "nox",
     "pytest",
     "pytest-mock",
+    "ruff",
 ]
 notebooks = [
     "marimo",

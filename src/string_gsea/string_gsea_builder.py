@@ -13,6 +13,7 @@ from string_gsea.string_gsea_results import StringGSEAResults
 from string_gsea.gsea_config import GSEAConfig
 from dataclasses import asdict
 
+
 class StringGSEABuilder:
     """
     Builder for submitting GSEA jobs to STRING-db, polling for completion,
@@ -25,7 +26,7 @@ class StringGSEABuilder:
         config: GSEAConfig,
         workunit_id: str = "12345",
         species: int = 9606,
-        base_path: Path = Path('.')
+        base_path: Path = Path("."),
     ):
         if not config:
             raise ValueError("config is None")
@@ -38,7 +39,7 @@ class StringGSEABuilder:
             config_dict=config,
             base_path=base_path,
             res_job_id={},
-            res_data={}
+            res_data={},
         )
         # Store rank inputs separately
         self.rank_dataframes = rank_dataframes
@@ -48,30 +49,34 @@ class StringGSEABuilder:
         url = f"{base}/json/valuesranks_enrichment_submit"
         params = {
             "species": self.session.species,
-            "caller_identity": asdict(self.session.config_dict)['caller_identity'],
+            "caller_identity": asdict(self.session.config_dict)["caller_identity"],
             "identifiers": rank_data,
-            "api_key": asdict(self.session.config_dict)['api_key'],
-            "ge_fdr": asdict(self.session.config_dict)['fdr'],
-            "ge_enrichment_rank_direction" : asdict(self.session.config_dict)['ge_enrichment_rank_direction'],
+            "api_key": asdict(self.session.config_dict)["api_key"],
+            "ge_fdr": asdict(self.session.config_dict)["fdr"],
+            "ge_enrichment_rank_direction": asdict(self.session.config_dict)[
+                "ge_enrichment_rank_direction"
+            ],
         }
         resp = requests.post(url, data=params)
         resp.raise_for_status()
         data = resp.json()[0]
-        if data.get('status') == 'error':
-            msg = data.get('message', 'no message')
+        if data.get("status") == "error":
+            msg = data.get("message", "no message")
             logger.error(f"STRING-db error: {msg}")
             raise RuntimeError(f"STRING-db error: {msg}")
-        job_id = data['job_id']
+        job_id = data["job_id"]
         logger.info(f"Job submitted: {job_id}")
         return job_id
 
-    def submit(self) -> 'StringGSEABuilder':
+    def submit(self) -> "StringGSEABuilder":
         for key, df in self.rank_dataframes.items():
-            rank_str = df.write_csv(separator='\t', include_header=False)
+            rank_str = df.write_csv(separator="\t", include_header=False)
             self.session.res_job_id[key] = self._submit_single(rank_str)
         return self
 
-    def _poll_single(self, job_id: str, sleep_t: int = 10, max_time: int = 3600) -> dict:
+    def _poll_single(
+        self, job_id: str, sleep_t: int = 10, max_time: int = 3600
+    ) -> dict:
         status_url = (
             self.session.end_point_status
             + f"?api_key={asdict(self.session.config_dict)['api_key']}&job_id={job_id}"
@@ -81,17 +86,17 @@ class StringGSEABuilder:
             resp = requests.get(status_url)
             resp.raise_for_status()
             record = resp.json()[0]
-            st = record.get('status')
+            st = record.get("status")
             logger.info(f"Polling {job_id}: status={st} after {elapsed}s")
-            if st == 'success':
+            if st == "success":
                 return record
-            if st in ('nothing found', 'unknown organism'):
+            if st in ("nothing found", "unknown organism"):
                 raise RuntimeError(f"Polling error {st} for job {job_id}")
             time.sleep(sleep_t)
             elapsed += sleep_t
         raise TimeoutError(f"Job {job_id} did not finish in {max_time}s")
 
-    def poll(self) -> 'StringGSEABuilder':
+    def poll(self) -> "StringGSEABuilder":
         if not self.session.res_job_id:
             raise RuntimeError("No jobs to poll. Call submit() first.")
         for key, job_id in self.session.res_job_id.items():
@@ -104,8 +109,8 @@ class StringGSEABuilder:
             sub = outdir / outer
             sub.mkdir(parents=True, exist_ok=True)
             filepath = sub / f"{inner}.rnk"
-            with open(filepath, 'wb') as f:
-                f.write(df.write_csv(separator='\t', include_header=False).encode())
+            with open(filepath, "wb") as f:
+                f.write(df.write_csv(separator="\t", include_header=False).encode())
             logger.info(f"Wrote rank file: {filepath}")
         return outdir
 
@@ -126,17 +131,17 @@ class StringGSEABuilder:
 
     def save_session(self, filepath: Path = None) -> Path:
         out_dir = self.get_res_path()
-        path = filepath or (out_dir / 'gsea_session.yml')
+        path = filepath or (out_dir / "gsea_session.yml")
         self.session.to_yaml(path)
         return path
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     config = GSEAConfig(
         api_key="b36F8oaRJwFZ",
         fdr=0.25,
         caller_identity="www.fgcz.ch",
-        ge_enrichment_rank_direction=-1
+        ge_enrichment_rank_direction=-1,
     )
     print("Current working directory:", os.getcwd())
     script_dir = Path(__file__).resolve().parent
@@ -155,7 +160,7 @@ if __name__ == '__main__':
         config=config,
         workunit_id=workunit_id,
         species=species,
-        base_path=tempdir
+        base_path=tempdir,
     )
     builder.write_rank_files()
     builder.submit().poll()
@@ -167,11 +172,12 @@ if __name__ == '__main__':
     results.write_gsea_tsv()
     results.write_gsea_graphs()
     builder.save_session()
-    #results.save_session()
+    # results.save_session()
     # copy session_path file into tests/data/dummy_d
-    shutil.copy(session_path, project_root / "tests" / "data" / "dummy_d" / "session.yml")
+    shutil.copy(
+        session_path, project_root / "tests" / "data" / "dummy_d" / "session.yml"
+    )
     results2 = StringGSEAResults(GSEASession.from_yaml(session_path))
     results2.write_links()
-
 
     print("Workflow complete.")

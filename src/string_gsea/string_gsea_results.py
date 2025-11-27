@@ -1,10 +1,10 @@
-import json
 import shutil
 import requests
 from pathlib import Path
 from loguru import logger
 
 from string_gsea.gsea_session import GSEASession
+
 
 class StringGSEAResults:
     """
@@ -16,7 +16,9 @@ class StringGSEAResults:
 
         # Results payloads should already be in session.res_data
         if not self.session.res_data:
-            raise RuntimeError("Session contains no result data. Ensure you've polled before building results.")
+            raise RuntimeError(
+                "Session contains no result data. Ensure you've polled before building results."
+            )
 
     def get_res_path(self) -> Path:
         """
@@ -32,8 +34,8 @@ class StringGSEAResults:
         """
         links = {}
         for (outer, inner), data in self.session.res_data.items():
-            if data.get('status') == 'success' and 'page_url' in data:
-                links.setdefault(outer, {})[inner] = data['page_url']
+            if data.get("status") == "success" and "page_url" in data:
+                links.setdefault(outer, {})[inner] = data["page_url"]
         return links
 
     def write_links(self) -> dict:
@@ -45,8 +47,8 @@ class StringGSEAResults:
         for outer, inners in self.get_links().items():
             sub = base / outer
             sub.mkdir(parents=True, exist_ok=True)
-            file_path = sub / 'links.txt'
-            with open(file_path, 'w') as f:
+            file_path = sub / "links.txt"
+            with open(file_path, "w") as f:
                 for inner, url in inners.items():
                     f.write(f"{inner}: {url}\n")
             logger.info(f"Wrote links file: {file_path}")
@@ -59,7 +61,7 @@ class StringGSEAResults:
         """
         base = self.get_res_path()
         for (outer, inner), data in self.session.res_data.items():
-            if data.get('status') != 'success' or url_key not in data:
+            if data.get("status") != "success" or url_key not in data:
                 continue
             url = data[url_key]
             resp = requests.get(url)
@@ -68,18 +70,18 @@ class StringGSEAResults:
             sub = base / outer
             sub.mkdir(parents=True, exist_ok=True)
             file_path = sub / f"{inner}{suffix}"
-            with open(file_path, 'wb') as f:
+            with open(file_path, "wb") as f:
                 f.write(resp.content)
             logger.info(f"Saved {file_type}: {file_path}")
         return base
 
     def write_gsea_tsv(self) -> Path:
         """Download and save all result TSVs."""
-        return self._write_gsea_files('results', 'download_url', '_results.tsv')
+        return self._write_gsea_files("results", "download_url", "_results.tsv")
 
     def write_gsea_graphs(self) -> Path:
         """Download and save all result graphs as PNGs."""
-        return self._write_gsea_files('graph', 'graph_url', '_results.png')
+        return self._write_gsea_files("graph", "graph_url", "_results.png")
 
     def save_session(self) -> Path:
         """
@@ -88,7 +90,7 @@ class StringGSEAResults:
         # use the GSEASession.to_yaml() method to serialize the session
         # and save it to the results folder
         outdir = self.get_res_path()
-        file_path = outdir / 'gsea_session.yml'
+        file_path = outdir / "gsea_session.yml"
         self.session.to_yaml(file_path)
         logger.info(f"Serialized results to {file_path}")
         return file_path
@@ -96,10 +98,13 @@ class StringGSEAResults:
     @staticmethod
     def zip_folder(folder_path: Path) -> Path:
         """Create a .zip archive of the given folder."""
-        archive = shutil.make_archive(str(folder_path.parent / folder_path.name), 'zip', root_dir=str(folder_path))
+        archive = shutil.make_archive(
+            str(folder_path.parent / folder_path.name), "zip", root_dir=str(folder_path)
+        )
         return Path(archive)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     script_dir = Path(__file__).resolve().parent
     project_root = script_dir.parent.parent
     yaml_input = project_root / "tests" / "data" / "dummy_d" / "session.yml"
@@ -109,4 +114,3 @@ if __name__ == '__main__':
     results.write_links()
     results.write_gsea_tsv()
     results.write_gsea_graphs()
-    

@@ -2,12 +2,12 @@ import os
 import tomli
 import tomli_w
 import requests
-import json
 from pathlib import Path
 from loguru import logger
 from typing import Tuple, Optional
 from datetime import datetime
 from dataclasses import dataclass, asdict
+
 
 @dataclass
 class GSEAConfig:
@@ -22,10 +22,10 @@ class GSEAConfig:
         """
         Read TOML from `path`, validate required fields, and return a GSEAConfig instance.
         """
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             data = tomli.load(f)
 
-        required = ['api_key', 'fdr', 'ge_enrichment_rank_direction', 'caller_identity']
+        required = ["api_key", "fdr", "ge_enrichment_rank_direction", "caller_identity"]
         missing = [key for key in required if key not in data]
         if missing:
             raise ValueError(
@@ -33,11 +33,11 @@ class GSEAConfig:
             )
 
         return cls(
-            api_key=data['api_key'],
-            fdr=data['fdr'],
-            ge_enrichment_rank_direction=data['ge_enrichment_rank_direction'],
-            caller_identity=data['caller_identity'],
-            creation_date=data.get('creation_date')
+            api_key=data["api_key"],
+            fdr=data["fdr"],
+            ge_enrichment_rank_direction=data["ge_enrichment_rank_direction"],
+            caller_identity=data["caller_identity"],
+            creation_date=data.get("creation_date"),
         )
 
     def write_toml(self, path: Path) -> None:
@@ -45,7 +45,7 @@ class GSEAConfig:
         Write the current configuration to TOML at `path`.
         """
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, 'wb') as f:
+        with open(path, "wb") as f:
             tomli_w.dump(asdict(self), f)
 
 
@@ -53,14 +53,16 @@ def _get_config_path() -> Path:
     """
     Determine the platform-specific config.toml path for string_gsea.
     """
-    if os.name == 'nt':  # Windows
-        config_dir = Path(os.environ.get('APPDATA', '')) / 'string_gsea'
+    if os.name == "nt":  # Windows
+        config_dir = Path(os.environ.get("APPDATA", "")) / "string_gsea"
     else:
-        config_dir = Path.home() / '.config' / 'string_gsea'
-    return config_dir / 'config.toml'
+        config_dir = Path.home() / ".config" / "string_gsea"
+    return config_dir / "config.toml"
 
 
-def _fetch_api_key(url: str = "https://version-12-0.string-db.org/api/json/get_api_key") -> Tuple[str, str]:
+def _fetch_api_key(
+    url: str = "https://version-12-0.string-db.org/api/json/get_api_key",
+) -> Tuple[str, str]:
     """
     Fetch the API key (and optional note) from STRING-DB API.
 
@@ -107,7 +109,9 @@ def get_configuration() -> GSEAConfig:
     return GSEAConfig.read_toml(config_path)
 
 
-def write_initial_configuration(caller_identity: str = "www.fgcz.ch", fdr: float = 0.25) -> Path:
+def write_initial_configuration(
+    caller_identity: str = "www.fgcz.ch", fdr: float = 0.25
+) -> Path:
     """
     Write an initial configuration file with the provided parameters and fetch an API key from STRING-DB.
 
@@ -119,8 +123,10 @@ def write_initial_configuration(caller_identity: str = "www.fgcz.ch", fdr: float
     config_path.parent.mkdir(parents=True, exist_ok=True)
 
     if config_path.exists():
-        logger.info(f"Configuration file already exists at {config_path}. Overwrite? (y/n)")
-        if input().lower() != 'y':
+        logger.info(
+            f"Configuration file already exists at {config_path}. Overwrite? (y/n)"
+        )
+        if input().lower() != "y":
             logger.info("Exiting without overwriting the existing configuration file.")
             return config_path
 
@@ -134,7 +140,7 @@ def write_initial_configuration(caller_identity: str = "www.fgcz.ch", fdr: float
         fdr=fdr,
         ge_enrichment_rank_direction=1,
         caller_identity=caller_identity,
-        creation_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        creation_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
     # Let write errors propagate
     config.write_toml(config_path)

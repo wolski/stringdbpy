@@ -1,4 +1,3 @@
-
 import polars as pl
 import seaborn as sns
 from scipy.spatial.distance import pdist
@@ -15,22 +14,21 @@ def pivot_to_wide(df: pl.DataFrame) -> pl.DataFrame:
     df_sorted = df.sort("proteinInputValues", descending=False)
     # First pivot to wide format
     wide_df = df_sorted.pivot(
-        values="proteinInputValues",
-        index="proteinLabels",
-        on="termID"
+        values="proteinInputValues", index="proteinLabels", on="termID"
     )
-    
+
     return wide_df
+
 
 def make_nested_dict(df: pl.DataFrame) -> dict:
     nested = {}
-    
+
     # get all contrasts
     contrasts = df["contrast"].unique().to_list()
     for c in contrasts:
         # slice down to this contrast
         df_c = df.filter(pl.col("contrast") == c)
-        
+
         # get all categories in that contrast
         categories = df_c["category"].unique().to_list()
         cat_dict = {}
@@ -40,34 +38,28 @@ def make_nested_dict(df: pl.DataFrame) -> dict:
             df_cat = df_cat.drop(["contrast", "category"])
             cat_dict[cat] = pivot_to_wide(df_cat)
         nested[c] = cat_dict
-    
+
     return nested
 
-def convert_to_binary(df: pl.DataFrame, index_col: str = "proteinLabels", to_boolean: bool = False) -> pl.DataFrame:
+
+def convert_to_binary(
+    df: pl.DataFrame, index_col: str = "proteinLabels", to_boolean: bool = False
+) -> pl.DataFrame:
     dtype = pl.Boolean if to_boolean else pl.Int8
-    binary_df = df.with_columns([
-        pl.col(c)
-        .is_not_null()
-        .cast(dtype)
-        .alias(c)
-        for c in df.columns
-        if c != index_col
-    ])
+    binary_df = df.with_columns(
+        [
+            pl.col(c).is_not_null().cast(dtype).alias(c)
+            for c in df.columns
+            if c != index_col
+        ]
+    )
     return binary_df
 
 
 def plot_term_distance_heatmap(fc: pl.DataFrame) -> None:
-    
-    
     binary_df = convert_to_binary(fc)
-    binary_pdf = (
-        binary_df.to_pandas()
-        .set_index("proteinLabels")
-    )
-    fc_pdf = (
-        fc.to_pandas()
-        .set_index("proteinLabels")
-    )
+    binary_pdf = binary_df.to_pandas().set_index("proteinLabels")
+    fc_pdf = fc.to_pandas().set_index("proteinLabels")
 
     # 1) Compute linkages from the binary matrix
     #    (rows = terms, cols = proteins)
@@ -83,10 +75,10 @@ def plot_term_distance_heatmap(fc: pl.DataFrame) -> None:
         fc_pdf,
         row_linkage=row_link,
         col_linkage=col_link,
-        cmap="RdBu_r",          # e.g. a divergent cmap for fold‐changes
-        center=0,             # or 0.0, depending on what “no‐change” is
+        cmap="RdBu_r",  # e.g. a divergent cmap for fold‐changes
+        center=0,  # or 0.0, depending on what “no‐change” is
         figsize=(12, 12),
-        xticklabels=True,      # still hide the crowded protein names
-        yticklabels=False
+        xticklabels=True,  # still hide the crowded protein names
+        yticklabels=False,
     )
     return g
