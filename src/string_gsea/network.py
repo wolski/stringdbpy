@@ -20,7 +20,6 @@ def add_gene_ratio(df: pl.DataFrame) -> pl.DataFrame:
     return df.with_columns(
         (pl.col("genesMapped") / pl.col("genesInSet")).alias("geneRatio")
     )
-    return df
 
 
 # def explode_protein_columns(df: pl.DataFrame) -> pl.DataFrame:
