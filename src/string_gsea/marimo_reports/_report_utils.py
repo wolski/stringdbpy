@@ -19,7 +19,17 @@ class ReportConfig:
 
     @classmethod
     def from_env(cls) -> "ReportConfig":
-        """Load configuration from environment variables."""
+        """Load configuration from environment variables.
+
+        Dev/interactive convenience path. Production uses from_args().
+
+        Environment variables:
+            GSEA_DATA_FILE: Path to XLSX data file (required)
+            GSEA_LINKS_FILE: Path to links.txt file (required)
+            GSEA_FDR_THRESHOLD: FDR threshold (default: 0.05)
+            GSEA_GENES_THRESHOLD: Genes mapped threshold (default: 10)
+            GSEA_MAX_TERMS: Max terms per category/contrast (default: 100)
+        """
         data_file = os.environ.get("GSEA_DATA_FILE", "")
         links_file = os.environ.get("GSEA_LINKS_FILE", "")
         fdr_threshold = float(os.environ.get("GSEA_FDR_THRESHOLD", "0.05"))
