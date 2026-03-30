@@ -91,32 +91,5 @@ def string_gsea_run(
         logger.info(f"Zipped results to {path}")
 
 
-def test_run():
-    # Test code
-    wd = Path(__file__).parent.parent.parent.parent
-    zip_path = wd / "tests/data/DE_mouse_fasta_xlsx.zip"
-    base_dir = Path(wd / "tests/data/dummy_res_2")
-    workunit_id = 1234
-    which = "pep_1"
-    from_rnk = False
-
-    logger.info("Running test with parameters:")
-    logger.info(f"Zip path: {zip_path}")
-    logger.info(f"Base directory: {base_dir}")
-    logger.info(f"Workunit ID: {workunit_id}")
-    logger.info(f"Analysis type: {which}")
-    logger.info(f"From RNK: {from_rnk}")
-
-    string_gsea_run(
-        zip_path=zip_path,
-        workunit_id=workunit_id,
-        out_dir=base_dir,
-        which=which,
-        from_rnk=from_rnk,
-    )
-
-
 if __name__ == "__main__":
-    # test_run()
-    # else:
     app()

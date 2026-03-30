@@ -2,40 +2,10 @@
 import polars as pl
 import pytest
 
-from string_gsea.gsea_utilities import find_zip_files, get_rank_files
+from string_gsea.gsea_utilities import get_rank_files
 
 
-# --- Test Case 1: Test that find_zip_files raises error when no file matches pattern ---
-def test_find_zip_files_raises_error_when_no_match(no_matching_dir):
-    """
-    Tests that find_zip_files raises FileNotFoundError when zip files exist
-    in tests/data but none match the required pattern (e.g., DEA_*, not DE_*).
-    """
-    # Ensure the files that *don't* match the pattern exist
-    non_matching_zip = no_matching_dir / "fasta_test.zip"
-    if not non_matching_zip.exists():
-        pytest.fail(
-            f"Required non-matching zip file fasta_test.zip not found at {non_matching_zip}"
-        )
-
-    # Assert that the specific error is raised because no files match the DEA_* pattern
-    with pytest.raises(
-        FileNotFoundError, match="No zip files found matching the pattern."
-    ):
-        find_zip_files(no_matching_dir)
-
-
-# --- Test Case 2: Folder without zip archive ---
-def test_find_zip_files_no_zip(tmp_path):
-    """Tests find_zip_files raises FileNotFoundError when no zip files exist."""
-    # tmp_path is an empty directory provided by pytest
-    (tmp_path / "some_other_file.txt").touch()  # Add a non-zip file
-
-    with pytest.raises(FileNotFoundError, match="No zip files found in"):
-        find_zip_files(tmp_path)
-
-
-# --- Test Case 3: Read rank files from the DE zip ---
+# --- Test Case: Read rank files from the DE zip ---
 def test_get_rank_files_reads_from_DE_zip(dummy_session_rnk_zip):
     """Tests reading .rnk files from the DE_*.zip archive."""
     if not dummy_session_rnk_zip.exists():

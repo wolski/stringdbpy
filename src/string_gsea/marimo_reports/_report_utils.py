@@ -86,11 +86,6 @@ def load_links(config: ReportConfig) -> dict[str, str]:
         }
 
 
-def get_session_file_path(config: ReportConfig) -> Path:
-    """Get the path to the session file relative to data file."""
-    return config.data_file.parent.parent / "gsea_session.yml"
-
-
 def get_workunit_id(config: ReportConfig) -> str:
     """Extract workunit ID from data file name.
 

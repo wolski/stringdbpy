@@ -15,7 +15,7 @@ def temp_config_dir():
     temp_dir = tempfile.mkdtemp()
 
     # Mock the home directory path
-    with patch("string_gsea.config.Path.home") as mock_home:
+    with patch("string_gsea.gsea_config.Path.home") as mock_home:
         mock_home.return_value = Path(temp_dir)
 
         # Mock the APPDATA environment variable for Windows tests

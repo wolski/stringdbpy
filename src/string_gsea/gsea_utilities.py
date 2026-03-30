@@ -1,10 +1,8 @@
 import io
-import re
 import zipfile
 from pathlib import Path
 
 import polars as pl
-from loguru import logger
 
 
 def get_rank_files(zip_path):
@@ -26,18 +24,3 @@ def get_rank_files(zip_path):
     return dataframes
 
 
-def find_zip_files(path: Path = Path(".")):
-    pattern = re.compile(r"^(\d{7}.*|DEA_[^/]+)\.zip$")
-
-    candidates = list(path.glob("*.zip"))
-    if not candidates:
-        logger.error("No zip files found")
-        raise FileNotFoundError(f"No zip files found in {path.resolve()}")
-
-    # Filter files whose names match the pattern
-    files = [f for f in candidates if pattern.match(f.name)]
-    if not files:
-        logger.error("No zip files match the pattern.")
-        raise FileNotFoundError("No zip files found matching the pattern.")
-
-    return files
