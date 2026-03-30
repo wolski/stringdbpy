@@ -1,7 +1,7 @@
 import polars as pl
 import seaborn as sns
-from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import linkage
+from scipy.spatial.distance import pdist
 
 
 def pivot_to_wide(df: pl.DataFrame) -> pl.DataFrame:

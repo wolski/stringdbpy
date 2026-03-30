@@ -1,8 +1,9 @@
+import io
 import re
 import zipfile
-import io
-import polars as pl
 from pathlib import Path
+
+import polars as pl
 from loguru import logger
 
 

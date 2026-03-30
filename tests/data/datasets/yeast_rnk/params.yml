@@ -1,0 +1,21 @@
+dataset:
+  name: "yeast_rnk"
+  description: "Yeast RNK files for species detection tests"
+
+input:
+  zip_file: "input.zip"
+  from_rnk: true
+  which: null
+
+execution:
+  workunit_id: "yeast_rnk"
+  skip_run: false
+  timeout: 3600
+
+expected:
+  species: 559292
+  validate_output: false
+
+metadata:
+  size_mb: 2.0
+  tags: ["yeast", "rnk", "small", "ci", "species_test"]

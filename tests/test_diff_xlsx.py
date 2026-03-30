@@ -1,6 +1,6 @@
-import pytest
-from pathlib import Path
+
 import polars as pl
+import pytest
 
 from string_gsea.ranks_from_dea_xlsx import DiffXLSX
 
@@ -9,9 +9,9 @@ class TestDiffXLSXIntegration:
     """Integration tests for the DiffXLSX class."""
 
     @pytest.fixture
-    def zip_path(self):
+    def zip_path(self, mouse_xlsx_zip):
         """Fixture to provide the path to the test data zip file."""
-        return Path(__file__).parent / "data" / "DE_mouse_fasta_xlsx.zip"
+        return mouse_xlsx_zip
 
     @pytest.fixture
     def diff_xlsx(self, zip_path):

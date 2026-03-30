@@ -1,8 +1,9 @@
-import networkx as nx
 import matplotlib.pyplot as plt
-from matplotlib.patches import Wedge
-from matplotlib import cm
+import networkx as nx
 import polars as pl
+from matplotlib import cm
+from matplotlib.patches import Wedge
+
 from string_gsea.TermNetworkBuilder import TermNetworkBuilder
 
 

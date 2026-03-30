@@ -1,18 +1,21 @@
+import importlib.resources
 import io
 import re  # Added missing import
+import zipfile
 from collections import Counter  # Corrected import
+from pathlib import Path
+
+import polars as pl
 import requests
 from loguru import logger
-import polars as pl
-import zipfile
-import importlib.resources
-from pathlib import Path
+
+from string_gsea.gsea_config import STRING_API_BASE_DEFAULT
 from string_gsea.gsea_utilities import get_rank_files
 
 
 class GetTaxonID:
     @staticmethod
-    def _fetch_ncbi_taxon_ids(identifiers):
+    def _fetch_ncbi_taxon_ids(identifiers, api_base_url: str = STRING_API_BASE_DEFAULT):
         """
         Fetches the ncbiTaxonId for one or more identifiers from the STRING API.
 
@@ -31,7 +34,7 @@ class GetTaxonID:
         else:
             id_string = identifiers
 
-        url = "https://version-12-0.string-db.org/api/json/get_string_ids"
+        url = f"{api_base_url}/json/get_string_ids"
         params = {"identifiers": id_string}
         logger.info(f"Fetching ncbiTaxonId for identifiers: {url}?{id_string}")
 
@@ -55,7 +58,7 @@ class GetTaxonID:
         return result
 
     @staticmethod
-    def determine_species(df: pl.DataFrame, nr: int = 10) -> int:
+    def determine_species(df: pl.DataFrame, nr: int = 10, api_base_url: str = STRING_API_BASE_DEFAULT) -> int:
         """
         Determines the most likely species from a rank file DataFrame by sampling identifiers
         and querying the STRING API for their NCBI Taxon IDs.
@@ -89,7 +92,7 @@ class GetTaxonID:
         )
 
         # Fetch taxon IDs for sampled identifiers.
-        taxon_ids = GetTaxonID._fetch_ncbi_taxon_ids(sampled_ids)
+        taxon_ids = GetTaxonID._fetch_ncbi_taxon_ids(sampled_ids, api_base_url=api_base_url)
         taxon_ids = [tid for tid in taxon_ids.values() if tid is not None]
 
         # Count frequencies and return the most common taxon ID.
@@ -222,7 +225,7 @@ class TaxonUtils:
                 return self.get_organism_for_string(parent_taxon_id)
 
 
-def get_species_taxon(zip_path: Path, df_list: dict, nr=10) -> int:
+def get_species_taxon(zip_path: Path, df_list: dict, nr=10, api_base_url: str = STRING_API_BASE_DEFAULT) -> int:
     """
     Determine the species taxon ID from the zip file.
 
@@ -244,7 +247,7 @@ def get_species_taxon(zip_path: Path, df_list: dict, nr=10) -> int:
         return taxon2
     else:
         df = list(df_list.values())[0]
-        taxon3 = GetTaxonID.determine_species(df, nr=nr)
+        taxon3 = GetTaxonID.determine_species(df, nr=nr, api_base_url=api_base_url)
         logger.info(f"{taxon3} retrieved from string by searching {nr} identifiers.")
 
         return taxon3

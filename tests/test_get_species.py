@@ -1,17 +1,9 @@
 import io
 
 import pytest
-import os
 
-from string_gsea.get_species import OxFieldsZip, GetTaxonID  # Import GetTaxonID
+from string_gsea.get_species import GetTaxonID, OxFieldsZip  # Import GetTaxonID
 from string_gsea.gsea_utilities import get_rank_files  # Import get_rank_files
-
-# Define the path to the test data directory relative to the test file
-TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-TEST_ZIP_PATH = os.path.join(TEST_DATA_DIR, "no_matching_zip", "fasta_test.zip")
-YEAST_RNK_ZIP_PATH = os.path.join(
-    TEST_DATA_DIR, "DE_yeast_fasta_rnk.zip"
-)  # Path for yeast rank file zip
 
 # Expected species ID (adjust if necessary based on fasta_test.zip content)
 EXPECTED_SPECIES_ID = 559292  # This was for the fasta test
@@ -19,12 +11,12 @@ EXPECTED_SPECIES_ID = 559292  # This was for the fasta test
 EXPECTED_STRING_SPECIES_ID = 4932
 
 
-def test_get_species_from_oxes():
+def test_get_species_from_oxes(fasta_test_zip):
     """Tests the get_species_from_oxes function."""
-    if not os.path.exists(TEST_ZIP_PATH):
-        pytest.fail(f"Test zip file not found at {TEST_ZIP_PATH}")
+    if not fasta_test_zip.exists():
+        pytest.fail(f"Test zip file not found at {fasta_test_zip}")
 
-    species_id = OxFieldsZip.get_species_from_oxes(TEST_ZIP_PATH)
+    species_id = OxFieldsZip.get_species_from_oxes(fasta_test_zip)
     assert species_id == EXPECTED_SPECIES_ID, (
         f"Expected species ID {EXPECTED_SPECIES_ID}, but got {species_id}"
     )
@@ -41,17 +33,18 @@ def test_get_ox_fields():
     assert result == expected_ox
 
 
-def test_GetTaxonID_determine_species() -> None:
+@pytest.mark.integration
+def test_GetTaxonID_determine_species(yeast_rnk_zip) -> None:
     """Tests GetTaxonID.get_species_from_rank_file using a yeast rank file."""
-    if not os.path.exists(YEAST_RNK_ZIP_PATH):
-        pytest.fail(f"Test rank zip file not found at {YEAST_RNK_ZIP_PATH}")
+    if not yeast_rnk_zip.exists():
+        pytest.fail(f"Test rank zip file not found at {yeast_rnk_zip}")
 
     # Use get_rank_files to read the data
-    rank_dataframes = get_rank_files(YEAST_RNK_ZIP_PATH)
+    rank_dataframes = get_rank_files(yeast_rnk_zip)
 
     # Check if any rank files were found and loaded
     if not rank_dataframes:
-        pytest.fail(f"No .rnk files found or loaded from {YEAST_RNK_ZIP_PATH}")
+        pytest.fail(f"No .rnk files found or loaded from {yeast_rnk_zip}")
 
     # Get the first DataFrame from the dictionary (assuming at least one exists)
     # The key doesn't matter for this test, only the content of the DataFrame

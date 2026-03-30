@@ -1,5 +1,6 @@
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Import the TaxonUtils class from your module
 from string_gsea.get_species import TaxonUtils

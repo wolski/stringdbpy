@@ -1,7 +1,7 @@
 import pytest
 
-from string_gsea.gsea_session import GSEASession
 from string_gsea.gsea_config import GSEAConfig
+from string_gsea.gsea_session import GSEASession
 
 
 @pytest.fixture
@@ -69,11 +69,12 @@ def test_from_yaml_file(tmp_path, sample_session):
 
 
 # %%
-def test_endpoint_status():
-    # Ensure the class attribute is set correctly
-    assert hasattr(GSEASession, "end_point_status")
-    assert isinstance(GSEASession.end_point_status, str)
-    assert "valuesranks_enrichment_status" in GSEASession.end_point_status
+def test_endpoint_status(sample_session):
+    # Ensure the property returns the correct URL derived from config
+    url = sample_session.end_point_status
+    assert isinstance(url, str)
+    assert "valuesranks_enrichment_status" in url
+    assert url.startswith(sample_session.config_dict.api_base_url)
 
 
 # %%

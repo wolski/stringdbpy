@@ -1,8 +1,9 @@
 import shutil
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from string_gsea.gsea_config import get_configuration, write_initial_configuration
 

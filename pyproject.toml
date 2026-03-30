@@ -59,6 +59,7 @@ notebooks = [
 "string_gsea_write_config" = "string_gsea.scripts.write_config:app"
 "string_gsea_run" = "string_gsea.scripts.string_gsea_run:app"
 "string_gsea_render_reports" = "string_gsea.scripts.render_reports:app"
+"string_gsea_render_marimo" = "string_gsea.scripts.render_marimo_reports:app"
 "string_ora_run" = "string_gsea.scripts.string_ora_run:app"
 
 
@@ -77,6 +78,7 @@ include = [
   "src/string_gsea/data/mappings/*.zip",
   "src/string_gsea/docs/**/*.qmd",
   "src/string_gsea/docs/**/*.yml",
+  "src/string_gsea/marimo_reports/*.py",
 ]
 
 [tool.coverage.run]
@@ -97,6 +99,36 @@ exclude_lines = [
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short -m 'not integration'"
+filterwarnings = ["ignore::DeprecationWarning"]
+markers = [
+    "integration: tests that make live STRING-DB API calls (deselect with '-m \"not integration\"')",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "W",      # pycodestyle warnings
+    "A",      # flake8-builtins
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/string_gsea/marimo_reports/*" = ["B018", "E501"]
+
+[tool.ruff.format]
+quote-style = "double"
 
 [tool.uv]
 reinstall-package = ["stringdbpy"]

@@ -1,6 +1,7 @@
 import shutil
-import requests
 from pathlib import Path
+
+import requests
 from loguru import logger
 
 from string_gsea.gsea_session import GSEASession

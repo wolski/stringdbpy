@@ -1,12 +1,12 @@
-import upsetplot
-import polars as pl
-import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import polars as pl
+import seaborn as sns
+import upsetplot
 from matplotlib import cm
 from scipy.stats import gaussian_kde
-import pandas as pd
-from upsetplot import from_indicators, UpSet
+from upsetplot import UpSet, from_indicators
 
 
 def make_upset(

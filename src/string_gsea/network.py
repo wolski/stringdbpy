@@ -1,10 +1,10 @@
-import polars as pl
-import numpy as np
-from matplotlib.colors import LinearSegmentedColormap
-from ipycytoscape import CytoscapeWidget
-import networkx as nx
-import plotly.graph_objs as go
 import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+import plotly.graph_objs as go
+import polars as pl
+from ipycytoscape import CytoscapeWidget
+from matplotlib.colors import LinearSegmentedColormap
 
 
 def filter_by_FDR(
@@ -13,6 +13,18 @@ def filter_by_FDR(
     return xd.filter(
         (pl.col("falseDiscoveryRate") < FDR_threshold)
         & (pl.col("genesMapped") > genes_mapped_threshold)
+    )
+
+
+def select_top_terms(df: pl.DataFrame, max_terms: int = 100) -> pl.DataFrame:
+    """Keep only the top max_terms terms per (contrast, category) by FDR."""
+    return (
+        df.sort(["contrast", "category", "falseDiscoveryRate"])
+        .with_columns(
+            pl.col("termID").rank(method="dense").over(["contrast", "category"]).alias("_rank")
+        )
+        .filter(pl.col("_rank") <= max_terms)
+        .drop("_rank")
     )
 
 

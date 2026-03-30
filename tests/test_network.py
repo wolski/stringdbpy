@@ -1,25 +1,18 @@
-import pytest
-import polars as pl
+
 import networkx as nx
-from pathlib import Path
+import polars as pl
+import pytest
 from matplotlib.figure import Figure
 
 from string_gsea import network
 
 
-TEST_DATA_DIR = Path(__file__).parent / "data"
-
-
 @pytest.fixture
-def long_results_df() -> pl.DataFrame:
+def long_results_df(network_test_xlsx) -> pl.DataFrame:
     # Load a small sample of the Excel file for testing
-    file_path = (
-        TEST_DATA_DIR
-        / "dummy_out/WU_abcd_GSEA/from_rnk/WUabcd_string_gsea_results_long.xlsx"
-    )
     # Note: Comment mentions reading 100 rows, but full sheet is read then filtered.
     # Consider pl.read_excel(file_path, read_options={"n_rows": 100}) if initial load is slow.
-    df = pl.read_excel(file_path)
+    df = pl.read_excel(network_test_xlsx)
     cont = "Bait_NCP_pUbT12T14_results.tsv"
     cat = "Monarch"
     df = df.filter((pl.col("contrast") == cont) & (pl.col("category") == cat))
@@ -42,6 +35,23 @@ def summarized_df(processed_df: pl.DataFrame) -> pl.DataFrame:
 def graph_with_colors(summarized_df: pl.DataFrame) -> nx.Graph:
     """NetworkX graph with color and size attributes."""
     return network.make_network_with_colors(summarized_df)
+
+
+def test_select_top_terms(long_results_df: pl.DataFrame):
+    """Test that select_top_terms limits rows per (contrast, category)."""
+    # Use a small max_terms to verify filtering
+    result = network.select_top_terms(long_results_df, max_terms=3)
+    assert isinstance(result, pl.DataFrame)
+    assert result.height <= 3
+    # Verify ordering by FDR (first row should have lowest FDR)
+    fdrs = result["falseDiscoveryRate"].to_list()
+    assert fdrs == sorted(fdrs)
+
+
+def test_select_top_terms_passthrough(long_results_df: pl.DataFrame):
+    """Test that max_terms larger than data returns all rows."""
+    result = network.select_top_terms(long_results_df, max_terms=10000)
+    assert result.height == long_results_df.height
 
 
 def test_explode_protein_columns(

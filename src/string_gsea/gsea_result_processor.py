@@ -1,14 +1,14 @@
-from pathlib import Path
-import polars as pl
-from pyexcelerate import Workbook
-from typing import Dict, List
-from loguru import logger
 import tempfile
+from pathlib import Path
+
+import polars as pl
+from loguru import logger
+from pyexcelerate import Workbook
 
 
 class GSEAResultProcessor:
     @staticmethod
-    def _write_xlsx(dataframes: Dict[str, pl.DataFrame], filename: Path) -> None:
+    def _write_xlsx(dataframes: dict[str, pl.DataFrame], filename: Path) -> None:
         wb = Workbook()
         for sheet_name, dataframe in dataframes.items():
             logger.info(f"Writing {sheet_name} with shape {dataframe.shape}")
@@ -23,7 +23,7 @@ class GSEAResultProcessor:
         logger.info(f"Wrote {filename}")
 
     @staticmethod
-    def _results_to_dataframe(tsv_files: List[Path]) -> pl.DataFrame:
+    def _results_to_dataframe(tsv_files: list[Path]) -> pl.DataFrame:
         dfs_with_key = []
         dfs = {f.name: pl.read_csv(f, separator="\t") for f in tsv_files}
         for key, dataframe in dfs.items():
@@ -52,8 +52,8 @@ class GSEAResultProcessor:
 
     @staticmethod
     def _to_wide(
-        combined_df: pl.DataFrame, columns: List[str]
-    ) -> Dict[str, pl.DataFrame]:
+        combined_df: pl.DataFrame, columns: list[str]
+    ) -> dict[str, pl.DataFrame]:
         pivot_dict = {}
         for col in columns:
             pivot_dict[col] = combined_df.pivot(
@@ -64,7 +64,7 @@ class GSEAResultProcessor:
         return pivot_dict
 
     @staticmethod
-    def _merge_pivoted_dfs(pivot_dict: Dict[str, pl.DataFrame]) -> pl.DataFrame:
+    def _merge_pivoted_dfs(pivot_dict: dict[str, pl.DataFrame]) -> pl.DataFrame:
         join_cols = ["category", "termID", "termDescription", "num_contrasts"]
         pivoted_dfs = []
         for col, df in pivot_dict.items():

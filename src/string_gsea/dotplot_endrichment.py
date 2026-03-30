@@ -1,8 +1,8 @@
-import polars as pl
-import pandas as pd
-import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import polars as pl
 
 
 def prepare_data_for_plotting(pdf: pd.DataFrame, label_length: int = 40):

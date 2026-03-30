@@ -1,8 +1,10 @@
-import pytest
 from pathlib import Path
+
+import pytest
+
 from string_gsea.scripts.render_reports import (
-    render_quarto_docs,
     execute_quarto_command,
+    render_quarto_docs,
 )
 
 

@@ -1,15 +1,16 @@
-from cyclopts import App
 from pathlib import Path
-from loguru import logger
 from typing import Literal
 
-from string_gsea.gsea_config import get_configuration
-from string_gsea.gsea_utilities import get_rank_files
+from cyclopts import App
+from loguru import logger
+
 from string_gsea.get_species import get_species_taxon
+from string_gsea.gsea_config import get_configuration
+from string_gsea.gsea_result_processor import GSEAResultProcessor
+from string_gsea.gsea_utilities import get_rank_files
+from string_gsea.ranks_from_dea_xlsx import DiffXLSX
 from string_gsea.string_gsea_builder import StringGSEABuilder
 from string_gsea.string_gsea_results import StringGSEAResults
-from string_gsea.gsea_result_processor import GSEAResultProcessor
-from string_gsea.ranks_from_dea_xlsx import DiffXLSX
 
 app = App()
 
@@ -51,7 +52,7 @@ def string_gsea_run(
         rank_files = df_xlsx.rank_dict(which=which)
         dataframes = rank_files
 
-    species = get_species_taxon(zip_path, dataframes)
+    species = get_species_taxon(zip_path, dataframes, api_base_url=config.api_base_url)
 
     # 3) Build, write inputs, submit & poll
     builder = StringGSEABuilder(

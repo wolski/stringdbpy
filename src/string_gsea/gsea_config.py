@@ -1,14 +1,14 @@
 import os
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
+
+import requests
 import tomli
 import tomli_w
-import requests
-from pathlib import Path
 from loguru import logger
-from typing import Tuple, Optional
-from datetime import datetime
-from dataclasses import dataclass, asdict
 
-from string_gsea.config import GSEAConfig
+STRING_API_BASE_DEFAULT = "https://version-12-0.string-db.org/api"
 
 
 @dataclass
@@ -17,7 +17,8 @@ class GSEAConfig:
     fdr: float
     ge_enrichment_rank_direction: int
     caller_identity: str
-    creation_date: Optional[str] = None
+    creation_date: str | None = None
+    api_base_url: str = STRING_API_BASE_DEFAULT
 
     required = ["api_key", "fdr", "ge_enrichment_rank_direction", "caller_identity"]
 
@@ -40,10 +41,11 @@ class GSEAConfig:
             ge_enrichment_rank_direction=data["ge_enrichment_rank_direction"],
             caller_identity=data["caller_identity"],
             creation_date=data.get("creation_date"),
+            api_base_url=data.get("api_base_url", STRING_API_BASE_DEFAULT),
         )
 
     @classmethod
-    def from_dict(cls, data: dict) -> GSEAConfig:
+    def from_dict(cls, data: dict) -> "GSEAConfig":
         """
         Initialize GSEAConfig from dict.
         """
@@ -58,6 +60,7 @@ class GSEAConfig:
             ge_enrichment_rank_direction=data["ge_enrichment_rank_direction"],
             caller_identity=data["caller_identity"],
             creation_date=data.get("creation_date"),
+            api_base_url=data.get("api_base_url", STRING_API_BASE_DEFAULT),
         )
 
     def write_toml(self, path: Path) -> None:
@@ -81,8 +84,8 @@ def _get_config_path() -> Path:
 
 
 def _fetch_api_key(
-    url: str = "https://version-12-0.string-db.org/api/json/get_api_key",
-) -> Tuple[str, str]:
+    url: str = f"{STRING_API_BASE_DEFAULT}/json/get_api_key",
+) -> tuple[str, str]:
     """
     Fetch the API key (and optional note) from STRING-DB API.
 

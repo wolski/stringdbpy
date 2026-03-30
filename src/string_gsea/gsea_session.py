@@ -1,8 +1,9 @@
-import yaml
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
+
+import yaml
+
 from string_gsea.gsea_config import GSEAConfig
-from dataclasses import asdict
 
 
 @dataclass
@@ -19,9 +20,10 @@ class GSEASession:
     base_path: Path
     res_job_id: dict[tuple[str, str], str] = field(default_factory=dict)
     res_data: dict[tuple[str, str], dict] = field(default_factory=dict)
-    end_point_status = (
-        "https://version-12-0.string-db.org/api/json/valuesranks_enrichment_status"
-    )
+
+    @property
+    def end_point_status(self) -> str:
+        return f"{self.config_dict.api_base_url}/json/valuesranks_enrichment_status"
 
     def to_yaml(self, filepath: Path = None) -> str:
         """

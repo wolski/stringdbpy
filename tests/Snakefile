@@ -1,0 +1,153 @@
+# Snakefile for STRING-GSEA batch processing
+# Run from tests/ directory: snakemake --cores 1
+#
+# Available rules:
+#   all          - Run GSEA + render reports for all datasets (default)
+#   ci           - Run only small datasets tagged with "ci"
+#   run_<NAME>   - Run a single dataset (e.g., run_mouse_xlsx)
+#   clean        - Remove all outputs
+#   help         - Show this help message
+
+import yaml
+from pathlib import Path
+
+# Configuration
+DATASETS_DIR = Path("data/datasets")
+OUTPUT_DIR = Path("data/outputs")
+
+
+def get_datasets():
+    """Discover all datasets with params.yml."""
+    datasets = []
+    for params_file in DATASETS_DIR.glob("*/params.yml"):
+        with open(params_file) as f:
+            params = yaml.safe_load(f)
+        if not params.get("execution", {}).get("skip_run", False):
+            datasets.append(params_file.parent.name)
+    return datasets
+
+
+def load_params(dataset):
+    """Load params.yml for a dataset."""
+    with open(DATASETS_DIR / dataset / "params.yml") as f:
+        return yaml.safe_load(f)
+
+
+DATASETS = get_datasets()
+
+
+# Default target: run all datasets
+rule all:
+    input:
+        expand(OUTPUT_DIR / "{dataset}" / "done.txt", dataset=DATASETS)
+
+
+# Run GSEA analysis for a dataset
+rule run_gsea:
+    input:
+        zip_file=DATASETS_DIR / "{dataset}" / "input.zip",
+        params_file=DATASETS_DIR / "{dataset}" / "params.yml"
+    output:
+        done=OUTPUT_DIR / "{dataset}" / "gsea_done.txt"
+    params:
+        from_rnk=lambda wc: load_params(wc.dataset)["input"]["from_rnk"],
+        which=lambda wc: load_params(wc.dataset)["input"].get("which"),
+        workunit_id=lambda wc: load_params(wc.dataset)["execution"]["workunit_id"]
+    shell:
+        """
+        mkdir -p {OUTPUT_DIR}/{wildcards.dataset}
+
+        # Build command arguments
+        FROM_RNK_FLAG=""
+        if [ "{params.from_rnk}" = "True" ]; then
+            FROM_RNK_FLAG="--from-rnk"
+        fi
+
+        WHICH_FLAG=""
+        if [ "{params.which}" != "None" ] && [ "{params.which}" != "" ]; then
+            WHICH_FLAG="--which {params.which}"
+        fi
+
+        # Run GSEA
+        string_gsea_run "{input.zip_file}" "{params.workunit_id}" "{OUTPUT_DIR}/{wildcards.dataset}" $FROM_RNK_FLAG $WHICH_FLAG
+
+        touch {output.done}
+        """
+
+
+# Render reports for a dataset (using Marimo)
+rule render_reports:
+    input:
+        gsea_done=OUTPUT_DIR / "{dataset}" / "gsea_done.txt"
+    output:
+        done=OUTPUT_DIR / "{dataset}" / "done.txt"
+    params:
+        workunit_id=lambda wc: load_params(wc.dataset)["execution"]["workunit_id"]
+    shell:
+        """
+        # Find the GSEA output directory
+        GSEA_DIR=$(find {OUTPUT_DIR}/{wildcards.dataset} -maxdepth 1 -type d -name "WU_*_GSEA" | head -1)
+
+        if [ -n "$GSEA_DIR" ]; then
+            string_gsea_render_marimo "$GSEA_DIR" "{OUTPUT_DIR}/{wildcards.dataset}/reports" --no-reports-subfolder || true
+        fi
+
+        touch {output.done}
+        """
+
+
+# Run only small datasets tagged with "ci"
+rule ci:
+    input:
+        expand(
+            OUTPUT_DIR / "{dataset}" / "done.txt",
+            dataset=[d for d in DATASETS if "ci" in load_params(d).get("metadata", {}).get("tags", [])]
+        )
+
+
+# Run a single dataset by name (use as target: snakemake run_mouse_xlsx)
+for ds in DATASETS:
+    rule:
+        name: f"run_{ds}"
+        input:
+            OUTPUT_DIR / ds / "done.txt"
+
+
+# Clean outputs
+rule clean:
+    shell:
+        """
+        rm -rf {OUTPUT_DIR}/*
+        """
+
+
+# Help message
+rule help:
+    run:
+        print("""
+STRING-GSEA Snakemake Workflow
+==============================
+
+Usage: snakemake [rule] --cores N
+
+Available rules:
+  all          - Run GSEA + render reports for all datasets (default)
+  ci           - Run only small datasets tagged with "ci" (fast)
+  run_<NAME>   - Run a single dataset (e.g., run_mouse_xlsx)
+  clean        - Remove all outputs
+  help         - Show this help message
+
+Datasets discovered: {}
+
+CI datasets (tagged "ci"): {}
+
+Examples:
+  snakemake --cores 1          # Run all datasets
+  snakemake ci --cores 1       # Run CI datasets only
+  snakemake run_mouse_xlsx     # Run single dataset
+  snakemake -n                 # Dry-run
+  snakemake clean              # Remove outputs
+        """.format(
+            ", ".join(DATASETS),
+            ", ".join([d for d in DATASETS if "ci" in load_params(d).get("metadata", {}).get("tags", [])])
+        ))

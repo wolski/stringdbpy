@@ -1,0 +1,21 @@
+dataset:
+  name: "mouse_xlsx"
+  description: "Mouse differential expression XLSX with FASTA"
+
+input:
+  zip_file: "input.zip"
+  from_rnk: false
+  which: "pep_2_no_imputed"
+
+execution:
+  workunit_id: "mouse_fasta"
+  skip_run: false
+  timeout: 3600
+
+expected:
+  species: 10090
+  validate_output: false
+
+metadata:
+  size_mb: 9.5
+  tags: ["mouse", "xlsx", "small", "ci"]

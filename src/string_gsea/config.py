@@ -1,12 +1,12 @@
 import os
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
+
+import requests
 import tomli
 import tomli_w
-import requests
-from pathlib import Path
 from loguru import logger
-from typing import Tuple, Optional
-from datetime import datetime
-from dataclasses import dataclass, asdict
 
 
 @dataclass
@@ -15,7 +15,7 @@ class GSEAConfig:
     fdr: float
     ge_enrichment_rank_direction: int
     caller_identity: str
-    creation_date: Optional[str] = None
+    creation_date: str | None = None
 
     @classmethod
     def read_toml(cls, path: Path) -> "GSEAConfig":
@@ -62,7 +62,7 @@ def _get_config_path() -> Path:
 
 def _fetch_api_key(
     url: str = "https://version-12-0.string-db.org/api/json/get_api_key",
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """
     Fetch the API key (and optional note) from STRING-DB API.
 

@@ -1,14 +1,14 @@
-import subprocess
-from pathlib import Path
-from cyclopts import App
-from loguru import logger
 import importlib.resources
 import shlex
 import shutil
+import subprocess
 import zipfile
+from pathlib import Path
+
+from cyclopts import App
+from loguru import logger
 
 from string_gsea.string_gsea_results import StringGSEAResults
-
 
 app = App(
     help="Render Quarto reports in the package's docs/ directory, passing input_dir as a data_file param."
@@ -116,7 +116,7 @@ def prepare_data_input(data_dir: Path, output_dir: Path) -> Path:
 
 def get_contrast_count(links_file: Path) -> int:
     """Get the number of contrasts from the links file."""
-    with open(links_file, "r") as f:
+    with open(links_file) as f:
         return len(f.readlines())
 
 

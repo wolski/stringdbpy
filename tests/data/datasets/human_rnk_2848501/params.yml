@@ -1,0 +1,21 @@
+dataset:
+  name: "human_rnk_2848501"
+  description: "Human RNK files from workunit 2848501"
+
+input:
+  zip_file: "input.zip"
+  from_rnk: true
+  which: null
+
+execution:
+  workunit_id: "2848501"
+  skip_run: false
+  timeout: 3600
+
+expected:
+  species: 9606
+  validate_output: false
+
+metadata:
+  size_mb: 8.4
+  tags: ["human", "rnk", "small", "ci"]

@@ -1,5 +1,5 @@
-import zipfile
 import io
+import zipfile
 from pathlib import Path
 
 import polars as pl

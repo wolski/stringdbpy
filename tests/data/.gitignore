@@ -1,4 +1,17 @@
-dummy_out*
-dummy_2_out*
-*
-/.quarto/
+# Snakemake outputs
+outputs/
+
+# Large non-CI datasets (keep only ci-tagged datasets in git)
+datasets/human_rnk_2881688/
+datasets/human_rnk_2958180_single/
+datasets/human_xlsx_20250813/
+datasets/human_xlsx_20250908/
+datasets/human_xlsx_primary_58167/
+datasets/human_xlsx_secondary_58167/
+
+# Quarto build cache
+.quarto/
+*/.quarto/
+
+# macOS
+.DS_Store

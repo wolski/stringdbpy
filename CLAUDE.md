@@ -44,6 +44,28 @@ pytest tests/test_gsea_session.py
 
 # Run with additional pytest arguments via nox
 nox -s test -- -v -k "test_name"
+
+# Run tests with coverage
+nox -s test -- --cov=string_gsea --cov-report=term
+```
+
+### Linting and Formatting
+
+```bash
+# Check linting issues
+ruff check src/ tests/
+
+# Check formatting
+ruff format --check src/ tests/
+
+# Auto-fix linting issues
+ruff check --fix src/ tests/
+
+# Auto-format code
+ruff format src/ tests/
+
+# Type checking (optional, continues on error in CI)
+mypy --install-types --non-interactive src/string_gsea
 ```
 
 ### Running Analysis
@@ -61,17 +83,30 @@ string_gsea_run "path/to/data.zip" "workunit_id" "output_dir" --which "pep_1"
 
 Valid analysis types: `pep_1`, `pep_1_no_imputed`, `pep_2`, `pep_2_no_imputed`
 
-### Report Generation
+### Running ORA (Over-Representation Analysis)
 
 ```bash
-# Render Quarto reports to output directory
+# Run ORA with significant genes, background, and FASTA for species detection
+string_ora_run "significant.txt" "background.txt" "proteome.fasta" --out-dir "./results" --workunit-id "ORA001"
+```
+
+Input files:
+- `significant.txt`: One protein/gene ID per line (significant genes)
+- `background.txt`: One protein/gene ID per line (all tested genes)
+- `proteome.fasta`: FASTA file with OX= fields for species detection
+
+### Report Generation
+
+Two report generation systems are available: Quarto (default) and Marimo.
+
+```bash
+# Quarto reports (requires Quarto installed)
 string_gsea_render_reports "path/to/results" "path/to/output"
-
-# Render reports into input directory
-string_gsea_render_reports "path/to/results"
-
-# Custom thresholds
 string_gsea_render_reports "path/to/results" --FDR-threshold 0.01 --genes-mapped-threshold 5
+
+# Marimo reports (static HTML, no Quarto required)
+string_gsea_render_marimo "path/to/results" "path/to/output"
+string_gsea_render_marimo "path/to/results" --fdr-threshold 0.01 --genes-mapped-threshold 5
 ```
 
 ### Interactive Notebooks
@@ -158,20 +193,37 @@ The codebase follows a builder pattern with clear separation of concerns:
    - Configuration: `_quarto.yml`
    - Rendered via `render_reports.py` which calls `quarto render` with parameters
 
-9. **Network Visualization** (`network.py`, `TermNetworkBuilder.py`, `TermNetworkPlotter.py`)
-   - Creates network graphs from GSEA results
-   - Uses networkx for graph structure
-   - Supports Cytoscape and pyvis visualization
+9. **Marimo Reports** (`src/string_gsea/marimo_reports/`)
+   - Alternative report generation using Marimo
+   - Static HTML export (no WASM runtime)
+   - Reports: `report_index.py`, `report_networks.py`, `report_multiple.py`
+   - Rendered via `render_marimo_reports.py` using `marimo export html`
 
-10. **Plotting** (`gsea_plotting.py`, `dotplot_endrichment.py`)
+10. **Network Visualization** (`network.py`, `TermNetworkBuilder.py`, `TermNetworkPlotter.py`)
+    - Creates network graphs from GSEA results
+    - Uses networkx for graph structure
+    - Supports Cytoscape and pyvis visualization
+
+11. **Plotting** (`gsea_plotting.py`, `dotplot_endrichment.py`)
     - Matplotlib/seaborn visualizations
     - Dotplots for enrichment results
+
+### ORA Module
+
+12. **ORA Analysis** (`scripts/string_ora_run.py`)
+    - Over-representation analysis with custom background
+    - Maps identifiers to STRING IDs in batches
+    - Runs enrichment via `/json/enrichment` endpoint
+    - Saves results as JSON and TSV
+    - Entry point: `string_ora_run significant.txt background.txt proteome.fasta`
 
 ### Scripts (Entry Points)
 
 Located in `src/string_gsea/scripts/`:
-- `string_gsea_run.py`: Main analysis workflow (uses cyclopts for CLI)
+- `string_gsea_run.py`: Main GSEA analysis workflow (uses cyclopts for CLI)
+- `string_ora_run.py`: ORA analysis with custom background
 - `render_reports.py`: Quarto report rendering
+- `render_marimo_reports.py`: Marimo report rendering (static HTML)
 - `write_config.py`: Configuration file creation
 
 All scripts are registered in `pyproject.toml` under `[project.scripts]`
@@ -225,10 +277,15 @@ When serializing to YAML, these are converted to strings with "~" separator: `"o
 
 ### API Configuration
 STRING-DB API base: `https://version-12-0.string-db.org/api`
-Endpoints:
+
+GSEA endpoints:
 - Submit: `/json/valuesranks_enrichment_submit`
 - Status: `/json/valuesranks_enrichment_status`
 - Get IDs: `/json/get_string_ids`
+
+ORA endpoints:
+- Enrichment: `/json/enrichment` (accepts `background_string_identifiers`)
+- Get link: `/json/get_link`
 
 Required parameters: `species`, `caller_identity`, `api_key`, `ge_fdr`, `ge_enrichment_rank_direction`
 

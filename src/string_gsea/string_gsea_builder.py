@@ -1,17 +1,19 @@
 import os
 import shutil
 import tempfile
-import requests
 import time
-from loguru import logger
-from pathlib import Path
+from dataclasses import asdict
 from datetime import datetime
+from pathlib import Path
+
+import requests
+from loguru import logger
+
 from string_gsea.get_species import OxFieldsZip
+from string_gsea.gsea_config import GSEAConfig
 from string_gsea.gsea_session import GSEASession
 from string_gsea.gsea_utilities import get_rank_files
 from string_gsea.string_gsea_results import StringGSEAResults
-from string_gsea.gsea_config import GSEAConfig
-from dataclasses import asdict
 
 
 class StringGSEABuilder:
@@ -45,7 +47,7 @@ class StringGSEABuilder:
         self.rank_dataframes = rank_dataframes
 
     def _submit_single(self, rank_data: str) -> str:
-        base = "https://version-12-0.string-db.org/api"
+        base = self.session.config_dict.api_base_url
         url = f"{base}/json/valuesranks_enrichment_submit"
         params = {
             "species": self.session.species,

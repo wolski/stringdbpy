@@ -1,28 +1,17 @@
-import os
 import tempfile
-import pytest
 from pathlib import Path
+
+import pytest
 from loguru import logger
 
 from string_gsea.gsea_session import GSEASession
 from string_gsea.string_gsea_results import StringGSEAResults
 
-INTEGRATION_FLAG = os.getenv("RUN_STRING_GSEA_INTEGRATION") == "1"
-INTEGRATION_FLAG = True  # For testing purposes, set to True
 
-
-@pytest.mark.skipif(
-    not INTEGRATION_FLAG,
-    reason="Integration test disabled; set RUN_STRING_GSEA_INTEGRATION=1 to enable",
-)
-def test_gsea_results_integration():
-    # Get paths exactly as in the original code
-    script_dir = Path(__file__).resolve().parent
-    project_root = script_dir.parent
-    yaml_input = project_root / "tests" / "data" / "dummy_d" / "session.yml"
-
+@pytest.mark.integration
+def test_gsea_results_integration(dummy_session_yml):
     # Load session and create results object
-    session = GSEASession.from_yaml(yaml_input)
+    session = GSEASession.from_yaml(dummy_session_yml)
     # set the base path to a new temp directory
     session.base_path = Path(tempfile.mkdtemp())
     results = StringGSEAResults(session)

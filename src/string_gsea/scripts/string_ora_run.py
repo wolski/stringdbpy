@@ -1,18 +1,17 @@
-from cyclopts import App
-from pathlib import Path
-from loguru import logger
-import requests
-import re
 import json
-import polars as pl
+import re
 from collections import Counter
+from pathlib import Path
 
-from string_gsea.gsea_config import get_configuration
+import polars as pl
+import requests
+from cyclopts import App
+from loguru import logger
+
 from string_gsea.get_species import TaxonUtils
+from string_gsea.gsea_config import STRING_API_BASE_DEFAULT, get_configuration
 
 app = App()
-
-STRING_API_BASE = "https://version-12-0.string-db.org/api"
 
 
 def get_species_from_fasta(fasta_path: Path) -> int:
@@ -28,7 +27,7 @@ def get_species_from_fasta(fasta_path: Path) -> int:
     pattern = re.compile(r"OX=(\d+)")
     ox_values = []
 
-    with open(fasta_path, "r", encoding="utf-8") as f:
+    with open(fasta_path, encoding="utf-8") as f:
         for line in f:
             if line.startswith(">"):
                 match = pattern.search(line)
@@ -62,14 +61,18 @@ def read_id_list(filepath: Path) -> list[str]:
     Returns:
         list[str]: List of identifiers
     """
-    with open(filepath, "r") as f:
+    with open(filepath) as f:
         ids = [line.strip() for line in f if line.strip()]
     logger.info(f"Read {len(ids)} identifiers from {filepath}")
     return ids
 
 
 def map_to_string_ids(
-    identifiers: list[str], species: int, caller_identity: str, batch_size: int = 500
+    identifiers: list[str],
+    species: int,
+    caller_identity: str,
+    batch_size: int = 500,
+    api_base_url: str = STRING_API_BASE_DEFAULT,
 ) -> dict[str, str]:
     """
     Map identifiers to STRING IDs using the STRING API.
@@ -83,7 +86,7 @@ def map_to_string_ids(
     Returns:
         dict: Mapping from input identifier to STRING ID
     """
-    url = f"{STRING_API_BASE}/json/get_string_ids"
+    url = f"{api_base_url}/json/get_string_ids"
     mapping = {}
 
     # Process in batches to avoid URL length limits
@@ -112,7 +115,12 @@ def map_to_string_ids(
     return mapping
 
 
-def get_string_link(identifiers: list[str], species: int, caller_identity: str) -> str:
+def get_string_link(
+    identifiers: list[str],
+    species: int,
+    caller_identity: str,
+    api_base_url: str = STRING_API_BASE_DEFAULT,
+) -> str:
     """
     Get a link to view the network on STRING-DB web interface.
 
@@ -124,7 +132,7 @@ def get_string_link(identifiers: list[str], species: int, caller_identity: str) 
     Returns:
         str: URL to STRING-DB network visualization
     """
-    url = f"{STRING_API_BASE}/json/get_link"
+    url = f"{api_base_url}/json/get_link"
     params = {
         "identifiers": "\r".join(identifiers),
         "species": species,
@@ -146,6 +154,7 @@ def run_enrichment(
     background_string_ids: list[str],
     species: int,
     caller_identity: str,
+    api_base_url: str = STRING_API_BASE_DEFAULT,
 ) -> list[dict]:
     """
     Run functional enrichment analysis via STRING-DB API with custom background.
@@ -159,7 +168,7 @@ def run_enrichment(
     Returns:
         list[dict]: Enrichment results
     """
-    url = f"{STRING_API_BASE}/json/enrichment"
+    url = f"{api_base_url}/json/enrichment"
     params = {
         "identifiers": "\r".join(identifiers),
         "background_string_identifiers": "\r".join(background_string_ids),
@@ -274,10 +283,14 @@ def string_ora_run(
 
     # Map identifiers to STRING IDs
     logger.info("Mapping significant identifiers to STRING IDs...")
-    sig_mapping = map_to_string_ids(sig_ids, species, config.caller_identity)
+    sig_mapping = map_to_string_ids(
+        sig_ids, species, config.caller_identity, api_base_url=config.api_base_url
+    )
 
     logger.info("Mapping background identifiers to STRING IDs...")
-    bg_mapping = map_to_string_ids(bg_ids, species, config.caller_identity)
+    bg_mapping = map_to_string_ids(
+        bg_ids, species, config.caller_identity, api_base_url=config.api_base_url
+    )
 
     # Get mapped STRING IDs
     sig_string_ids = list(sig_mapping.values())
@@ -298,6 +311,7 @@ def string_ora_run(
         background_string_ids=bg_string_ids,
         species=species,
         caller_identity=config.caller_identity,
+        api_base_url=config.api_base_url,
     )
 
     # Save results
@@ -309,6 +323,7 @@ def string_ora_run(
         identifiers=sig_string_ids,
         species=species,
         caller_identity=config.caller_identity,
+        api_base_url=config.api_base_url,
     )
     if string_link:
         links_path = result_dir / "links.txt"

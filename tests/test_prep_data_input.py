@@ -1,5 +1,7 @@
-import pytest
 import zipfile
+
+import pytest
+
 from string_gsea.scripts.render_reports import prepare_data_input
 
 
