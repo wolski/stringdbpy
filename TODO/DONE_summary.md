@@ -41,3 +41,15 @@
 - Removed `get_session_file_path()` from `_report_utils.py` (never called)
 - Deleted `src/string_gsea/docs/index.qmd.bak` (orphaned backup)
 - Fixed `test_config.py` mock path (`string_gsea.config` → `string_gsea.gsea_config`)
+
+## Phase 3 — Dead Visualization Code Removal (2026-03-30)
+
+- Deleted `src/string_gsea/docs/python_notebooks/` directory (only contained orphaned `CircularGraph.qmd`)
+- Removed 11 dead functions from `network.py` (~570 lines):
+  - `make_network()`, `assign_node_sizes()`, `assign_node_colors()`, `make_network_with_colors()`
+  - `plot_network_graph()`, `_rgba_to_css()`, `build_tooltip()`
+  - `interactive_cytoscape()`, `bipartite_hybrid_layout()`, `bipartite_barycenter_layout()`
+  - `plot_network_graph_plotly()`
+- Removed dead imports: `matplotlib.pyplot`, `networkx`, `numpy`, `plotly`, `ipycytoscape`, `LinearSegmentedColormap`
+- Updated `test_network.py`: removed 6 tests for dead functions, kept 4 tests for production functions
+- `network.py` reduced from ~680 lines to ~110 lines (data transform functions only)
