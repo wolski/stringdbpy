@@ -113,6 +113,28 @@ Different column names than GSEA — no shared schema.
 
 ---
 
+## Naming Discussion: Container Hierarchy
+
+The class hierarchy maps to how the data is naturally sliced:
+
+| Level | What it holds | Class name |
+|-------|--------------|------------|
+| One term, one contrast | Single enrichment result | `TermGSEA` |
+| One category, one contrast | All terms for e.g. "GO Process" in contrast A | `CategoryGSEA` |
+| All categories, one contrast | Everything STRING returns for one submission | `MultiCategoryGSEA` |
+| One category, all contrasts | e.g. "GO Process" across contrasts A, B, C | `MultiContrastGSEA` |
+| Everything | All categories × all contrasts | `GSEAResult` |
+
+**Naming convention:** Names describe the *shape* of the container (what axes it spans), not a domain concept. This was debated — `ContrastGSEA` (naming by what it *represents*: one contrast's full result) vs `MultiCategoryGSEA` (naming by *structure*: multiple categories). Decision: keep structural names for consistency across the hierarchy.
+
+**Slicing model:** `GSEAResult` is the top-level container. The multi-* classes are *views/slices*, not separate storage:
+
+- `GSEAResult` → pick one contrast → `MultiCategoryGSEA` (all categories for that contrast = what STRING returns)
+- `GSEAResult` → pick one category → `MultiContrastGSEA` (that category across all contrasts = for cross-contrast dotplots)
+- Either of those → pick one (category, contrast) → `CategoryGSEA`
+
+---
+
 ## Proposed Architecture: Domain Object Model
 
 ### Design philosophy

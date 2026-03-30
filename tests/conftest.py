@@ -9,6 +9,7 @@ TEST_DIR = Path(__file__).parent
 DATA_DIR = TEST_DIR / "data"
 DATASETS_DIR = DATA_DIR / "datasets"
 FIXTURES_DIR = DATA_DIR / "fixtures"
+OUTPUTS_DIR = DATA_DIR / "outputs"
 
 
 # ============================================================
@@ -72,6 +73,24 @@ def dummy_session_rnk_zip() -> Path:
 def dummy_session_yml() -> Path:
     """Dummy session YAML file."""
     return FIXTURES_DIR / "dummy_session" / "session.yml"
+
+
+@pytest.fixture
+def multi_contrast_tsv_dir() -> Path:
+    """Directory with multiple contrast TSV files."""
+    return OUTPUTS_DIR / "human_rnk_2848501" / "WU_2848501_GSEA" / "from_rnk"
+
+
+@pytest.fixture
+def single_contrast_tsv() -> Path:
+    """Single-contrast STRING-DB GSEA TSV file for model tests."""
+    return (
+        OUTPUTS_DIR
+        / "human_rnk_2848501"
+        / "WU_2848501_GSEA"
+        / "from_rnk"
+        / "Bait_NCP_pUbT12_results.tsv"
+    )
 
 
 @pytest.fixture
