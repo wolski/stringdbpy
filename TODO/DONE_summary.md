@@ -42,6 +42,24 @@
 - Deleted `src/string_gsea/docs/index.qmd.bak` (orphaned backup)
 - Fixed `test_config.py` mock path (`string_gsea.config` → `string_gsea.gsea_config`)
 
+## Data Structures — Typed GSEA Domain Models (2026-03-30)
+
+- Created `src/string_gsea/models/gsea_models.py` — all 8 classes in one file
+- Used frozen dataclasses (not pydantic) — matches existing codebase patterns, no new dependency
+- `GeneHit` — per-gene data with STRING TSV column mapping documented in docstring
+- `GenePool` — proper dataclass wrapping `dict[str, GeneHit]` with dict-like interface (`__getitem__`, `__contains__`, `__len__`, `__iter__`, `n_genes`)
+- One shared `GenePool` per contrast (built from all categories, shared by reference)
+- `TermGSEA` — 10 fields from STRING TSV + computed: `gene_ratio` property, `mean_input_value()`, `rank_nes()`
+- `CategoryGSEA` — holds terms + shared gene pool, `__post_init__` validation
+- Container classes: `MultiCategoryGSEA`, `MultiContrastGSEA`, `GSEAResult`
+- `GSEAResult` — slicing (`get_category`, `get_multi_category`, `get_multi_contrast`), `mapping_efficiency()`, holds `rank_lists`
+- `RankList` — original submitted rank file (dict of input_label → score)
+- Parsers: `parse_gsea_tsv()` (single contrast), `parse_gsea_tsv_dir()` (multi-contrast + auto-discovers .rnk files), `parse_rank_file()`
+- Comma-protection logic for proteinLabels factored from `network.py` into parser
+- 21 tests in `tests/test_models.py` covering all 8 classes
+- Added naming discussion to `TODO/TODO_data_structures.md`
+- **Remaining:** ORA models, serializers, plotting migration (Phases 2–5 in TODO_data_structures.md)
+
 ## Phase 3 — Dead Visualization Code Removal (2026-03-30)
 
 - Deleted `src/string_gsea/docs/python_notebooks/` directory (only contained orphaned `CircularGraph.qmd`)

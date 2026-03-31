@@ -7,6 +7,7 @@ from string_gsea.models.gsea_models import (
     TermGSEA,
     parse_gsea_tsv,
     parse_gsea_tsv_dir,
+    parse_rank_file,
 )
 
 
@@ -26,11 +27,10 @@ def test_parse_category_filter(single_contrast_tsv):
     assert list(result.keys()) == ["KEGG"]
 
 
-def test_gene_pool_deduplication(parsed_categories):
-    """Same protein appearing in multiple terms is stored once in the pool."""
-    cat = parsed_categories["GO Process"]
-    all_gene_ids = [gid for term in cat.terms for gid in term.gene_ids]
-    assert len(all_gene_ids) > len(cat.gene_pool)
+def test_gene_pool_shared_across_categories(parsed_categories):
+    """All categories for one contrast share the same gene pool object."""
+    pools = [cat.gene_pool for cat in parsed_categories.values()]
+    assert all(p is pools[0] for p in pools)
 
 
 def test_gene_hit_values(parsed_categories):
@@ -78,7 +78,7 @@ def test_frozen_immutability(parsed_categories):
 
 
 def test_invalid_pool_reference():
-    pool: GenePool = {}
+    pool = GenePool(entries={})
     term = TermGSEA(
         term_id="GO:0000001",
         category="test",
@@ -142,3 +142,73 @@ def test_get_category(gsea_result):
     assert isinstance(cat, CategoryGSEA)
     assert cat.category == "KEGG"
     assert cat.contrast == contrast
+
+
+# ---------------------------------------------------------------------------
+# Computed scores tests
+# ---------------------------------------------------------------------------
+
+
+def test_gene_pool_n_genes(parsed_categories):
+    """Shared gene pool has n_genes property."""
+    cat = parsed_categories["GO Process"]
+    assert cat.gene_pool.n_genes > 1000
+    assert cat.gene_pool.n_genes == len(cat.gene_pool)
+
+
+def test_gene_ratio(parsed_categories):
+    cat = parsed_categories["GO Process"]
+    term = next(t for t in cat.terms if t.term_id == "GO:0006364")
+    assert pytest.approx(term.gene_ratio, rel=1e-2) == 168 / 220
+
+
+def test_mean_input_value(parsed_categories):
+    cat = parsed_categories["GO Process"]
+    term = next(t for t in cat.terms if t.term_id == "GO:0006364")
+    miv = term.mean_input_value(cat.gene_pool)
+    assert isinstance(miv, float)
+    assert miv != 0.0
+
+
+def test_rank_nes(multi_contrast_tsv_dir):
+    """rank_nes needs total ranked genes (from RankList), not per-category pool size."""
+    rl = parse_rank_file(multi_contrast_tsv_dir / "Bait_NCP_pUbT12.rnk")
+    cats = parse_gsea_tsv(
+        multi_contrast_tsv_dir / "Bait_NCP_pUbT12_results.tsv",
+        categories={"GO Process"},
+    )
+    cat = cats["GO Process"]
+    term = next(t for t in cat.terms if t.term_id == "GO:0006364")
+    nes = term.rank_nes(cat.gene_pool, rl.n_genes)
+    # Also verify it works with gene_pool.n_genes (mapped count)
+    nes_pool = term.rank_nes(cat.gene_pool, cat.gene_pool.n_genes)
+    assert isinstance(nes_pool, float)
+    assert -1.0 <= nes <= 1.0
+    # direction is "bottom" → genes are at the bottom of the list → negative NES
+    assert nes < 0
+
+
+# ---------------------------------------------------------------------------
+# RankList + mapping efficiency tests
+# ---------------------------------------------------------------------------
+
+
+def test_parse_rank_file(multi_contrast_tsv_dir):
+    rnk_path = multi_contrast_tsv_dir / "Bait_NCP_pUbT12.rnk"
+    rl = parse_rank_file(rnk_path)
+    assert rl.contrast == "Bait_NCP_pUbT12"
+    assert rl.n_genes > 3000
+    assert "A0AV96" in rl.entries
+    assert pytest.approx(rl.entries["A0AV96"], rel=1e-3) == 2.2147
+
+
+def test_gsea_result_has_rank_lists(gsea_result):
+    assert len(gsea_result.rank_lists) == 2
+    for contrast in gsea_result.contrast_names:
+        assert contrast in gsea_result.rank_lists
+
+
+def test_mapping_efficiency(gsea_result):
+    for contrast in gsea_result.contrast_names:
+        eff = gsea_result.mapping_efficiency(contrast)
+        assert 0.5 < eff < 1.0
