@@ -1,31 +1,22 @@
 import polars as pl
 
 
-def filter_by_FDR(
-    xd: pl.DataFrame, FDR_threshold: float = 0.05, genes_mapped_threshold: int = 10
-) -> pl.DataFrame:
-    return xd.filter(
-        (pl.col("falseDiscoveryRate") < FDR_threshold)
-        & (pl.col("genesMapped") > genes_mapped_threshold)
-    )
+def filter_by_FDR(xd: pl.DataFrame, FDR_threshold: float = 0.05, genes_mapped_threshold: int = 10) -> pl.DataFrame:
+    return xd.filter((pl.col("falseDiscoveryRate") < FDR_threshold) & (pl.col("genesMapped") > genes_mapped_threshold))
 
 
 def select_top_terms(df: pl.DataFrame, max_terms: int = 100) -> pl.DataFrame:
     """Keep only the top max_terms terms per (contrast, category) by FDR."""
     return (
         df.sort(["contrast", "category", "falseDiscoveryRate"])
-        .with_columns(
-            pl.col("termID").rank(method="dense").over(["contrast", "category"]).alias("_rank")
-        )
+        .with_columns(pl.col("termID").rank(method="dense").over(["contrast", "category"]).alias("_rank"))
         .filter(pl.col("_rank") <= max_terms)
         .drop("_rank")
     )
 
 
 def add_gene_ratio(df: pl.DataFrame) -> pl.DataFrame:
-    return df.with_columns(
-        (pl.col("genesMapped") / pl.col("genesInSet")).alias("geneRatio")
-    )
+    return df.with_columns((pl.col("genesMapped") / pl.col("genesInSet")).alias("geneRatio"))
     return df
 
 
@@ -52,11 +43,7 @@ def explode_protein_columns(df: pl.DataFrame) -> pl.DataFrame:
 
     # Step 1a: protect commas in proteinLabels that are followed by 1–2 digits and another comma
     df_protected = df.with_columns(
-        [
-            pl.col("proteinLabels")
-            .str.replace_all(r",(\d{1,2},)", r"§COMMA§$1")
-            .alias("proteinLabels")
-        ]
+        [pl.col("proteinLabels").str.replace_all(r",(\d{1,2},)", r"§COMMA§$1").alias("proteinLabels")]
     )
 
     # Step 1b: split all relevant columns (no chaining)
@@ -72,9 +59,7 @@ def explode_protein_columns(df: pl.DataFrame) -> pl.DataFrame:
 
     # Step 1c: restore protected commas inside the split proteinLabels lists (no chaining)
     df_split = df_split.with_columns(
-        pl.col("proteinLabels")
-        .list.eval(pl.element().str.replace_all("§COMMA§", ","))
-        .alias("proteinLabels")
+        pl.col("proteinLabels").list.eval(pl.element().str.replace_all("§COMMA§", ",")).alias("proteinLabels")
     )
 
     # 2) explode all four at once (DF now has 161 872 rows)
@@ -98,12 +83,8 @@ def explode_protein_columns(df: pl.DataFrame) -> pl.DataFrame:
 
 def summarize_terms(xd: pl.DataFrame) -> pl.DataFrame:
     # Compute mean input value per term
-    means = xd.group_by(["contrast", "termID"]).agg(
-        pl.col("proteinInputValues").mean().alias("meanInputValues")
-    )
+    means = xd.group_by(["contrast", "termID"]).agg(pl.col("proteinInputValues").mean().alias("meanInputValues"))
     xd = xd.join(means, on=["contrast", "termID"])
     # Filter
     xd = xd.filter((pl.col("falseDiscoveryRate") < 0.05) & (pl.col("genesMapped") > 10))
     return xd
-
-

@@ -18,9 +18,7 @@ def prepare_data_for_plotting(pdf: pd.DataFrame, label_length: int = 40):
     # Create termLabel: "termID: truncated_description"
     def make_label(row):
         desc = row["termDescription"]
-        truncated = (
-            desc if len(desc) <= label_length else desc[: label_length - 1] + "..."
-        )
+        truncated = desc if len(desc) <= label_length else desc[: label_length - 1] + "..."
         return f"{row['termID']}: {truncated}"
 
     pdf["termLabel"] = pdf.apply(make_label, axis=1)
@@ -45,9 +43,7 @@ def plot_enrichment_scatter(ax, pdf) -> plt.scatter:
     codes = pdf["contrast_code"].unique()
     ax.set_xlim(codes.min() - 0.5, codes.max() + 0.5)
     ax.set_xticks(codes)
-    ax.set_xticklabels(
-        pdf["contrast"].astype("category").cat.categories, rotation=45, ha="right"
-    )
+    ax.set_xticklabels(pdf["contrast"].astype("category").cat.categories, rotation=45, ha="right")
 
     ax.margins(y=0)
     # 2) explicitly clamp the y‐limits to your term count
@@ -88,9 +84,7 @@ def add_custom_legends(fig, ax, direction_colors):
     # Size legend (Gene Ratio)
     example_ratios = [0.25, 0.6, 1.0]
     size_handles = [
-        plt.scatter(
-            [], [], s=ratio * 500, color="grey", edgecolor="black", label=f"{ratio:.2f}"
-        )
+        plt.scatter([], [], s=ratio * 500, color="grey", edgecolor="black", label=f"{ratio:.2f}")
         for ratio in example_ratios
     ]
     legend2 = fig.legend(
@@ -138,9 +132,7 @@ def dotplot_enrichment(xd_smart: pl.DataFrame):
     plot_enrichment_scatter(ax, pdf)
 
     # Adjust layout to make space for legends - leave more space on the right
-    fig.subplots_adjust(
-        left=0.3, right=0.70
-    )  # Reduced right margin to leave more space
+    fig.subplots_adjust(left=0.3, right=0.70)  # Reduced right margin to leave more space
 
     # Colorbar
     sm = plt.cm.ScalarMappable(
@@ -149,9 +141,7 @@ def dotplot_enrichment(xd_smart: pl.DataFrame):
     )
     sm.set_array([])
 
-    cbar = plt.colorbar(
-        sm, orientation="horizontal", ax=ax, fraction=0.03, pad=0.15, shrink=0.8
-    )
+    cbar = plt.colorbar(sm, orientation="horizontal", ax=ax, fraction=0.03, pad=0.15, shrink=0.8)
     cbar.set_label("-log10(FDR)")
     cbar.ax.xaxis.set_ticks_position("top")
     cbar.ax.xaxis.set_label_position("top")

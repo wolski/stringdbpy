@@ -15,9 +15,7 @@ def make_upset(
     max_category=25,
     max_subset_rank=35,
 ) -> None:
-    df_values = df_values.select(
-        pl.col("proteinLabels"), pl.col("proteinInputValues")
-    ).unique()
+    df_values = df_values.select(pl.col("proteinLabels"), pl.col("proteinInputValues")).unique()
     df = df_values.join(df_binary, on="proteinLabels", how="right")
     df_binary = df.to_pandas()
 
@@ -126,9 +124,7 @@ def plot_single_ridge(
     )
 
 
-def plot_term_ridges(
-    df_long, ridge_height=0.4, ridge_width=6, left_margin=0.2, hspace=0.4
-):
+def plot_term_ridges(df_long, ridge_height=0.4, ridge_width=6, left_margin=0.2, hspace=0.4):
     # — prepare pandas df —
     pdf = (
         df_long.select(
@@ -146,12 +142,7 @@ def plot_term_ridges(
     )
 
     # order by median
-    term_order = (
-        pdf.groupby("termID")["proteinInputValues"]
-        .median()
-        .sort_values(ascending=False)
-        .index.tolist()
-    )
+    term_order = pdf.groupby("termID")["proteinInputValues"].median().sort_values(ascending=False).index.tolist()
     # global min/max
     x_min, x_max = pdf["proteinInputValues"].min(), pdf["proteinInputValues"].max()
     # precompute normalized FDR per term
@@ -160,14 +151,12 @@ def plot_term_ridges(
 
     # build canvas
     n = len(term_order)
-    fig, axes = plt.subplots(
-        n, 1, figsize=(ridge_width, ridge_height * n), sharex=False, dpi=300
-    )
+    fig, axes = plt.subplots(n, 1, figsize=(ridge_width, ridge_height * n), sharex=False, dpi=300)
     if n == 1:
         axes = [axes]
 
     # loop
-    for ax, tid in zip(axes, term_order):
+    for ax, tid in zip(axes, term_order, strict=True):
         sub = pdf[pdf.termID == tid]
         plot_single_ridge(
             ax=ax,
@@ -199,17 +188,15 @@ def make_upset_contrasts_terms(xd: pl.DataFrame, category: str = "SMART"):
         xd: The dataframe to plot
         category: The category of the terms to plot
     """
-    xd_s_smart = (
-        xd.filter(pl.col("category") == category)
-        .select(["termID", "contrast"])
-        .unique()
-    )
+    xd_s_smart = xd.filter(pl.col("category") == category).select(["termID", "contrast"]).unique()
 
     # Check if we have multiple contrasts
     unique_contrasts = xd_s_smart.get_column("contrast").unique()
     if len(unique_contrasts) < 2:
         print(
-            f"Upset plot skipped: Only {len(unique_contrasts)} contrast(s) found for category '{category}'. Upset plots require at least 2 contrasts to show intersections."
+            f"Upset plot skipped: Only {len(unique_contrasts)} contrast(s) found"
+            f" for category '{category}'."
+            " Upset plots require at least 2 contrasts to show intersections."
         )
         return
 
@@ -218,9 +205,7 @@ def make_upset_contrasts_terms(xd: pl.DataFrame, category: str = "SMART"):
     indicator = pd.crosstab(df_pd["termID"], df_pd["contrast"]).astype(bool)
 
     # 3) Build the UpSet data structure
-    upset_data = from_indicators(
-        indicator.columns.tolist(), indicator
-    )  # This causes index issues
+    upset_data = from_indicators(indicator.columns.tolist(), indicator)  # This causes index issues
     # Create a DataFrame with MultiIndex like the working make_upset function
     # Reset index to make termID a column, then set it as index along with contrast columns
     # upset_data = indicator.reset_index()

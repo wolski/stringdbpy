@@ -13,12 +13,8 @@ def taxon_utils():
 
 
 # Check file existence for skipping tests if necessary
-species_file_exists = (
-    Path(__file__).resolve().parent.parent / "data" / "mappings" / "species.v12.0.zip"
-)
-ncbi_file_exists = (
-    Path(__file__).resolve().parent.parent / "data" / "mappings" / "NCBI_nodes.zip"
-)
+species_file_exists = Path(__file__).resolve().parent.parent / "data" / "mappings" / "species.v12.0.zip"
+ncbi_file_exists = Path(__file__).resolve().parent.parent / "data" / "mappings" / "NCBI_nodes.zip"
 
 
 @pytest.mark.skipif(not species_file_exists, reason="Species zip file not found")
@@ -43,9 +39,7 @@ def test_read_ncbi_nodes_data(taxon_utils):
 
     # Check that both required columns are present.
     for col in ("taxon_id", "parent_taxon_id"):
-        assert col in ncbi_df.columns, (
-            f"Expected column '{col}' not found in NCBI data."
-        )
+        assert col in ncbi_df.columns, f"Expected column '{col}' not found in NCBI data."
 
     # Optionally, check that the file has some rows.
     assert ncbi_df.height > 0, "No rows found in NCBI data."

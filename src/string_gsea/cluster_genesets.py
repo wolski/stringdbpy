@@ -13,9 +13,7 @@ def pivot_to_wide(df: pl.DataFrame) -> pl.DataFrame:
 
     df_sorted = df.sort("proteinInputValues", descending=False)
     # First pivot to wide format
-    wide_df = df_sorted.pivot(
-        values="proteinInputValues", index="proteinLabels", on="termID"
-    )
+    wide_df = df_sorted.pivot(values="proteinInputValues", index="proteinLabels", on="termID")
 
     return wide_df
 
@@ -42,17 +40,9 @@ def make_nested_dict(df: pl.DataFrame) -> dict:
     return nested
 
 
-def convert_to_binary(
-    df: pl.DataFrame, index_col: str = "proteinLabels", to_boolean: bool = False
-) -> pl.DataFrame:
+def convert_to_binary(df: pl.DataFrame, index_col: str = "proteinLabels", to_boolean: bool = False) -> pl.DataFrame:
     dtype = pl.Boolean if to_boolean else pl.Int8
-    binary_df = df.with_columns(
-        [
-            pl.col(c).is_not_null().cast(dtype).alias(c)
-            for c in df.columns
-            if c != index_col
-        ]
-    )
+    binary_df = df.with_columns([pl.col(c).is_not_null().cast(dtype).alias(c) for c in df.columns if c != index_col])
     return binary_df
 
 

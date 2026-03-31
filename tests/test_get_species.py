@@ -17,15 +17,15 @@ def test_get_species_from_oxes(fasta_test_zip):
         pytest.fail(f"Test zip file not found at {fasta_test_zip}")
 
     species_id = OxFieldsZip.get_species_from_oxes(fasta_test_zip)
-    assert species_id == EXPECTED_SPECIES_ID, (
-        f"Expected species ID {EXPECTED_SPECIES_ID}, but got {species_id}"
-    )
+    assert species_id == EXPECTED_SPECIES_ID, f"Expected species ID {EXPECTED_SPECIES_ID}, but got {species_id}"
 
 
 def test_get_ox_fields():
     fasta_content = (
-        b">sp|P0DTC2|SPIKE_SARS2 Spike glycoprotein OS=Severe acute respiratory syndrome coronavirus 2 OX=2697049 GN=S\n"
-        b">sp|P0DTC1|NCAP_SARS2 Nucleoprotein OS=Severe acute respiratory syndrome coronavirus 2 OX=2697049 GN=N\n"
+        b">sp|P0DTC2|SPIKE_SARS2 Spike glycoprotein"
+        b" OS=Severe acute respiratory syndrome coronavirus 2 OX=2697049 GN=S\n"
+        b">sp|P0DTC1|NCAP_SARS2 Nucleoprotein"
+        b" OS=Severe acute respiratory syndrome coronavirus 2 OX=2697049 GN=N\n"
     )
     expected_ox = [2697049, 2697049]
     fasta_stream = io.BytesIO(fasta_content)
@@ -53,15 +53,11 @@ def test_GetTaxonID_determine_species(yeast_rnk_zip) -> None:
     # Call the function under test
     # Note: This test makes live calls to the STRING API
     try:
-        species_id = GetTaxonID.determine_species(
-            first_df, nr=10
-        )  # Use fewer samples for faster test
+        species_id = GetTaxonID.determine_species(first_df, nr=10)  # Use fewer samples for faster test
         assert species_id == EXPECTED_STRING_SPECIES_ID, (
             f"Expected species ID {EXPECTED_STRING_SPECIES_ID}, but got {species_id}"
         )
     except ValueError as e:
-        pytest.fail(
-            f"GetTaxonID.determine_species raised an unexpected ValueError: {e}"
-        )
+        pytest.fail(f"GetTaxonID.determine_species raised an unexpected ValueError: {e}")
     except Exception as e:
         pytest.fail(f"An unexpected error occurred during API call or processing: {e}")

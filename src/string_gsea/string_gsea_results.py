@@ -17,9 +17,7 @@ class StringGSEAResults:
 
         # Results payloads should already be in session.res_data
         if not self.session.res_data:
-            raise RuntimeError(
-                "Session contains no result data. Ensure you've polled before building results."
-            )
+            raise RuntimeError("Session contains no result data. Ensure you've polled before building results.")
 
     def get_res_path(self) -> Path:
         """
@@ -99,9 +97,7 @@ class StringGSEAResults:
     @staticmethod
     def zip_folder(folder_path: Path) -> Path:
         """Create a .zip archive of the given folder."""
-        archive = shutil.make_archive(
-            str(folder_path.parent / folder_path.name), "zip", root_dir=str(folder_path)
-        )
+        archive = shutil.make_archive(str(folder_path.parent / folder_path.name), "zip", root_dir=str(folder_path))
         return Path(archive)
 
 

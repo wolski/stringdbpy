@@ -1,4 +1,3 @@
-
 import polars as pl
 import pytest
 
@@ -21,9 +20,7 @@ class TestDiffXLSXIntegration:
     def test_initialization(self, diff_xlsx):
         """Test that the DiffXLSX class initializes correctly."""
         assert diff_xlsx.dea_df is not None, "DataFrame should not be None"
-        assert isinstance(diff_xlsx.dea_df, pl.DataFrame), (
-            "DataFrame should be a Polars DataFrame"
-        )
+        assert isinstance(diff_xlsx.dea_df, pl.DataFrame), "DataFrame should be a Polars DataFrame"
         assert diff_xlsx.dea_df.height > 0, "DataFrame should have rows"
         assert diff_xlsx.dea_df.width > 0, "DataFrame should have columns"
 
@@ -36,9 +33,7 @@ class TestDiffXLSXIntegration:
             "nrPeptides",
         ]
         for col in expected_columns:
-            assert col in diff_xlsx.dea_df.columns, (
-                f"Expected column '{col}' not found in DataFrame"
-            )
+            assert col in diff_xlsx.dea_df.columns, f"Expected column '{col}' not found in DataFrame"
 
     def test_rank_dict_structure(self, diff_xlsx):
         """Test the structure of the rank_dict output."""
@@ -61,19 +56,13 @@ class TestDiffXLSXIntegration:
 
         # Check that each value in the dictionary is a DataFrame
         for key, df in rank_files.items():
-            assert isinstance(df, pl.DataFrame), (
-                f"Value for key {key} should be a DataFrame"
-            )
+            assert isinstance(df, pl.DataFrame), f"Value for key {key} should be a DataFrame"
             assert df.height > 0, f"DataFrame for key {key} should have rows"
             assert df.width == 2, f"DataFrame for key {key} should have 2 columns"
 
             # Check that the DataFrame has the expected columns
-            assert "id" in df.columns, (
-                f"Expected column 'id' not found in DataFrame for key {key}"
-            )
-            assert "statistic" in df.columns, (
-                f"Expected column 'statistic' not found in DataFrame for key {key}"
-            )
+            assert "id" in df.columns, f"Expected column 'id' not found in DataFrame for key {key}"
+            assert "statistic" in df.columns, f"Expected column 'statistic' not found in DataFrame for key {key}"
 
     def test_rank_dict_filtering(self, diff_xlsx):
         """Test that the rank_dict method correctly filters the data."""
@@ -96,9 +85,7 @@ class TestDiffXLSXIntegration:
     def test_rank_dict_contrasts(self, diff_xlsx):
         """Test that the rank_dict method correctly extracts contrasts."""
         # Get the unique contrasts from the original DataFrame
-        original_contrasts = (
-            diff_xlsx.dea_df.select(pl.col("contrast")).unique().to_series().to_list()
-        )
+        original_contrasts = diff_xlsx.dea_df.select(pl.col("contrast")).unique().to_series().to_list()
 
         # Get the rank_dict
         rank_files = diff_xlsx.rank_dict()

@@ -1,4 +1,3 @@
-
 import polars as pl
 import pytest
 
@@ -43,9 +42,7 @@ def test_select_top_terms_passthrough(long_results_df: pl.DataFrame):
     assert result.height == long_results_df.height
 
 
-def test_explode_protein_columns(
-    processed_df: pl.DataFrame, long_results_df: pl.DataFrame
-):
+def test_explode_protein_columns(processed_df: pl.DataFrame, long_results_df: pl.DataFrame):
     assert isinstance(processed_df, pl.DataFrame)
     # Check that columns are exploded to lists
     assert "proteinIDs" in processed_df.columns

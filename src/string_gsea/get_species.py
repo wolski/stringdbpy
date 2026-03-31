@@ -87,9 +87,7 @@ class GetTaxonID:
 
         # Determine the sample size and sample identifiers.
         sample_size = min(nr, identifiers.height)
-        sampled_ids = (
-            identifiers.sample(n=sample_size, shuffle=True).to_series().to_list()
-        )
+        sampled_ids = identifiers.sample(n=sample_size, shuffle=True).to_series().to_list()
 
         # Fetch taxon IDs for sampled identifiers.
         taxon_ids = GetTaxonID._fetch_ncbi_taxon_ids(sampled_ids, api_base_url=api_base_url)
@@ -158,9 +156,7 @@ class TaxonUtils:
         Returns:
             pl.DataFrame: A Polars DataFrame containing the species data.
         """
-        with importlib.resources.path(
-            self.mappings_package, self.species_zip_name
-        ) as zip_path:
+        with importlib.resources.path(self.mappings_package, self.species_zip_name) as zip_path:
             with zipfile.ZipFile(zip_path, "r") as zip_file:
                 with zip_file.open(self.species_file_name) as file_obj:
                     df = pl.read_csv(
@@ -179,9 +175,7 @@ class TaxonUtils:
             pl.DataFrame: A Polars DataFrame containing the NCBI nodes data.
         """
         # Get path to the resource
-        with importlib.resources.path(
-            self.mappings_package, self.ncbi_zip_name
-        ) as zip_path:
+        with importlib.resources.path(self.mappings_package, self.ncbi_zip_name) as zip_path:
             with zipfile.ZipFile(zip_path, "r") as zip_file:
                 with zip_file.open(self.ncbi_file_name) as file_obj:
                     df = pl.read_csv(file_obj, encoding="utf8", separator="\t")
@@ -258,9 +252,7 @@ if __name__ == "__main__":
     from string_gsea.gsea_utilities import get_rank_files
 
     TEST_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "tests/data"
-    YEAST_RNK_ZIP_PATH = (
-        TEST_DATA_DIR / "DE_yeast_fasta_rnk.zip"
-    )  # Path for yeast rank file zip
+    YEAST_RNK_ZIP_PATH = TEST_DATA_DIR / "DE_yeast_fasta_rnk.zip"  # Path for yeast rank file zip
 
     p = Path(YEAST_RNK_ZIP_PATH)
     dataframes = get_rank_files(p)

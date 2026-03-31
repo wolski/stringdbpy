@@ -55,9 +55,7 @@ class StringGSEABuilder:
             "identifiers": rank_data,
             "api_key": asdict(self.session.config_dict)["api_key"],
             "ge_fdr": asdict(self.session.config_dict)["fdr"],
-            "ge_enrichment_rank_direction": asdict(self.session.config_dict)[
-                "ge_enrichment_rank_direction"
-            ],
+            "ge_enrichment_rank_direction": asdict(self.session.config_dict)["ge_enrichment_rank_direction"],
         }
         resp = requests.post(url, data=params)
         resp.raise_for_status()
@@ -76,12 +74,9 @@ class StringGSEABuilder:
             self.session.res_job_id[key] = self._submit_single(rank_str)
         return self
 
-    def _poll_single(
-        self, job_id: str, sleep_t: int = 10, max_time: int = 3600
-    ) -> dict:
+    def _poll_single(self, job_id: str, sleep_t: int = 10, max_time: int = 3600) -> dict:
         status_url = (
-            self.session.end_point_status
-            + f"?api_key={asdict(self.session.config_dict)['api_key']}&job_id={job_id}"
+            self.session.end_point_status + f"?api_key={asdict(self.session.config_dict)['api_key']}&job_id={job_id}"
         )
         elapsed = 0
         while elapsed < max_time:
@@ -176,9 +171,7 @@ if __name__ == "__main__":
     builder.save_session()
     # results.save_session()
     # copy session_path file into tests/data/dummy_d
-    shutil.copy(
-        session_path, project_root / "tests" / "data" / "dummy_d" / "session.yml"
-    )
+    shutil.copy(session_path, project_root / "tests" / "data" / "dummy_d" / "session.yml")
     results2 = StringGSEAResults(GSEASession.from_yaml(session_path))
     results2.write_links()
 

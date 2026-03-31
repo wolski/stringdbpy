@@ -182,9 +182,7 @@ def _(
         plots = []
 
         # Filter data
-        xdf = xd.filter(
-            (pl.col("contrast") == contrast) & (pl.col("category") == category)
-        )
+        xdf = xd.filter((pl.col("contrast") == contrast) & (pl.col("category") == category))
 
         if xdf.is_empty():
             return mo.md("_No data for this category_")
@@ -234,12 +232,7 @@ def _(
                     _buf.seek(0)
                     plots.append(mo.md("#### Upset Plot"))
                     plots.append(mo.image(_buf.read()))
-                    plots.append(
-                        mo.md(
-                            "_Overlap of terms and proteins. "
-                            "Left=term size, top=unique/shared proteins._"
-                        )
-                    )
+                    plots.append(mo.md("_Overlap of terms and proteins. Left=term size, top=unique/shared proteins._"))
                 except Exception as e:
                     plots.append(mo.md(f"_Upset plot error: {e}_"))
 
@@ -254,27 +247,16 @@ def _(
                     _buf.seek(0)
                     plots.append(mo.md("#### Term-Protein Heatmap"))
                     plots.append(mo.image(_buf.read()))
-                    plots.append(
-                        mo.md(
-                            "_Term and protein distances using Jaccard index. "
-                            "Color=protein input value._"
-                        )
-                    )
+                    plots.append(mo.md("_Term and protein distances using Jaccard index. Color=protein input value._"))
                 except Exception as e:
                     plots.append(mo.md(f"_Heatmap error: {e}_"))
             else:
-                plots.append(
-                    mo.md(
-                        f"_Heatmap/Upset skipped: Only {_num_terms} term(s). Need at least 2._"
-                    )
-                )
+                plots.append(mo.md(f"_Heatmap/Upset skipped: Only {_num_terms} term(s). Need at least 2._"))
 
         # 5. Network plot (last)
         try:
             _fig, _ax = plt.subplots(figsize=(10, 8))
-            TermNetworkPlotter.plot_network(
-                xd, category=category, contrast=contrast, thresh=1
-            )
+            TermNetworkPlotter.plot_network(xd, category=category, contrast=contrast, thresh=1)
             _buf = io.BytesIO()
             plt.savefig(_buf, format="png", dpi=100, bbox_inches="tight")
             plt.close()

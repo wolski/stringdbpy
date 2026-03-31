@@ -58,9 +58,7 @@ def test_write_initial_configuration(temp_config_dir, mock_api_response):
         fdr = 0.1
         caller_identity = "test.caller.com"
 
-        config_path = write_initial_configuration(
-            fdr=fdr, caller_identity=caller_identity
-        )
+        config_path = write_initial_configuration(fdr=fdr, caller_identity=caller_identity)
 
         # Check that the config directory was created
         assert temp_config_dir["config_dir"].exists()
@@ -70,9 +68,7 @@ def test_write_initial_configuration(temp_config_dir, mock_api_response):
         assert config_path == temp_config_dir["config_file"]
 
         # Verify the API was called
-        mock_get.assert_called_once_with(
-            "https://version-12-0.string-db.org/api/json/get_api_key"
-        )
+        mock_get.assert_called_once_with("https://version-12-0.string-db.org/api/json/get_api_key")
 
         # Read the config file and verify its contents
         with open(config_path, "rb") as f:

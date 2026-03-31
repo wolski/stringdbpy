@@ -109,9 +109,7 @@ def map_to_string_ids(
             if query_item and string_id:
                 mapping[query_item] = string_id
 
-    logger.info(
-        f"Mapped {len(mapping)} of {len(identifiers)} identifiers to STRING IDs"
-    )
+    logger.info(f"Mapped {len(mapping)} of {len(identifiers)} identifiers to STRING IDs")
     return mapping
 
 
@@ -176,9 +174,7 @@ def run_enrichment(
         "caller_identity": caller_identity,
     }
 
-    logger.info(
-        f"Running enrichment for {len(identifiers)} identifiers with {len(background_string_ids)} background"
-    )
+    logger.info(f"Running enrichment for {len(identifiers)} identifiers with {len(background_string_ids)} background")
     resp = requests.post(url, data=params)
     resp.raise_for_status()
 
@@ -283,14 +279,10 @@ def string_ora_run(
 
     # Map identifiers to STRING IDs
     logger.info("Mapping significant identifiers to STRING IDs...")
-    sig_mapping = map_to_string_ids(
-        sig_ids, species, config.caller_identity, api_base_url=config.api_base_url
-    )
+    sig_mapping = map_to_string_ids(sig_ids, species, config.caller_identity, api_base_url=config.api_base_url)
 
     logger.info("Mapping background identifiers to STRING IDs...")
-    bg_mapping = map_to_string_ids(
-        bg_ids, species, config.caller_identity, api_base_url=config.api_base_url
-    )
+    bg_mapping = map_to_string_ids(bg_ids, species, config.caller_identity, api_base_url=config.api_base_url)
 
     # Get mapped STRING IDs
     sig_string_ids = list(sig_mapping.values())
@@ -301,9 +293,7 @@ def string_ora_run(
     if not bg_string_ids:
         raise ValueError("No background identifiers could be mapped to STRING IDs")
 
-    logger.info(
-        f"Mapped {len(sig_string_ids)} significant and {len(bg_string_ids)} background to STRING IDs"
-    )
+    logger.info(f"Mapped {len(sig_string_ids)} significant and {len(bg_string_ids)} background to STRING IDs")
 
     # Run enrichment with background
     results = run_enrichment(

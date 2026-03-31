@@ -93,15 +93,13 @@ class TermNetworkPlotter:
     ) -> None:
         """Draw pie charts at each node position."""
         for term, (x, y) in pos.items():
-            counts = [
-                self.contrast_counts.get(term, {}).get(c, 0) for c in self.contrasts
-            ]
+            counts = [self.contrast_counts.get(term, {}).get(c, 0) for c in self.contrasts]
             total = sum(counts)
             if total == 0:
                 continue
             r = self.max_radius * (node_sizes[term] / max_size)
             start = 0.0
-            for frac, color in zip(counts, self.colors):
+            for frac, color in zip(counts, self.colors, strict=False):
                 angle = 360 * frac / total
                 wedge = Wedge(
                     center=(x, y),
@@ -128,9 +126,7 @@ class TermNetworkPlotter:
         Draw a network panel with nodes sized/pie colored and edges filtered by thresh.
         """
         # use helper to get graph, filtered edges, and node list
-        G, edges_sub, nodes = self._prepare_graph(
-            edge_df, thresh=thresh, include_all=False
-        )
+        G, edges_sub, nodes = self._prepare_graph(edge_df, thresh=thresh, include_all=False)
 
         # If no nodes, just set title and return
         if not nodes:
@@ -156,7 +152,7 @@ class TermNetworkPlotter:
         if use_fixed_layout and self.fixed_pos is not None:
             full_pos = self.fixed_pos
             pos = {n: full_pos[n] for n in nodes}
-            xs, ys = zip(*(pos[n] for n in nodes))
+            xs, ys = zip(*(pos[n] for n in nodes), strict=True)
             pad = 0.1 * max(max(xs) - min(xs), max(ys) - min(ys))
             ax.set_xlim(min(xs) - pad, max(xs) + pad)
             ax.set_ylim(min(ys) - pad, max(ys) + pad)
@@ -168,9 +164,7 @@ class TermNetworkPlotter:
             ec = nx.draw_networkx_edges(
                 G,
                 pos,
-                width=[
-                    edge_attrs["weight"] / 5 for _, _, edge_attrs in G.edges(data=True)
-                ],
+                width=[edge_attrs["weight"] / 5 for _, _, edge_attrs in G.edges(data=True)],
                 edge_color="#888888",
                 ax=ax,
             )
@@ -189,26 +183,38 @@ class TermNetworkPlotter:
         ax.axis("off")
 
     @staticmethod
-    def get_figure_legend(
-        one_contrast: bool = True, category: str = "SMART", thresh: int = 1
-    ) -> str:
+    def get_figure_legend(one_contrast: bool = True, category: str = "SMART", thresh: int = 1) -> str:
         if one_contrast:
-            text = f"""Network representations of {category} co-enrichment across contrasts (T ≥ {thresh} proteins).
-                    Node size is proportional to the total number of proteins annotated to each term; edge width reflects the number of shared proteins.
-                    """
+            text = (
+                f"Network representations of {category} co-enrichment"
+                f" across contrasts (T ≥ {thresh} proteins).\n"
+                "Node size is proportional to the total number of proteins"
+                " annotated to each term; edge width reflects the number"
+                " of shared proteins."
+            )
         else:
-            text = f"""Network representations of {category} co-enrichment across contrasts (T ≥ {thresh} proteins).\n
-                    (A) Full network: all term–term pairs that share at least {thresh} proteins either within a single contrast or across distinct contrasts.
-                    Node size is proportional to the total number of proteins annotated to each term; edge width reflects the number of shared proteins.\n
-                    (B) Cross‐contrast subnetwork: links between two categories (terms) where one term comes from contrast X and the other comes from contrast Y, but they share the same proteins,
-                    highlighting pathway relationships that persist between contrasts.\n
-                    (C) Within‐contrast subnetwork: links between two terms (categories) that come from the same contrast.
-                    revealing context-specific functional links that may dissolve upon perturbation.\n"""
+            text = (
+                f"Network representations of {category} co-enrichment"
+                f" across contrasts (T ≥ {thresh} proteins).\n"
+                f"(A) Full network: all term–term pairs that share at least"
+                f" {thresh} proteins either within a single contrast or"
+                " across distinct contrasts.\n"
+                "Node size is proportional to the total number of proteins"
+                " annotated to each term; edge width reflects the number"
+                " of shared proteins.\n"
+                "(B) Cross-contrast subnetwork: links between two categories"
+                " (terms) where one term comes from contrast X and the other"
+                " comes from contrast Y, but they share the same proteins,"
+                " highlighting pathway relationships that persist between"
+                " contrasts.\n"
+                "(C) Within-contrast subnetwork: links between two terms"
+                " (categories) that come from the same contrast, revealing"
+                " context-specific functional links that may dissolve upon"
+                " perturbation."
+            )
         return text
 
-    def draw_legend_panel(
-        self, ax: plt.Axes, title: str = "Contrast", loc: str = "center"
-    ) -> None:
+    def draw_legend_panel(self, ax: plt.Axes, title: str = "Contrast", loc: str = "center") -> None:
         """
         Draw a standalone legend of contrasts and their colors in the given Axes.
         """
@@ -216,7 +222,7 @@ class TermNetworkPlotter:
 
         handles = [
             mpatches.Patch(facecolor=col, edgecolor="black", label=ctr)
-            for ctr, col in zip(self.contrasts, self.colors)
+            for ctr, col in zip(self.contrasts, self.colors, strict=True)
         ]
         ax.legend(
             handles=handles,
@@ -239,9 +245,7 @@ def plot_network(
     if contrast is None:
         nb = TermNetworkBuilder(xd, category=category)
     else:
-        nb = TermNetworkBuilder(
-            xd.filter(pl.col("contrast") == contrast), category=category
-        )
+        nb = TermNetworkBuilder(xd.filter(pl.col("contrast") == contrast), category=category)
 
     within_df, cross_df, all_df = nb.build_shared_counts()
     contrast_counts, contrasts = nb.build_contrast_counts()

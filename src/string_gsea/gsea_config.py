@@ -31,9 +31,7 @@ class GSEAConfig:
             data = tomli.load(f)
         missing = [key for key in cls.required if key not in data]
         if missing:
-            raise ValueError(
-                f"Configuration file is missing required keys: {', '.join(missing)}"
-            )
+            raise ValueError(f"Configuration file is missing required keys: {', '.join(missing)}")
 
         return cls(
             api_key=data["api_key"],
@@ -51,9 +49,7 @@ class GSEAConfig:
         """
         missing = [key for key in cls.required if key not in data]
         if missing:
-            raise ValueError(
-                f"Configuration file is missing required keys: {', '.join(missing)}"
-            )
+            raise ValueError(f"Configuration file is missing required keys: {', '.join(missing)}")
         return cls(
             api_key=data["api_key"],
             fdr=data["fdr"],
@@ -132,9 +128,7 @@ def get_configuration() -> GSEAConfig:
     return GSEAConfig.read_toml(config_path)
 
 
-def write_initial_configuration(
-    caller_identity: str = "www.fgcz.ch", fdr: float = 0.25
-) -> Path:
+def write_initial_configuration(caller_identity: str = "www.fgcz.ch", fdr: float = 0.25) -> Path:
     """
     Write an initial configuration file with the provided parameters and fetch an API key from STRING-DB.
 
@@ -146,9 +140,7 @@ def write_initial_configuration(
     config_path.parent.mkdir(parents=True, exist_ok=True)
 
     if config_path.exists():
-        logger.info(
-            f"Configuration file already exists at {config_path}. Overwrite? (y/n)"
-        )
+        logger.info(f"Configuration file already exists at {config_path}. Overwrite? (y/n)")
         if input().lower() != "y":
             logger.info("Exiting without overwriting the existing configuration file.")
             return config_path

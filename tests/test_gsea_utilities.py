@@ -1,4 +1,3 @@
-
 import polars as pl
 import pytest
 
@@ -28,11 +27,7 @@ def test_get_rank_files_reads_from_DE_zip(dummy_session_rnk_zip):
         assert isinstance(key[1], str)  # Filename stem
 
         assert isinstance(df, pl.DataFrame)
-        assert not df.is_empty(), (
-            f"DataFrame for {key[1]}.rnk is empty."
-        )
+        assert not df.is_empty(), f"DataFrame for {key[1]}.rnk is empty."
         # Assuming standard rank file format (Identifier, Rank_Value)
-        assert df.shape[1] == 2, (
-            f"Expected 2 columns in {key[1]}.rnk, found {df.shape[1]}"
-        )
+        assert df.shape[1] == 2, f"Expected 2 columns in {key[1]}.rnk, found {df.shape[1]}"
         # Add more specific content checks if needed

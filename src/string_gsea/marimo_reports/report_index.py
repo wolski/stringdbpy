@@ -117,9 +117,7 @@ def _(mo, num_contrasts):
     _reports = ["- [Per-Contrast Visualizations (networks.html)](networks.html)"]
 
     if num_contrasts > 1:
-        _reports.append(
-            "- [Cross-Contrast Comparisons (multiple.html)](multiple.html)"
-        )
+        _reports.append("- [Cross-Contrast Comparisons (multiple.html)](multiple.html)")
 
     _reports_md = "\n".join(_reports)
 

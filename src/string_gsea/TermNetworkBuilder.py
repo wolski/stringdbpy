@@ -3,14 +3,10 @@ import polars as pl
 
 class TermNetworkBuilder:
     def __init__(self, xd: pl.DataFrame, category: str = "SMART"):
-        self.xd_s_smart = xd.filter(pl.col("category") == category).select(
-            ["contrast", "termID", "proteinLabels"]
-        )
+        self.xd_s_smart = xd.filter(pl.col("category") == category).select(["contrast", "termID", "proteinLabels"])
 
     def compute_node_sizes(self) -> dict[str, int]:
-        node_sizes_df = self.xd_s_smart.group_by("termID").agg(
-            pl.col("proteinLabels").n_unique().alias("size")
-        )
+        node_sizes_df = self.xd_s_smart.group_by("termID").agg(pl.col("proteinLabels").n_unique().alias("size"))
         node_sizes = {r["termID"]: r["size"] for r in node_sizes_df.to_dicts()}
         return node_sizes
 
@@ -25,9 +21,7 @@ class TermNetworkBuilder:
 
         # 2) Self‐join to count shared proteins
         sp = (
-            self.xd_s_smart.join(
-                self.xd_s_smart, on="proteinLabels", how="inner", suffix="_b"
-            )
+            self.xd_s_smart.join(self.xd_s_smart, on="proteinLabels", how="inner", suffix="_b")
             .group_by(["termID", "contrast", "termID_b", "contrast_b"])
             .agg(pl.count().alias("nr_proteins"))
             .rename({"termID": "termID_a", "contrast": "contrast_a"})
@@ -48,9 +42,7 @@ class TermNetworkBuilder:
             .agg(pl.col("nr_proteins").sum().alias("w"))
         )
 
-        all_df = sp.group_by(["termID_a", "termID_b"]).agg(
-            pl.col("nr_proteins").sum().alias("w")
-        )
+        all_df = sp.group_by(["termID_a", "termID_b"]).agg(pl.col("nr_proteins").sum().alias("w"))
         return within_df, cross_df, all_df
 
     def build_contrast_counts(self) -> tuple[dict[str, dict[str, int]], list[str]]:
@@ -66,12 +58,8 @@ class TermNetworkBuilder:
         # build nested dict
         contrast_counts: dict[str, dict[str, int]] = {}
         for row in tc_counts_df.to_dicts():
-            contrast_counts.setdefault(row["termID"], {})[row["contrast"]] = row[
-                "count"
-            ]
+            contrast_counts.setdefault(row["termID"], {})[row["contrast"]] = row["count"]
         # unique sorted contrast names
-        contrasts = sorted(
-            tc_counts_df.select("contrast").unique().to_series().to_list()
-        )
+        contrasts = sorted(tc_counts_df.select("contrast").unique().to_series().to_list())
 
         return contrast_counts, contrasts

@@ -28,9 +28,7 @@ class TestRenderQuartoDocs:
         links_file.touch()
         return data_dir
 
-    def test_render_quarto_docs_calls_execute_with_correct_args(
-        self, mock_execute_quarto, data_dir
-    ):
+    def test_render_quarto_docs_calls_execute_with_correct_args(self, mock_execute_quarto, data_dir):
         """Test that render_quarto_docs calls execute_quarto_command with expected args."""
         # Run the function
         render_quarto_docs(data_dir)

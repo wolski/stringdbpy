@@ -21,9 +21,7 @@ def sample_session(tmp_path):
         config_dict=cfg,
         base_path=tmp_path,
         res_job_id={("outer", "inner"): "job123"},
-        res_data={
-            ("outer", "inner"): {"status": "success", "page_url": "http://example.com"}
-        },
+        res_data={("outer", "inner"): {"status": "success", "page_url": "http://example.com"}},
     )
     return session
 
@@ -38,9 +36,7 @@ def test_to_yaml_string(sample_session):
     assert data.config_dict == sample_session.config_dict
     # Serialized keys use 'outer~inner'
     assert data.res_job_id == {("outer", "inner"): "job123"}
-    assert data.res_data == {
-        ("outer", "inner"): {"status": "success", "page_url": "http://example.com"}
-    }
+    assert data.res_data == {("outer", "inner"): {"status": "success", "page_url": "http://example.com"}}
 
 
 def test_to_yaml_file(tmp_path, sample_session):

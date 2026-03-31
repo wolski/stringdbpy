@@ -60,15 +60,9 @@ class ReportConfig:
         parser = argparse.ArgumentParser(description="GSEA Report Configuration")
         parser.add_argument("data_file", type=Path, help="Path to XLSX data file")
         parser.add_argument("links_file", type=Path, help="Path to links.txt file")
-        parser.add_argument(
-            "--fdr", type=float, default=0.05, help="FDR threshold (default: 0.05)"
-        )
-        parser.add_argument(
-            "--genes", type=int, default=10, help="Genes mapped threshold (default: 10)"
-        )
-        parser.add_argument(
-            "--max-terms", type=int, default=100, help="Max terms per category/contrast (default: 100)"
-        )
+        parser.add_argument("--fdr", type=float, default=0.05, help="FDR threshold (default: 0.05)")
+        parser.add_argument("--genes", type=int, default=10, help="Genes mapped threshold (default: 10)")
+        parser.add_argument("--max-terms", type=int, default=100, help="Max terms per category/contrast (default: 100)")
 
         args = parser.parse_args()
 
@@ -90,9 +84,7 @@ def load_links(config: ReportConfig) -> dict[str, str]:
     """Load and return the links mapping from links.txt."""
     with open(config.links_file) as f:
         return {
-            line.split(": ", 1)[0]: line.split(": ", 1)[1].strip()
-            for line in f.read().splitlines()
-            if line.strip()
+            line.split(": ", 1)[0]: line.split(": ", 1)[1].strip() for line in f.read().splitlines() if line.strip()
         }
 
 

@@ -170,10 +170,7 @@ def _(
 
         # Check if we have at least 2 contrasts
         if xdf["contrast"].n_unique() < 2:
-            return mo.md(
-                "_Need at least 2 contrasts for cross-contrast comparison. "
-                "Only 1 contrast found._"
-            )
+            return mo.md("_Need at least 2 contrasts for cross-contrast comparison. Only 1 contrast found._")
 
         # Upset plot
         try:
@@ -196,9 +193,7 @@ def _(
         # Dotplot
         try:
             # Prepare data for dotplot
-            xd_smart = xd.drop(
-                [col for col in xd.columns if col.startswith("protein")]
-            ).unique()
+            xd_smart = xd.drop([col for col in xd.columns if col.startswith("protein")]).unique()
             xd_smart = xd_smart.filter(pl.col("category") == category)
 
             dotplot_enrichment(xd_smart)
