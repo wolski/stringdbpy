@@ -13,9 +13,7 @@ from loguru import logger
 
 from string_gsea.string_gsea_results import StringGSEAResults
 
-app = App(
-    help="Render Marimo reports as static HTML files."
-)
+app = App(help="Render Marimo reports as static HTML files.")
 
 
 def execute_marimo_export(
@@ -111,9 +109,7 @@ def prepare_data_input(data_dir: Path, output_dir: Path) -> Path:
         return output_dir
 
     else:
-        raise ValueError(
-            f"Data input must be either a zip file or directory: {data_dir}"
-        )
+        raise ValueError(f"Data input must be either a zip file or directory: {data_dir}")
 
 
 def get_contrast_count(links_file: Path) -> int:
@@ -160,7 +156,7 @@ def render_marimo_reports(
     fdr_threshold: float = 0.05,
     genes_mapped_threshold: int = 10,
     max_terms: int = 100,
-    zip: bool = False,
+    create_zip: bool = False,
     reports_subfolder: bool = True,
 ) -> None:
     """
@@ -199,13 +195,9 @@ def render_marimo_reports(
     links_files = sorted(actual_data_dir.glob("**/*links.txt"))
 
     if not xlsx_files:
-        raise FileNotFoundError(
-            f"No XLSX files found matching '*_string_gsea_results_long.xlsx' in {actual_data_dir}"
-        )
+        raise FileNotFoundError(f"No XLSX files found matching '*_string_gsea_results_long.xlsx' in {actual_data_dir}")
     if not links_files:
-        raise FileNotFoundError(
-            f"No links.txt files found in {actual_data_dir}"
-        )
+        raise FileNotFoundError(f"No links.txt files found in {actual_data_dir}")
 
     if len(xlsx_files) != 1:
         logger.warning(f"Found {len(xlsx_files)} xlsx files, using first one")
@@ -259,7 +251,7 @@ def render_marimo_reports(
     if reports_subfolder:
         create_minimal_index(output_dir)
 
-    if zip:
+    if create_zip:
         zip_path = StringGSEAResults.zip_folder(output_dir)
         logger.info(f"Zipped reports to {zip_path}")
 

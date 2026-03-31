@@ -1,0 +1,27 @@
+Package: stringGSEAplot
+Title: Read STRING-GSEA JSON Results into enrichResult Objects
+Version: 0.0.0.9000
+Authors@R:
+    person("Witold", "Wolski", , "wew@fgcz.ethz.ch", role = c("aut", "cre"))
+Description: Reads JSON files produced by the string-gsea Python pipeline
+    and constructs clusterProfiler enrichResult S4 objects for use with
+    enrichplot visualization functions.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports: 
+    DOSE,
+    jsonlite,
+    methods
+Suggests: 
+    enrichplot,
+    ggplot2,
+    ggupset,
+    knitr,
+    patchwork,
+    rmarkdown,
+    rprojroot,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+VignetteBuilder: knitr

@@ -39,7 +39,7 @@ DATASETS = get_datasets()
 # Default target: run all datasets
 rule all:
     input:
-        expand(OUTPUT_DIR / "{dataset}" / "done.txt", dataset=DATASETS)
+        expand(OUTPUT_DIR / "{dataset}" / "gsea_done.txt", dataset=DATASETS)
 
 
 # Run GSEA analysis for a dataset
@@ -100,7 +100,7 @@ rule render_reports:
 rule ci:
     input:
         expand(
-            OUTPUT_DIR / "{dataset}" / "done.txt",
+            OUTPUT_DIR / "{dataset}" / "gsea_done.txt",
             dataset=[d for d in DATASETS if "ci" in load_params(d).get("metadata", {}).get("tags", [])]
         )
 
@@ -110,7 +110,7 @@ for ds in DATASETS:
     rule:
         name: f"run_{ds}"
         input:
-            OUTPUT_DIR / ds / "done.txt"
+            OUTPUT_DIR / ds / "gsea_done.txt"
 
 
 # Clean outputs
@@ -131,7 +131,7 @@ STRING-GSEA Snakemake Workflow
 Usage: snakemake [rule] --cores N
 
 Available rules:
-  all          - Run GSEA + render reports for all datasets (default)
+  all          - Run GSEA for all datasets (default)
   ci           - Run only small datasets tagged with "ci" (fast)
   run_<NAME>   - Run a single dataset (e.g., run_mouse_xlsx)
   clean        - Remove all outputs

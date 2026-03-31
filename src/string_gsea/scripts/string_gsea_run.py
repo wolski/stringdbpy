@@ -21,10 +21,8 @@ def string_gsea_run(
     workunit_id: str,
     out_dir: str = ".",
     from_rnk: bool = False,
-    which: Literal[
-        "pep_1", "pep_1_no_imputed", "pep_2", "pep_2_no_imputed"
-    ] = "pep_2_no_imputed",
-    zip: bool = False,
+    which: Literal["pep_1", "pep_1_no_imputed", "pep_2", "pep_2_no_imputed"] = "pep_2_no_imputed",
+    create_zip: bool = False,
 ):
     """
     Run STRING GSEA analysis on the provided zip file.
@@ -85,8 +83,8 @@ def string_gsea_run(
     logger.info(f"Wrote links to {links}\nTSVs to {tsv_dir}\nGraphs to {graph_dir}")
 
     # 5) Post‑processing
-    GSEAResultProcessor.result_to_xlsx(tsv_dir, workunit_id)
-    if zip:
+    GSEAResultProcessor.process_results(tsv_dir, workunit_id)
+    if create_zip:
         path = StringGSEAResults.zip_folder(results.get_res_path())
         logger.info(f"Zipped results to {path}")
 

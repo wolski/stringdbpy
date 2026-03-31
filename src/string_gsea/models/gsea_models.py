@@ -1,5 +1,6 @@
 """Typed domain objects for STRING-DB GSEA results and a TSV parser."""
 
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,6 +32,19 @@ class GeneHit:
     input_label: str
     input_value: float
     rank: int
+
+    def to_dict(self) -> dict:
+        return {
+            "protein_id": self.protein_id,
+            "label": self.label,
+            "input_label": self.input_label,
+            "input_value": self.input_value,
+            "rank": self.rank,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "GeneHit":
+        return cls(**d)
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +79,13 @@ class GenePool:
     def get(self, protein_id: str, default=None):
         return self.entries.get(protein_id, default)
 
+    def to_dict(self) -> dict:
+        return {pid: hit.to_dict() for pid, hit in self.entries.items()}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "GenePool":
+        return cls(entries={pid: GeneHit.from_dict(h) for pid, h in d.items()})
+
 
 @dataclass(frozen=True, slots=True)
 class RankList:
@@ -76,6 +97,13 @@ class RankList:
     @property
     def n_genes(self) -> int:
         return len(self.entries)
+
+    def to_dict(self) -> dict:
+        return {"contrast": self.contrast, "entries": self.entries}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "RankList":
+        return cls(contrast=d["contrast"], entries=d["entries"])
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,6 +149,24 @@ class TermGSEA:
             return 0.0
         return sum(h.input_value for h in hits) / len(hits)
 
+    def to_dict(self) -> dict:
+        return {
+            "term_id": self.term_id,
+            "category": self.category,
+            "description": self.description,
+            "enrichment_score": self.enrichment_score,
+            "direction": self.direction,
+            "fdr": self.fdr,
+            "method": self.method,
+            "genes_mapped": self.genes_mapped,
+            "genes_in_set": self.genes_in_set,
+            "gene_ids": list(self.gene_ids),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "TermGSEA":
+        return cls(**{**d, "gene_ids": tuple(d["gene_ids"])})
+
     def rank_nes(self, gene_pool: "GenePool", n_input_genes: int) -> float:
         """Ad-hoc NES based on mean rank position.
 
@@ -153,6 +199,23 @@ class CategoryGSEA:
             if missing:
                 raise ValueError(f"Term {term.term_id}: unknown protein_ids: {missing[:3]}")
 
+    def to_dict(self) -> dict:
+        """Serialize category (without gene_pool — stored at contrast level)."""
+        return {
+            "category": self.category,
+            "contrast": self.contrast,
+            "terms": [t.to_dict() for t in self.terms],
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict, gene_pool: "GenePool") -> "CategoryGSEA":
+        return cls(
+            category=d["category"],
+            contrast=d["contrast"],
+            gene_pool=gene_pool,
+            terms=tuple(TermGSEA.from_dict(t) for t in d["terms"]),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class MultiCategoryGSEA:
@@ -160,6 +223,21 @@ class MultiCategoryGSEA:
 
     contrast: str
     categories: dict[str, CategoryGSEA]
+
+    def to_dict(self) -> dict:
+        # Store gene_pool once per contrast (all categories share it)
+        any_cat = next(iter(self.categories.values()))
+        return {
+            "contrast": self.contrast,
+            "gene_pool": any_cat.gene_pool.to_dict(),
+            "categories": {name: cat.to_dict() for name, cat in self.categories.items()},
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "MultiCategoryGSEA":
+        gene_pool = GenePool.from_dict(d["gene_pool"])
+        categories = {name: CategoryGSEA.from_dict(cat_d, gene_pool) for name, cat_d in d["categories"].items()}
+        return cls(contrast=d["contrast"], categories=categories)
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,6 +279,82 @@ class GSEAResult:
     def get_multi_contrast(self, category: str) -> MultiContrastGSEA:
         contrasts = {name: mc.categories[category] for name, mc in self.data.items() if category in mc.categories}
         return MultiContrastGSEA(category=category, contrasts=contrasts)
+
+    def to_dict(self) -> dict:
+        return {
+            "data": {name: mc.to_dict() for name, mc in self.data.items()},
+            "rank_lists": {name: rl.to_dict() for name, rl in self.rank_lists.items()},
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "GSEAResult":
+        data = {name: MultiCategoryGSEA.from_dict(mc_d) for name, mc_d in d["data"].items()}
+        rank_lists = {name: RankList.from_dict(rl_d) for name, rl_d in d["rank_lists"].items()}
+        return cls(data=data, rank_lists=rank_lists)
+
+    def to_json(self, path: Path) -> Path:
+        """Serialize to JSON file."""
+        with open(path, "w") as f:
+            json.dump(self.to_dict(), f)
+        return path
+
+    @classmethod
+    def from_json(cls, path: Path) -> "GSEAResult":
+        """Deserialize from JSON file."""
+        with open(path) as f:
+            return cls.from_dict(json.load(f))
+
+    def to_polars_long(self) -> pl.DataFrame:
+        """Convert to long-format Polars DataFrame matching STRING TSV schema.
+
+        Produces one row per term (across all contrasts and categories) with
+        the original STRING TSV columns reconstructed from the typed models,
+        plus computed columns: directionNR, num_contrasts.
+        """
+        rows: list[dict] = []
+        for contrast_name, mc in self.data.items():
+            for cat_name, cat in mc.categories.items():
+                pool = cat.gene_pool
+                for term in cat.terms:
+                    # Reconstruct comma-separated protein columns from gene pool
+                    pids = list(term.gene_ids)
+                    hits = [pool.get(pid) for pid in pids]
+                    rows.append(
+                        {
+                            "contrast": contrast_name,
+                            "category": cat_name,
+                            "termID": term.term_id,
+                            "termDescription": term.description,
+                            "enrichmentScore": term.enrichment_score,
+                            "direction": term.direction,
+                            "falseDiscoveryRate": term.fdr,
+                            "method": term.method,
+                            "genesMapped": term.genes_mapped,
+                            "genesInSet": term.genes_in_set,
+                            "proteinIDs": ",".join(pids),
+                            "proteinLabels": ",".join(h.label if h else pid for pid, h in zip(pids, hits, strict=True)),
+                            "proteinInputLabels": ",".join(
+                                h.input_label if h else pid for pid, h in zip(pids, hits, strict=True)
+                            ),
+                            "proteinInputValues": ",".join(str(h.input_value) if h else "" for h in hits),
+                            "proteinRanks": ",".join(str(h.rank) if h else "" for h in hits),
+                        }
+                    )
+
+        df = pl.DataFrame(rows)
+        # Add directionNR
+        df = df.with_columns(
+            pl.when(pl.col("direction") == "top")
+            .then(1)
+            .when(pl.col("direction") == "bottom")
+            .then(-1)
+            .otherwise(0)
+            .alias("directionNR")
+        )
+        # Add num_contrasts
+        grouped = df.group_by(["category", "termID"]).agg(pl.count("contrast").alias("num_contrasts"))
+        df = df.join(grouped, on=["category", "termID"], how="inner")
+        return df
 
     def mapping_efficiency(self, contrast: str) -> float:
         """Fraction of submitted genes that STRING mapped (appeared in results).

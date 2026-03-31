@@ -10,9 +10,7 @@ from loguru import logger
 
 from string_gsea.string_gsea_results import StringGSEAResults
 
-app = App(
-    help="Render Quarto reports in the package's docs/ directory, passing input_dir as a data_file param."
-)
+app = App(help="Render Quarto reports in the package's docs/ directory, passing input_dir as a data_file param.")
 
 
 def execute_quarto_command(
@@ -109,9 +107,7 @@ def prepare_data_input(data_dir: Path, output_dir: Path) -> Path:
         return output_dir
 
     else:
-        raise ValueError(
-            f"Data input must be either a zip file or directory: {data_dir}"
-        )
+        raise ValueError(f"Data input must be either a zip file or directory: {data_dir}")
 
 
 def get_contrast_count(links_file: Path) -> int:
@@ -170,7 +166,7 @@ def render_quarto_docs(
     output_dir: Path | None = None,
     FDR_threshold: float = 0.05,
     genes_mapped_threshold: int = 10,
-    zip: bool = False,
+    create_zip: bool = False,
     reports_subfolder: bool = True,
 ):
     """
@@ -230,7 +226,7 @@ def render_quarto_docs(
     if reports_subfolder:
         create_minimal_index(output_dir)
 
-    if zip:
+    if create_zip:
         # Zip the output directory
         zip_path = StringGSEAResults.zip_folder(output_dir)
         logger.info(f"Zipped reports to {zip_path}")

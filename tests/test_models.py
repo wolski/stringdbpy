@@ -1,3 +1,4 @@
+import polars as pl
 import pytest
 
 from string_gsea.models.gsea_models import (
@@ -212,3 +213,122 @@ def test_mapping_efficiency(gsea_result):
     for contrast in gsea_result.contrast_names:
         eff = gsea_result.mapping_efficiency(contrast)
         assert 0.5 < eff < 1.0
+
+
+# ---------------------------------------------------------------------------
+# to_polars_long tests
+# ---------------------------------------------------------------------------
+
+
+def test_to_polars_long_columns(gsea_result):
+    df = gsea_result.to_polars_long()
+    expected_cols = {
+        "contrast",
+        "category",
+        "termID",
+        "termDescription",
+        "enrichmentScore",
+        "direction",
+        "falseDiscoveryRate",
+        "method",
+        "genesMapped",
+        "genesInSet",
+        "proteinIDs",
+        "proteinLabels",
+        "proteinInputLabels",
+        "proteinInputValues",
+        "proteinRanks",
+        "directionNR",
+        "num_contrasts",
+    }
+    assert set(df.columns) == expected_cols
+
+
+def test_to_polars_long_row_count(gsea_result):
+    df = gsea_result.to_polars_long()
+    # Row count should equal total number of terms across all contrasts/categories
+    total_terms = sum(len(cat.terms) for mc in gsea_result.data.values() for cat in mc.categories.values())
+    assert len(df) == total_terms
+
+
+def test_to_polars_long_values(gsea_result):
+    """Spot-check a known term's values in the long DataFrame."""
+    df = gsea_result.to_polars_long()
+    # Filter for a known term from the first contrast
+    # Use the pUbT12 contrast (not pUbT12T14) where we know exact values
+    contrast = next(c for c in gsea_result.contrast_names if "pUbT12_" in c)
+    row = df.filter((pl.col("contrast") == contrast) & (pl.col("termID") == "GO:0006364"))
+    assert len(row) == 1
+    assert row["category"][0] == "GO Process"
+    assert row["direction"][0] == "bottom"
+    assert row["directionNR"][0] == -1
+    assert row["genesMapped"][0] == 168
+    assert row["genesInSet"][0] == 220
+    # Protein columns should be comma-separated strings
+    assert "," in row["proteinIDs"][0]
+
+
+# ---------------------------------------------------------------------------
+# JSON serialization tests
+# ---------------------------------------------------------------------------
+
+
+def test_json_round_trip(gsea_result, tmp_path):
+    """Serialize to JSON and deserialize — result should be identical."""
+    json_path = tmp_path / "gsea_result.json"
+    gsea_result.to_json(json_path)
+    restored = GSEAResult.from_json(json_path)
+
+    assert restored.contrast_names == gsea_result.contrast_names
+    assert restored.category_names == gsea_result.category_names
+    assert len(restored.rank_lists) == len(gsea_result.rank_lists)
+
+    # Spot-check a term
+    contrast = gsea_result.contrast_names[0]
+    cat_orig = gsea_result.get_category(contrast, "KEGG")
+    cat_restored = restored.get_category(contrast, "KEGG")
+    assert len(cat_restored.terms) == len(cat_orig.terms)
+    assert cat_restored.terms[0].term_id == cat_orig.terms[0].term_id
+    assert cat_restored.terms[0].fdr == cat_orig.terms[0].fdr
+    assert cat_restored.terms[0].gene_ids == cat_orig.terms[0].gene_ids
+
+
+def test_json_shared_gene_pool(gsea_result, tmp_path):
+    """After round-trip, gene pool is still shared across categories."""
+    json_path = tmp_path / "gsea_result.json"
+    gsea_result.to_json(json_path)
+    restored = GSEAResult.from_json(json_path)
+
+    contrast = restored.contrast_names[0]
+    mc = restored.get_multi_category(contrast)
+    pools = [cat.gene_pool for cat in mc.categories.values()]
+    assert all(p is pools[0] for p in pools)
+
+
+def test_json_gene_hit_values(gsea_result, tmp_path):
+    """Gene hit values survive round-trip."""
+    json_path = tmp_path / "gsea_result.json"
+    gsea_result.to_json(json_path)
+    restored = GSEAResult.from_json(json_path)
+
+    # Use the pUbT12 contrast
+    contrast = next(c for c in restored.contrast_names if "pUbT12_" in c)
+    cat = restored.get_category(contrast, "GO Process")
+    term = next(t for t in cat.terms if t.term_id == "GO:0006364")
+    hit = cat.gene_pool[term.gene_ids[0]]
+    assert hit.protein_id == "9606.ENSP00000007390"
+    assert hit.label == "TSR3"
+    assert pytest.approx(hit.input_value, rel=1e-3) == 1.8687
+
+
+def test_json_rank_list_round_trip(gsea_result, tmp_path):
+    """Rank lists survive round-trip."""
+    json_path = tmp_path / "gsea_result.json"
+    gsea_result.to_json(json_path)
+    restored = GSEAResult.from_json(json_path)
+
+    for contrast in gsea_result.contrast_names:
+        orig_rl = gsea_result.rank_lists[contrast]
+        rest_rl = restored.rank_lists[contrast]
+        assert rest_rl.contrast == orig_rl.contrast
+        assert rest_rl.n_genes == orig_rl.n_genes

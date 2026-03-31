@@ -35,9 +35,7 @@ class DiffXLSX:
             print("Files in zip:", file_list)
 
             # Find the first .xlsx file in the archive
-            xlsx_files = [
-                file for file in file_list if file.endswith(".xlsx") and "DE_" in file
-            ]
+            xlsx_files = [file for file in file_list if file.endswith(".xlsx") and "DE_" in file]
 
             if not xlsx_files:
                 raise ValueError("No xlsx file found in the zip archive")
@@ -56,7 +54,7 @@ class DiffXLSX:
     @staticmethod
     def _get_ranks_by_contrast(
         df: pl.DataFrame,
-        id_col: list[str] = ["IDcolumn", "proteinname"],
+        id_col: list[str] | None = None,
         rank_col: str = "statistic",
         prefix: str = "",
     ) -> dict:
@@ -73,8 +71,9 @@ class DiffXLSX:
             dict: A dictionary mapping contrast names to rank DataFrames.
         """
 
-        id_columns = ["IDcolumn", "proteinname"]
-        existing_id_cols = [col for col in id_columns if col in df.columns]
+        if id_col is None:
+            id_col = ["IDcolumn", "proteinname"]
+        existing_id_cols = [col for col in id_col if col in df.columns]
         if not existing_id_cols:
             raise ValueError("No valid ID columns found")
         existing_id_cols = existing_id_cols[0]
@@ -93,22 +92,18 @@ class DiffXLSX:
         def decorator(func):
             def wrapper(*args, **kwargs):
                 if "which" in kwargs and kwargs["which"] not in valid_options:
-                    raise ValueError(
-                        f"which must be one of: {', '.join(valid_options)}"
-                    )
+                    raise ValueError(f"which must be one of: {', '.join(valid_options)}")
                 return func(*args, **kwargs)
 
             return wrapper
 
         return decorator
 
-    @validate_arguments(
-        ["all", "pep_1", "pep_1_no_imputed", "pep_2", "pep_2_no_imputed"]
-    )
+    @validate_arguments(["all", "pep_1", "pep_1_no_imputed", "pep_2", "pep_2_no_imputed"])
     def rank_dict(
         self,
-        id_col: list[str] = ["IDcolumn", "proteinname"],
-        rank_col: list[str] = ["statistic"],
+        id_col: list[str] | None = None,
+        rank_col: list[str] | None = None,
         which: str = "all",
     ) -> dict:
         """
@@ -121,21 +116,17 @@ class DiffXLSX:
         Returns:
             dict: A dictionary mapping (peptide_type, contrast) tuples to rank DataFrames.
         """
+        if id_col is None:
+            id_col = ["IDcolumn", "proteinname"]
+        if rank_col is None:
+            rank_col = ["statistic"]
         contrast_pep_1 = self._get_ranks_by_contrast(self.dea_df, id_col, rank_col)
-        df_pep1_no_imp = self.dea_df.filter(
-            ~pl.col("modelName").str.contains("(?i)imputed")
-        )
-        contrast_pep1_no_imp = self._get_ranks_by_contrast(
-            df_pep1_no_imp, id_col, rank_col
-        )
+        df_pep1_no_imp = self.dea_df.filter(~pl.col("modelName").str.contains("(?i)imputed"))
+        contrast_pep1_no_imp = self._get_ranks_by_contrast(df_pep1_no_imp, id_col, rank_col)
         df_pep2 = self.dea_df.filter(pl.col("nrPeptides") > 1)
         contrast_pep2 = self._get_ranks_by_contrast(df_pep2, id_col, rank_col)
-        df_pep2_no_imp = df_pep2.filter(
-            ~pl.col("modelName").str.contains("(?i)imputed")
-        )
-        contrast_pep2_no_imp = self._get_ranks_by_contrast(
-            df_pep2_no_imp, id_col, rank_col
-        )
+        df_pep2_no_imp = df_pep2.filter(~pl.col("modelName").str.contains("(?i)imputed"))
+        contrast_pep2_no_imp = self._get_ranks_by_contrast(df_pep2_no_imp, id_col, rank_col)
         combined_dict = {
             "pep_1": contrast_pep_1,
             "pep_1_no_imputed": contrast_pep1_no_imp,
@@ -153,9 +144,7 @@ class DiffXLSX:
 
 
 if __name__ == "__main__":
-    zip_path = (
-        Path(__file__).parent.parent.parent / "tests/data/DE_mouse_fasta_xlsx.zip"
-    )
+    zip_path = Path(__file__).parent.parent.parent / "tests/data/DE_mouse_fasta_xlsx.zip"
     logger.info(f"Zip path: {zip_path}")
     df_xlsx = DiffXLSX(zip_path)
     rank_files = df_xlsx.rank_dict()

@@ -16,3 +16,5 @@ site_libs/
 tests/marshli/*
 tests/errors/*
 tests/.snakemake/
+.claude/
+*.tar.gz
