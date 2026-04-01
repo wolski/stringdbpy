@@ -87,7 +87,3 @@ def single_contrast_tsv() -> Path:
     return OUTPUTS_DIR / "human_rnk_2848501" / "WU_2848501_GSEA" / "from_rnk" / "Bait_NCP_pUbT12_results.tsv"
 
 
-@pytest.fixture
-def network_test_xlsx() -> Path:
-    """XLSX file for network tests."""
-    return FIXTURES_DIR / "dummy_output" / "WU_abcd_GSEA" / "from_rnk" / "WUabcd_string_gsea_results_long.xlsx"

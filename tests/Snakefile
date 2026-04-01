@@ -75,26 +75,6 @@ rule run_gsea:
         """
 
 
-# Render reports for a dataset (using Marimo)
-rule render_reports:
-    input:
-        gsea_done=OUTPUT_DIR / "{dataset}" / "gsea_done.txt"
-    output:
-        done=OUTPUT_DIR / "{dataset}" / "done.txt"
-    params:
-        workunit_id=lambda wc: load_params(wc.dataset)["execution"]["workunit_id"]
-    shell:
-        """
-        # Find the GSEA output directory
-        GSEA_DIR=$(find {OUTPUT_DIR}/{wildcards.dataset} -maxdepth 1 -type d -name "WU_*_GSEA" | head -1)
-
-        if [ -n "$GSEA_DIR" ]; then
-            string_gsea_render_marimo "$GSEA_DIR" "{OUTPUT_DIR}/{wildcards.dataset}/reports" --no-reports-subfolder || true
-        fi
-
-        touch {output.done}
-        """
-
 
 # Run only small datasets tagged with "ci"
 rule ci:
