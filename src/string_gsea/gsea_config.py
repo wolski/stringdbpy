@@ -23,16 +23,15 @@ class GSEAConfig:
     required = ["api_key", "fdr", "ge_enrichment_rank_direction", "caller_identity"]
 
     @classmethod
-    def read_toml(cls, path: Path) -> "GSEAConfig":
-        """
-        Read TOML from `path`, validate required fields, and return a GSEAConfig instance.
-        """
-        with open(path, "rb") as f:
-            data = tomli.load(f)
+    def _validate(cls, data: dict) -> None:
+        """Validate that all required keys are present."""
         missing = [key for key in cls.required if key not in data]
         if missing:
-            raise ValueError(f"Configuration file is missing required keys: {', '.join(missing)}")
+            raise ValueError(f"Configuration is missing required keys: {', '.join(missing)}")
 
+    @classmethod
+    def _from_data(cls, data: dict) -> "GSEAConfig":
+        """Construct a GSEAConfig from a validated dict."""
         return cls(
             api_key=data["api_key"],
             fdr=data["fdr"],
@@ -43,21 +42,18 @@ class GSEAConfig:
         )
 
     @classmethod
+    def read_toml(cls, path: Path) -> "GSEAConfig":
+        """Read TOML from `path`, validate required fields, and return a GSEAConfig instance."""
+        with open(path, "rb") as f:
+            data = tomli.load(f)
+        cls._validate(data)
+        return cls._from_data(data)
+
+    @classmethod
     def from_dict(cls, data: dict) -> "GSEAConfig":
-        """
-        Initialize GSEAConfig from dict.
-        """
-        missing = [key for key in cls.required if key not in data]
-        if missing:
-            raise ValueError(f"Configuration file is missing required keys: {', '.join(missing)}")
-        return cls(
-            api_key=data["api_key"],
-            fdr=data["fdr"],
-            ge_enrichment_rank_direction=data["ge_enrichment_rank_direction"],
-            caller_identity=data["caller_identity"],
-            creation_date=data.get("creation_date"),
-            api_base_url=data.get("api_base_url", STRING_API_BASE_DEFAULT),
-        )
+        """Initialize GSEAConfig from dict."""
+        cls._validate(data)
+        return cls._from_data(data)
 
     def write_toml(self, path: Path) -> None:
         """

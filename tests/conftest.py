@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from string_gsea.gsea_config import GSEAConfig
+
 # Base paths
 TEST_DIR = Path(__file__).parent
 DATA_DIR = TEST_DIR / "data"
@@ -15,12 +17,6 @@ OUTPUTS_DIR = DATA_DIR / "outputs"
 # ============================================================
 # Dataset Fixtures (for Snakemake-compatible datasets)
 # ============================================================
-
-
-@pytest.fixture
-def datasets_dir() -> Path:
-    """Path to datasets directory containing Snakemake-iterable datasets."""
-    return DATASETS_DIR
 
 
 # ============================================================
@@ -40,12 +36,6 @@ def yeast_rnk_zip() -> Path:
     return DATASETS_DIR / "yeast_rnk" / "input.zip"
 
 
-@pytest.fixture
-def human_rnk_2848501_zip() -> Path:
-    """Human RNK ZIP file (2848501)."""
-    return DATASETS_DIR / "human_rnk_2848501" / "input.zip"
-
-
 # ============================================================
 # Special Fixtures (test-specific, not for Snakemake)
 # ============================================================
@@ -55,12 +45,6 @@ def human_rnk_2848501_zip() -> Path:
 def fasta_test_zip() -> Path:
     """FASTA test ZIP for species detection (no matching pattern)."""
     return FIXTURES_DIR / "no_matching_zip" / "fasta_test.zip"
-
-
-@pytest.fixture
-def no_matching_dir() -> Path:
-    """Directory with non-matching ZIP files."""
-    return FIXTURES_DIR / "no_matching_zip"
 
 
 @pytest.fixture
@@ -87,3 +71,12 @@ def single_contrast_tsv() -> Path:
     return OUTPUTS_DIR / "human_rnk_2848501" / "WU_2848501_GSEA" / "from_rnk" / "Bait_NCP_pUbT12_results.tsv"
 
 
+@pytest.fixture
+def gsea_config() -> GSEAConfig:
+    """Minimal GSEAConfig for unit tests (no real API key)."""
+    return GSEAConfig(
+        api_key="test_key",
+        fdr=0.25,
+        ge_enrichment_rank_direction=1,
+        caller_identity="test@example.com",
+    )

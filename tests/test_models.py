@@ -5,9 +5,14 @@ from string_gsea.models.gsea_models import (
     CategoryGSEA,
     GenePool,
     GSEAResult,
+    RankList,
+    RankListCollection,
+    RunMetadata,
     TermGSEA,
+    parse_gsea_results,
     parse_gsea_tsv,
     parse_gsea_tsv_dir,
+    parse_gsea_tsv_from_string,
     parse_rank_file,
 )
 
@@ -332,3 +337,208 @@ def test_json_rank_list_round_trip(gsea_result, tmp_path):
         rest_rl = restored.rank_lists[contrast]
         assert rest_rl.contrast == orig_rl.contrast
         assert rest_rl.n_genes == orig_rl.n_genes
+
+
+# ---------------------------------------------------------------------------
+# RankList — new features
+# ---------------------------------------------------------------------------
+
+
+def test_rank_list_to_rnk_string():
+    rl = RankList(contrast="c", entries={"GENE1": 1.5, "GENE2": -0.3})
+    text = rl.to_rnk_string()
+    lines = text.strip().split("\n")
+    assert len(lines) == 2
+    assert lines[0] == "GENE1\t1.5"
+    assert lines[1] == "GENE2\t-0.3"
+
+
+def test_rank_list_sample_identifiers():
+    entries = {f"G{i}": float(i) for i in range(20)}
+    rl = RankList(contrast="c", entries=entries)
+    sampled = rl.sample_identifiers(5)
+    assert len(sampled) == 5
+    assert all(s in entries for s in sampled)
+
+
+def test_rank_list_sample_identifiers_fewer_than_nr():
+    rl = RankList(contrast="c", entries={"G1": 1.0, "G2": 2.0})
+    sampled = rl.sample_identifiers(10)
+    assert len(sampled) == 2
+
+
+def test_rank_list_from_polars():
+    df = pl.DataFrame({"id": ["GENE1", "GENE2"], "statistic": [1.5, -0.3]})
+    rl = RankList.from_polars(df, contrast="test")
+    assert rl.contrast == "test"
+    assert rl.entries == {"GENE1": 1.5, "GENE2": -0.3}
+
+
+def test_rank_list_json_round_trip():
+    rl = RankList(contrast="c", entries={"G1": 1.0})
+    d = rl.to_dict()
+    restored = RankList.from_dict(d)
+    assert restored == rl
+
+
+# ---------------------------------------------------------------------------
+# RankListCollection
+# ---------------------------------------------------------------------------
+
+
+def test_rank_list_collection_basic():
+    rl1 = RankList(contrast="A", entries={"G1": 1.0})
+    rl2 = RankList(contrast="B", entries={"G2": 2.0})
+    coll = RankListCollection(analysis="pep_1", rank_lists=[rl1, rl2])
+    assert coll.analysis == "pep_1"
+    assert len(coll) == 2
+    assert coll["A"] is rl1
+    assert "B" in coll
+
+
+def test_rank_list_collection_iteration():
+    rl1 = RankList(contrast="A", entries={"G1": 1.0})
+    rl2 = RankList(contrast="B", entries={"G2": 2.0})
+    coll = RankListCollection(analysis="pep_1", rank_lists=[rl1, rl2])
+    items = list(coll)
+    assert len(items) == 2
+    assert rl1 in items
+    assert rl2 in items
+
+
+def test_rank_list_collection_contrasts():
+    rl1 = RankList(contrast="A", entries={"G1": 1.0})
+    rl2 = RankList(contrast="B", entries={"G2": 2.0})
+    coll = RankListCollection(analysis="pep_2", rank_lists=[rl1, rl2])
+    assert coll.contrasts == ["A", "B"]
+
+
+def test_rank_list_collection_first():
+    rl1 = RankList(contrast="A", entries={"G1": 1.0})
+    coll = RankListCollection(analysis="pep_1", rank_lists=[rl1])
+    assert coll.first() is rl1
+
+
+def test_rank_list_collection_add():
+    coll = RankListCollection(analysis="pep_1", rank_lists=[])
+    assert len(coll) == 0
+    coll.add(RankList(contrast="A", entries={"G1": 1.0}))
+    assert len(coll) == 1
+
+
+# ---------------------------------------------------------------------------
+# parse_gsea_tsv_from_string tests
+# ---------------------------------------------------------------------------
+
+
+def test_parse_gsea_tsv_from_string(single_contrast_tsv):
+    """parse_gsea_tsv_from_string should produce the same result as parse_gsea_tsv."""
+    content = single_contrast_tsv.read_text()
+    contrast = single_contrast_tsv.name
+
+    from_file = parse_gsea_tsv(single_contrast_tsv, contrast=contrast)
+    from_string = parse_gsea_tsv_from_string(content, contrast=contrast)
+
+    assert set(from_file.keys()) == set(from_string.keys())
+    for cat_name in from_file:
+        assert len(from_file[cat_name].terms) == len(from_string[cat_name].terms)
+
+
+def test_parse_gsea_tsv_from_string_category_filter(single_contrast_tsv):
+    content = single_contrast_tsv.read_text()
+    result = parse_gsea_tsv_from_string(content, contrast="test", categories={"KEGG"})
+    assert list(result.keys()) == ["KEGG"]
+
+
+# ---------------------------------------------------------------------------
+# parse_gsea_results tests
+# ---------------------------------------------------------------------------
+
+
+def test_parse_gsea_results(single_contrast_tsv):
+    """parse_gsea_results should build GSEAResult from in-memory TSV content."""
+    content = single_contrast_tsv.read_text()
+
+    rank_lists = RankListCollection(
+        analysis="from_rnk",
+        rank_lists=[RankList(contrast="Bait_NCP_pUbT12", entries={"A0AV96": 2.2147})],
+    )
+    tsv_content = {("from_rnk", "Bait_NCP_pUbT12"): content}
+
+    gsea_result = parse_gsea_results(rank_lists, tsv_content)
+
+    assert len(gsea_result.contrast_names) == 1
+    assert "Bait_NCP_pUbT12_results.tsv" in gsea_result.contrast_names
+    assert "KEGG" in gsea_result.category_names
+    assert "Bait_NCP_pUbT12_results.tsv" in gsea_result.rank_lists
+    assert gsea_result.metadata is None
+
+
+def test_run_metadata_round_trip():
+    """RunMetadata should survive dict serialization round-trip."""
+    meta = RunMetadata(
+        workunit_id="WU123",
+        species=9606,
+        fdr=0.25,
+        ge_enrichment_rank_direction=1,
+        caller_identity="test@example.com",
+        api_base_url="https://version-12-0.string-db.org/api",
+    )
+    d = meta.to_dict()
+    restored = RunMetadata.from_dict(d)
+    assert restored == meta
+
+
+def test_run_metadata_from_config():
+    """RunMetadata.from_config should extract non-sensitive fields from GSEAConfig."""
+    from string_gsea.gsea_config import GSEAConfig
+
+    config = GSEAConfig(
+        api_key="secret-key-123",
+        fdr=0.05,
+        ge_enrichment_rank_direction=1,
+        caller_identity="test@example.com",
+        api_base_url="https://version-12-0.string-db.org/api",
+    )
+    meta = RunMetadata.from_config(config, workunit_id="WU456", species=10090)
+    assert meta.workunit_id == "WU456"
+    assert meta.species == 10090
+    assert meta.fdr == 0.05
+    assert meta.caller_identity == "test@example.com"
+    # api_key must NOT leak into RunMetadata
+    assert not hasattr(meta, "api_key")
+
+
+def test_gsea_result_with_metadata_round_trip(single_contrast_tsv):
+    """GSEAResult with metadata should survive JSON round-trip."""
+    content = single_contrast_tsv.read_text()
+    rank_lists = RankListCollection(
+        analysis="from_rnk",
+        rank_lists=[RankList(contrast="Bait_NCP_pUbT12", entries={"A0AV96": 2.2147})],
+    )
+    tsv_content = {("from_rnk", "Bait_NCP_pUbT12"): content}
+    meta = RunMetadata(
+        workunit_id="WU789",
+        species=9606,
+        fdr=0.25,
+        ge_enrichment_rank_direction=1,
+        caller_identity="test@example.com",
+        api_base_url="https://version-12-0.string-db.org/api",
+    )
+
+    gsea_result = parse_gsea_results(rank_lists, tsv_content, metadata=meta)
+    assert gsea_result.metadata == meta
+
+    # JSON round-trip
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as tmp:
+        json_path = Path(tmp) / "result.json"
+        gsea_result.to_json(json_path)
+        restored = GSEAResult.from_json(json_path)
+
+    assert restored.metadata is not None
+    assert restored.metadata.workunit_id == "WU789"
+    assert restored.metadata.species == 9606
+    assert restored.metadata.fdr == 0.25

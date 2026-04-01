@@ -4,11 +4,12 @@ from typing import Literal
 from cyclopts import App
 from loguru import logger
 
-from string_gsea.get_species import get_species_taxon
 from string_gsea.gsea_config import get_configuration
-from string_gsea.gsea_result_processor import GSEAResultProcessor
-from string_gsea.gsea_utilities import get_rank_files
+from string_gsea.gsea_result_processor import write_gsea_xlsx
+from string_gsea.gsea_utilities import get_rank_files, write_rank_files
+from string_gsea.models.gsea_models import RunMetadata, parse_gsea_results
 from string_gsea.ranks_from_dea_xlsx import DiffXLSX
+from string_gsea.species_detection import get_species_taxon
 from string_gsea.string_gsea_builder import StringGSEABuilder
 from string_gsea.string_gsea_results import StringGSEAResults
 
@@ -32,60 +33,62 @@ def string_gsea_run(
         workunit_id (str): Identifier for this analysis run.
         out_dir (str, optional): Base directory for output files. Defaults to ".".
     """
-    # Convert paths to Path objects
     zip_path = Path(zip_path)
     base_dir = Path(out_dir)
 
-    # 1) Get configuration from config file
+    # 1) Configuration
     config = get_configuration()
     base_dir.mkdir(exist_ok=True)
     if not zip_path.exists():
         raise FileNotFoundError(f"Zip file not found: {zip_path}")
-    # 2) Get species and rank data
 
+    # 2) Read rank data
     if from_rnk:
-        dataframes = get_rank_files(zip_path)
+        rank_lists = get_rank_files(zip_path)
     else:
         df_xlsx = DiffXLSX(zip_path)
-        rank_files = df_xlsx.rank_dict(which=which)
-        dataframes = rank_files
+        rank_lists = df_xlsx.rank_dict(which=which)
 
-    species = get_species_taxon(zip_path, dataframes, api_base_url=config.api_base_url)
+    # 3) Detect species
+    species = get_species_taxon(zip_path, rank_lists, api_base_url=config.api_base_url)
 
-    # 3) Build, write inputs, submit & poll
+    # 4) Submit & poll
     builder = StringGSEABuilder(
-        rank_dataframes=dataframes,
+        rank_lists=rank_lists,
         config=config,
         workunit_id=workunit_id,
         species=species,
         base_path=base_dir,
     )
-    xd = builder.get_res_path()
-    print(xd)
-    builder.write_rank_files()
-    # submit + poll under the hood
-    results: StringGSEAResults = builder.get_result()
-    logger.info(f"Jobs completed: {builder.session.res_job_id}")
+    builder.submit().poll()
 
-    # 4) Serialize session + results, write out files
-    #   - YAML session
-    session_yaml = builder.save_session()
+    # 5) Output directory
+    res_path = base_dir / f"WU_{workunit_id}_GSEA"
+    res_path.mkdir(parents=True, exist_ok=True)
+
+    session_yaml = builder.save_session(res_path / "gsea_session.yml")
     logger.info(f"Session YAML written to {session_yaml}")
 
-    #   - JSON results
-    # serialized_json = results.save_session()
-    # logger.info(f"Results JSON written to {serialized_json}")
+    # 6) Download raw results into memory
+    raw_results = StringGSEAResults(builder.session)
+    raw_results.download()
 
-    #   - links, TSVs, graphs
-    links = results.write_links()
-    tsv_dir = results.write_gsea_tsv()
-    graph_dir = results.write_gsea_graphs()
-    logger.info(f"Wrote links to {links}\nTSVs to {tsv_dir}\nGraphs to {graph_dir}")
+    # 7) Parse into typed model
+    metadata = RunMetadata.from_config(config, workunit_id=workunit_id, species=species)
+    gsea_result = parse_gsea_results(rank_lists, raw_results.tsv_content, metadata=metadata)
 
-    # 5) Post‑processing
-    GSEAResultProcessor.process_results(tsv_dir, workunit_id)
+    # 8) Write outputs
+    write_rank_files(rank_lists, res_path)
+    gsea_result.to_json(res_path / f"WU{workunit_id}_gsea_result.json")
+    write_gsea_xlsx(gsea_result, workunit_id, res_path)
+
+    # 9) Persist raw files to disk
+    raw_results.write_tsv(res_path)
+    raw_results.write_graphs(res_path)
+    raw_results.write_links(res_path)
+
     if create_zip:
-        path = StringGSEAResults.zip_folder(results.get_res_path())
+        path = StringGSEAResults.zip_folder(res_path)
         logger.info(f"Zipped results to {path}")
 
 

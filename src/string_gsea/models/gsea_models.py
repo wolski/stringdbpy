@@ -1,11 +1,17 @@
 """Typed domain objects for STRING-DB GSEA results and a TSV parser."""
 
+from __future__ import annotations
+
 import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import polars as pl
+
+if TYPE_CHECKING:
+    from string_gsea.gsea_config import GSEAConfig
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -43,7 +49,7 @@ class GeneHit:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "GeneHit":
+    def from_dict(cls, d: dict) -> GeneHit:
         return cls(**d)
 
 
@@ -83,13 +89,17 @@ class GenePool:
         return {pid: hit.to_dict() for pid, hit in self.entries.items()}
 
     @classmethod
-    def from_dict(cls, d: dict) -> "GenePool":
+    def from_dict(cls, d: dict) -> GenePool:
         return cls(entries={pid: GeneHit.from_dict(h) for pid, h in d.items()})
 
 
 @dataclass(frozen=True, slots=True)
 class RankList:
-    """Original ranked gene list submitted to STRING-DB for one contrast."""
+    """One ranked gene list for a single biological contrast.
+
+    - ``contrast``: the biological comparison, e.g. ``"Treatment_vs_Control"``
+    - ``entries``: mapping of input identifier → ranking score
+    """
 
     contrast: str
     entries: dict[str, float]  # input_label → score
@@ -98,12 +108,93 @@ class RankList:
     def n_genes(self) -> int:
         return len(self.entries)
 
+    def to_rnk_string(self) -> str:
+        """Tab-separated rank string (no header), for STRING API and .rnk files."""
+        return "\n".join(f"{label}\t{score}" for label, score in self.entries.items()) + "\n"
+
+    def sample_identifiers(self, nr: int = 10) -> list[str]:
+        """Return up to *nr* randomly sampled identifier keys."""
+        import random
+
+        keys = list(self.entries.keys())
+        return random.sample(keys, min(nr, len(keys)))
+
     def to_dict(self) -> dict:
         return {"contrast": self.contrast, "entries": self.entries}
 
     @classmethod
-    def from_dict(cls, d: dict) -> "RankList":
+    def from_dict(cls, d: dict) -> RankList:
         return cls(contrast=d["contrast"], entries=d["entries"])
+
+    @classmethod
+    def from_polars(cls, df: pl.DataFrame, *, contrast: str) -> RankList:
+        """Build from a 2-column DataFrame (identifier, score)."""
+        entries = dict(
+            zip(
+                df.get_column(df.columns[0]).to_list(),
+                df.get_column(df.columns[1]).cast(pl.Float64).to_list(),
+                strict=True,
+            )
+        )
+        return cls(contrast=contrast, entries=entries)
+
+
+class RankListCollection:
+    """Ranked gene lists for one analysis type across multiple contrasts.
+
+    - ``analysis``: the filtering strategy that produced these lists, e.g.
+      ``"pep_2_no_imputed"`` (≥2 peptides, no imputed), ``"pep_1"`` (all
+      peptides), or ``"from_rnk"`` (raw .rnk file input).
+    - Each ``RankList`` inside represents one biological contrast.
+
+    Supports dict-like lookup by contrast name and iteration over
+    ``RankList`` values.
+    """
+
+    def __init__(self, analysis: str, rank_lists: list[RankList]):
+        self.analysis = analysis
+        self._data: dict[str, RankList] = {}
+        for rl in rank_lists:
+            self._data[rl.contrast] = rl
+
+    def add(self, rl: RankList) -> None:
+        self._data[rl.contrast] = rl
+
+    # --- dict-like interface ---------------------------------------------------
+
+    def __getitem__(self, contrast: str) -> RankList:
+        return self._data[contrast]
+
+    def __contains__(self, contrast: str) -> bool:
+        return contrast in self._data
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __iter__(self):
+        return iter(self._data.values())
+
+    def items(self):
+        """Yields (contrast_name, RankList) pairs."""
+        return self._data.items()
+
+    def values(self):
+        return self._data.values()
+
+    def keys(self):
+        """Yields contrast names."""
+        return self._data.keys()
+
+    # --- accessors ------------------------------------------------------------
+
+    @property
+    def contrasts(self) -> list[str]:
+        """All contrast names."""
+        return sorted(self._data.keys())
+
+    def first(self) -> RankList:
+        """Return the first RankList (useful for species-detection fallback)."""
+        return next(iter(self._data.values()))
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,7 +233,7 @@ class TermGSEA:
         """Fraction of term genes found in input."""
         return self.genes_mapped / self.genes_in_set if self.genes_in_set > 0 else 0.0
 
-    def mean_input_value(self, gene_pool: "GenePool") -> float:
+    def mean_input_value(self, gene_pool: GenePool) -> float:
         """Mean ranking score across gene hits — signed pseudo-NES."""
         hits = [gene_pool[gid] for gid in self.gene_ids if gid in gene_pool]
         if not hits:
@@ -164,10 +255,10 @@ class TermGSEA:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "TermGSEA":
+    def from_dict(cls, d: dict) -> TermGSEA:
         return cls(**{**d, "gene_ids": tuple(d["gene_ids"])})
 
-    def rank_nes(self, gene_pool: "GenePool", n_input_genes: int) -> float:
+    def rank_nes(self, gene_pool: GenePool, n_input_genes: int) -> float:
         """Ad-hoc NES based on mean rank position.
 
         Normalized to [-1, 1]: +1 = all genes at top of list,
@@ -208,7 +299,7 @@ class CategoryGSEA:
         }
 
     @classmethod
-    def from_dict(cls, d: dict, gene_pool: "GenePool") -> "CategoryGSEA":
+    def from_dict(cls, d: dict, gene_pool: GenePool) -> CategoryGSEA:
         return cls(
             category=d["category"],
             contrast=d["contrast"],
@@ -234,7 +325,7 @@ class MultiCategoryGSEA:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "MultiCategoryGSEA":
+    def from_dict(cls, d: dict) -> MultiCategoryGSEA:
         gene_pool = GenePool.from_dict(d["gene_pool"])
         categories = {name: CategoryGSEA.from_dict(cat_d, gene_pool) for name, cat_d in d["categories"].items()}
         return cls(contrast=d["contrast"], categories=categories)
@@ -249,6 +340,55 @@ class MultiContrastGSEA:
 
 
 @dataclass(frozen=True, slots=True)
+class RunMetadata:
+    """Parameters used for a STRING GSEA run.
+
+    Captures everything needed to understand how results were produced,
+    excluding sensitive fields (api_key).
+    """
+
+    workunit_id: str
+    species: int
+    fdr: float
+    ge_enrichment_rank_direction: int
+    caller_identity: str
+    api_base_url: str
+
+    def to_dict(self) -> dict:
+        return {
+            "workunit_id": self.workunit_id,
+            "species": self.species,
+            "fdr": self.fdr,
+            "ge_enrichment_rank_direction": self.ge_enrichment_rank_direction,
+            "caller_identity": self.caller_identity,
+            "api_base_url": self.api_base_url,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> RunMetadata:
+        return cls(
+            workunit_id=d["workunit_id"],
+            species=d["species"],
+            fdr=d["fdr"],
+            ge_enrichment_rank_direction=d["ge_enrichment_rank_direction"],
+            caller_identity=d["caller_identity"],
+            api_base_url=d["api_base_url"],
+        )
+
+    @classmethod
+    def from_config(cls, config: GSEAConfig, *, workunit_id: str, species: int) -> RunMetadata:
+        """Build from a GSEAConfig, excluding the api_key."""
+        return cls(
+            workunit_id=workunit_id,
+            species=species,
+            fdr=config.fdr,
+            ge_enrichment_rank_direction=config.ge_enrichment_rank_direction,
+            caller_identity=config.caller_identity,
+            api_base_url=config.api_base_url,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class GSEAResult:
     """Complete result: all contrasts x all categories.
 
@@ -258,6 +398,7 @@ class GSEAResult:
 
     data: dict[str, MultiCategoryGSEA]
     rank_lists: dict[str, RankList]
+    metadata: RunMetadata | None = None
 
     @property
     def contrast_names(self) -> list[str]:
@@ -281,16 +422,20 @@ class GSEAResult:
         return MultiContrastGSEA(category=category, contrasts=contrasts)
 
     def to_dict(self) -> dict:
-        return {
+        d: dict = {
             "data": {name: mc.to_dict() for name, mc in self.data.items()},
             "rank_lists": {name: rl.to_dict() for name, rl in self.rank_lists.items()},
         }
+        if self.metadata is not None:
+            d["metadata"] = self.metadata.to_dict()
+        return d
 
     @classmethod
-    def from_dict(cls, d: dict) -> "GSEAResult":
+    def from_dict(cls, d: dict) -> GSEAResult:
         data = {name: MultiCategoryGSEA.from_dict(mc_d) for name, mc_d in d["data"].items()}
         rank_lists = {name: RankList.from_dict(rl_d) for name, rl_d in d["rank_lists"].items()}
-        return cls(data=data, rank_lists=rank_lists)
+        metadata = RunMetadata.from_dict(d["metadata"]) if "metadata" in d else None
+        return cls(data=data, rank_lists=rank_lists, metadata=metadata)
 
     def to_json(self, path: Path) -> Path:
         """Serialize to JSON file."""
@@ -299,7 +444,7 @@ class GSEAResult:
         return path
 
     @classmethod
-    def from_json(cls, path: Path) -> "GSEAResult":
+    def from_json(cls, path: Path) -> GSEAResult:
         """Deserialize from JSON file."""
         with open(path) as f:
             return cls.from_dict(json.load(f))
@@ -379,7 +524,7 @@ def _split_protein_labels(raw: str) -> list[str]:
     """Split comma-separated proteinLabels, protecting embedded commas.
 
     Some protein labels contain commas followed by 1-2 digits (e.g. "HIST1H2BK,1").
-    These are protected during splitting, matching the logic in network.py.
+    These are protected during splitting.
     """
     protected = re.sub(r",(\d{1,2},)", r"§COMMA§\1", raw)
     parts = protected.split(",")
@@ -437,32 +582,16 @@ def _parse_category_group(df: pl.DataFrame, contrast: str, category: str, gene_p
     )
 
 
-def parse_gsea_tsv(
-    path: Path,
-    *,
-    contrast: str | None = None,
+def _parse_gsea_df(
+    df: pl.DataFrame,
+    contrast: str,
     categories: set[str] | None = None,
 ) -> dict[str, CategoryGSEA]:
-    """Parse a single-contrast STRING-DB GSEA TSV into CategoryGSEA objects.
+    """Core parsing logic: DataFrame → dict of CategoryGSEA.
 
     Builds one shared gene pool from all rows (all categories), then
-    passes it to each category. All CategoryGSEA instances for the same
-    contrast share the same pool by reference.
-
-    Args:
-        path: Path to the TSV file (one contrast).
-        contrast: Override contrast name. Default: the TSV filename.
-        categories: If provided, only parse these categories. None means all.
-
-    Returns:
-        Dict keyed by category name.
+    passes it to each category.
     """
-    df = pl.read_csv(path, separator="\t")
-
-    if contrast is None:
-        contrast = Path(path).name
-
-    # Build shared pool from ALL categories before filtering
     gene_pool = _build_gene_pool(df)
 
     if categories is not None:
@@ -474,6 +603,53 @@ def parse_gsea_tsv(
         result[name] = _parse_category_group(cat_df, contrast, name, gene_pool)
 
     return result
+
+
+def parse_gsea_tsv(
+    path: Path,
+    *,
+    contrast: str | None = None,
+    categories: set[str] | None = None,
+) -> dict[str, CategoryGSEA]:
+    """Parse a single-contrast STRING-DB GSEA TSV into CategoryGSEA objects.
+
+    Args:
+        path: Path to the TSV file (one contrast).
+        contrast: Override contrast name. Default: the TSV filename.
+        categories: If provided, only parse these categories. None means all.
+
+    Returns:
+        Dict keyed by category name.
+    """
+    df = pl.read_csv(path, separator="\t")
+    if contrast is None:
+        contrast = Path(path).name
+    return _parse_gsea_df(df, contrast, categories)
+
+
+def parse_gsea_tsv_from_string(
+    content: str,
+    *,
+    contrast: str,
+    categories: set[str] | None = None,
+) -> dict[str, CategoryGSEA]:
+    """Parse a single-contrast STRING-DB GSEA TSV from a string.
+
+    Same as ``parse_gsea_tsv`` but reads from an in-memory string
+    instead of a file path.
+
+    Args:
+        content: TSV content as a string.
+        contrast: Contrast name for the parsed categories.
+        categories: If provided, only parse these categories. None means all.
+
+    Returns:
+        Dict keyed by category name.
+    """
+    import io
+
+    df = pl.read_csv(io.StringIO(content), separator="\t")
+    return _parse_gsea_df(df, contrast, categories)
 
 
 def parse_rank_file(path: Path, *, contrast: str | None = None) -> RankList:
@@ -525,3 +701,37 @@ def parse_gsea_tsv_dir(
             rank_lists[contrast] = parse_rank_file(rnk_by_stem[rnk_stem], contrast=contrast)
 
     return GSEAResult(data=data, rank_lists=rank_lists)
+
+
+def parse_gsea_results(
+    rank_lists: RankListCollection,
+    tsv_content: dict[tuple[str, str], str],
+    *,
+    metadata: RunMetadata | None = None,
+    categories: set[str] | None = None,
+) -> GSEAResult:
+    """Build a GSEAResult from in-memory downloaded TSV content.
+
+    Args:
+        rank_lists: The submitted rank lists (for mapping efficiency).
+        tsv_content: Dict mapping ``(analysis, contrast)`` to TSV text,
+            as populated by ``StringGSEAResults.download()``.
+        metadata: Optional run parameters (config, workunit_id, species).
+        categories: If provided, only parse these categories.
+
+    Returns:
+        GSEAResult with one MultiCategoryGSEA per contrast.
+    """
+    data: dict[str, MultiCategoryGSEA] = {}
+    rl_dict: dict[str, RankList] = {}
+
+    for (_analysis, contrast), tsv_text in tsv_content.items():
+        contrast_key = f"{contrast}_results.tsv"
+        cat_dict = parse_gsea_tsv_from_string(tsv_text, contrast=contrast_key, categories=categories)
+        data[contrast_key] = MultiCategoryGSEA(contrast=contrast_key, categories=cat_dict)
+
+        if contrast in rank_lists:
+            rl = rank_lists[contrast]
+            rl_dict[contrast_key] = RankList(contrast=contrast_key, entries=rl.entries)
+
+    return GSEAResult(data=data, rank_lists=rl_dict, metadata=metadata)

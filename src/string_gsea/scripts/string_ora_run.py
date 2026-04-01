@@ -8,8 +8,8 @@ import requests
 from cyclopts import App
 from loguru import logger
 
-from string_gsea.get_species import TaxonUtils
 from string_gsea.gsea_config import STRING_API_BASE_DEFAULT, get_configuration
+from string_gsea.taxon_utils import TaxonUtils
 
 app = App()
 

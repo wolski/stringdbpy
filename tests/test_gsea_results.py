@@ -19,24 +19,23 @@ def test_gsea_results_integration(dummy_session_yml):
     # Log jobs and write outputs exactly as in the original code
     logger.info(f"Jobs: {results.session.res_job_id}")
 
+    # Download into memory
+    results.download()
+
     # Write all outputs
+    out_dir = session.base_path / f"WU_{session.workunit_id}_GSEA"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    links = results.write_links()
-    tsv_dir = results.write_gsea_tsv()
-    graph_dir = results.write_gsea_graphs()
-
-    # Add assertions to verify the test results
-    for key, value in links.items():
-        assert value.exists(), f"{key} file should exist"
-    assert tsv_dir.exists(), "TSV directory should exist"
-    assert graph_dir.exists(), "Graph directory should exist"
+    results.write_links(out_dir)
+    results.write_tsv(out_dir)
+    results.write_graphs(out_dir)
 
     # Check if any TSV files were created
-    tsv_files = list(tsv_dir.glob("**/*.tsv"))
+    tsv_files = list(out_dir.glob("**/*.tsv"))
     assert len(tsv_files) > 0, "Should have created at least one TSV file"
 
     # Check if any graph files were created
-    graph_files = list(graph_dir.glob("**/*.png"))
+    graph_files = list(out_dir.glob("**/*.png"))
     assert len(graph_files) > 0, "Should have created at least one graph file"
 
     logger.info("Integration test completed successfully")
