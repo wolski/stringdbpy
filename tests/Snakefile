@@ -8,6 +8,7 @@
 #   clean        - Remove all outputs
 #   help         - Show this help message
 
+import subprocess
 import yaml
 from pathlib import Path
 
@@ -36,10 +37,28 @@ def load_params(dataset):
 DATASETS = get_datasets()
 
 
-# R package source directories (relative to tests/)
-R_PKG_DIR = Path("../stringGSEAplot")
-TEMPLATES_DIR = R_PKG_DIR / "inst" / "templates"
-VIGNETTES_DIR = R_PKG_DIR / "vignettes"
+def _r_system_file(*args, package="stringGSEAplot"):
+    """Resolve installed R package paths via system.file()."""
+    r_args = ", ".join(f'"{a}"' for a in args)
+    cmd = f'Rscript -e "cat(system.file({r_args}, package=\\"{package}\\"))"'
+    try:
+        result = subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.DEVNULL).strip()
+        if result:
+            return Path(result)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+    return None
+
+
+# Resolve template/vignette paths: installed R package first, local dev fallback
+_installed = _r_system_file("templates")
+if _installed:
+    TEMPLATES_DIR = _installed
+    VIGNETTES_DIR = _installed  # GSEA_report.qmd copied into templates at install
+else:
+    R_PKG_DIR = Path("../stringGSEAplot")
+    TEMPLATES_DIR = R_PKG_DIR / "inst" / "templates"
+    VIGNETTES_DIR = R_PKG_DIR / "vignettes"
 
 
 # Default target: full pipeline through packaging

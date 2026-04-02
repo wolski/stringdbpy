@@ -1,0 +1,14 @@
+services:
+  string-gsea:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    volumes:
+      # Mount working directory: expects data/datasets/{name}/input.zip + params.yml
+      # Outputs written to data/outputs/{name}/
+      - ./work:/work
+      # Config file (contains API key — never bake into image)
+      - ${STRING_GSEA_CONFIG_DIR:-~/.config/string_gsea}:/root/.config/string_gsea:ro
+    # Default: run all datasets
+    command: ["--cores", "1"]
+    # CI subset: command: ["ci", "--cores", "1"]

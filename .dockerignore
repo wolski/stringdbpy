@@ -1,0 +1,9 @@
+__pycache__
+*.pyc
+.git
+.nox
+.pytest_cache
+tests/data/outputs
+*.egg-info
+.ruff_cache
+stringGSEAplot/docs
