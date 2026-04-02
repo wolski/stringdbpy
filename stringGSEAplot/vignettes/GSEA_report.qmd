@@ -50,6 +50,9 @@ save_plot <- function(plot_obj, width = 10, height = 8, res = 150) {
   })
 }
 
+# Shortcut — single place to control default plot size
+sp <- function(plot_obj) save_plot(plot_obj, width = 10, height = 8, res = 150)
+
 # Number of significant terms in an enrichResult
 n_terms <- function(er) nrow(er@result[er@result$p.adjust < 0.05, ])
 
@@ -74,6 +77,17 @@ table_cols <- c("ID", "Description", "GeneRatio", "BgRatio",
 ::: {.panel-tabset}
 
 # Settings
+
+This report summarises gene set enrichment analysis (GSEA) results obtained via
+the [STRING-DB](https://string-db.org/) API.
+Pre-ranked gene lists were uploaded to STRING-DB, which performs enrichment
+scoring based on the method described in
+[Subramanian et al. (2005)](https://doi.org/10.1073/pnas.0506580102).
+Enrichment categories include Gene Ontology, KEGG, Reactome, UniProt Keywords,
+DISEASES, COMPARTMENTS, and others provided by STRING.
+The interactive plots below are generated with
+[enrichplot](https://bioconductor.org/packages/enrichplot/) and
+[clusterProfiler](https://bioconductor.org/packages/clusterProfiler/).
 
 ```{r settings-metadata}
 #| echo: false
@@ -161,10 +175,10 @@ for (cn in contrast_names) {
       error = function(e) NULL
     )
     if (!is.null(p)) {
-      fpath <- save_plot(p)
+      fpath <- sp(p)
       if (!is.null(fpath)) {
         cat("### Dotplot\n\n")
-        cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+        cat(sprintf("![Dotplot: dot size = gene count, color = adjusted p-value. Top %d enriched %s terms for %s.](%s){width=600px}\n\n", n_show, cat_name, cn, fpath))
       }
     }
 
@@ -175,10 +189,10 @@ for (cn in contrast_names) {
       error = function(e) NULL
     )
     if (!is.null(p)) {
-      fpath <- save_plot(p)
+      fpath <- sp(p)
       if (!is.null(fpath)) {
         cat("### Barplot\n\n")
-        cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+        cat(sprintf("![Barplot: bar length = gene count, color = adjusted p-value. Top %d enriched %s terms for %s.](%s){width=600px}\n\n", n_show, cat_name, cn, fpath))
       }
     }
 
@@ -191,10 +205,10 @@ for (cn in contrast_names) {
         error = function(e) NULL
       )
       if (!is.null(p)) {
-        fpath <- save_plot(p, width = 10, height = 8)
+        fpath <- sp(p)
         if (!is.null(fpath)) {
           cat("### Cnetplot\n\n")
-          cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+          cat(sprintf("![Concept network: links between enriched terms and their associated genes, showing which genes are shared across %s categories.](%s){width=700px}\n\n", cat_name, fpath))
         }
       }
     }
@@ -207,10 +221,10 @@ for (cn in contrast_names) {
         error = function(e) NULL
       )
       if (!is.null(p)) {
-        fpath <- save_plot(p, width = 10, height = 6)
+        fpath <- sp(p)
         if (!is.null(fpath)) {
           cat("### Heatplot\n\n")
-          cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+          cat(sprintf("![Heatplot: gene-term association matrix. Color intensity = fold change. Rows = top %d %s terms, columns = genes.](%s){width=700px}\n\n", n_heat, cat_name, fpath))
         }
       }
     }
@@ -223,10 +237,10 @@ for (cn in contrast_names) {
         enrichplot::emapplot(er_sim, showCategory = n_emap)
       }, error = function(e) NULL)
       if (!is.null(p)) {
-        fpath <- save_plot(p, width = 8, height = 8)
+        fpath <- sp(p)
         if (!is.null(fpath)) {
           cat("### Enrichment Map\n\n")
-          cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+          cat(sprintf("![Enrichment map: network of %s terms connected by gene overlap similarity. Node size = gene count, color = p-value. Clustered terms share biological function.](%s){width=600px}\n\n", cat_name, fpath))
         }
       }
     }
@@ -239,10 +253,10 @@ for (cn in contrast_names) {
         enrichplot::treeplot(er_sim, showCategory = n_tree)
       }, error = function(e) NULL)
       if (!is.null(p)) {
-        fpath <- save_plot(p, width = 10, height = 10)
+        fpath <- sp(p)
         if (!is.null(fpath)) {
           cat("### Treeplot\n\n")
-          cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+          cat(sprintf("![Treeplot: hierarchical clustering of %s terms by semantic similarity. Branches group functionally related terms; bar length = gene count.](%s){width=700px}\n\n", cat_name, fpath))
         }
       }
     }
@@ -255,10 +269,10 @@ for (cn in contrast_names) {
         error = function(e) NULL
       )
       if (!is.null(p)) {
-        fpath <- save_plot(p, width = 8, height = 6)
+        fpath <- sp(p)
         if (!is.null(fpath)) {
           cat("### UpSet Plot\n\n")
-          cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+          cat(sprintf("![UpSet plot: set intersections of genes across top %d %s terms. Dots and lines show which term combinations share genes; bars = intersection size.](%s){width=600px}\n\n", n_upset, cat_name, fpath))
         }
       }
     }
@@ -300,10 +314,10 @@ if (length(plots) > 0) {
   cat("## Dotplot\n\n")
   cat("::: {.panel-tabset}\n\n")
   for (cat_name in names(plots)) {
-    fpath <- save_plot(plots[[cat_name]], width = 10, height = 10)
+    fpath <- sp(plots[[cat_name]])
     if (!is.null(fpath)) {
       cat("###", cat_name, "\n\n")
-      cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+      cat(sprintf("![Cross-contrast dotplot: comparing enrichment of %s terms across all contrasts. Dot size = gene count, color = adjusted p-value.](%s){width=700px}\n\n", cat_name, fpath))
     }
   }
   cat(":::\n\n")
@@ -323,10 +337,10 @@ if (length(plots) > 0) {
   cat("## Cnetplot\n\n")
   cat("::: {.panel-tabset}\n\n")
   for (cat_name in names(plots)) {
-    fpath <- save_plot(plots[[cat_name]], width = 10, height = 8)
+    fpath <- sp(plots[[cat_name]])
     if (!is.null(fpath)) {
       cat("###", cat_name, "\n\n")
-      cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+      cat(sprintf("![Cross-contrast concept network: %s terms and their associated genes across all contrasts, showing shared gene membership.](%s){width=700px}\n\n", cat_name, fpath))
     }
   }
   cat(":::\n\n")
@@ -347,10 +361,10 @@ if (length(plots) > 0) {
   cat("## Enrichment Map\n\n")
   cat("::: {.panel-tabset}\n\n")
   for (cat_name in names(plots)) {
-    fpath <- save_plot(plots[[cat_name]], width = 10, height = 8)
+    fpath <- sp(plots[[cat_name]])
     if (!is.null(fpath)) {
       cat("###", cat_name, "\n\n")
-      cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+      cat(sprintf("![Cross-contrast enrichment map: network of %s terms across all contrasts, connected by gene overlap similarity.](%s){width=700px}\n\n", cat_name, fpath))
     }
   }
   cat(":::\n\n")

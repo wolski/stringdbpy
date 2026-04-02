@@ -82,91 +82,66 @@ rule run_gsea:
 
 
 
-# Render Quarto GSEA report for a dataset
+# Render Quarto reports directly into WU_{id}_GSEA/
 rule render_report:
     input:
         done=OUTPUT_DIR / "{dataset}" / "gsea_done.txt"
     output:
-        html=OUTPUT_DIR / "{dataset}" / "GSEA_report.html"
+        html=OUTPUT_DIR / "{dataset}" / "render_done.txt"
     params:
         workunit_id=lambda wc: load_params(wc.dataset)["execution"]["workunit_id"]
     shell:
         """
-        OUTDIR="{OUTPUT_DIR}/{wildcards.dataset}"
-        WU_DIR="WU_{params.workunit_id}_GSEA"
-        JSON_FILE="$WU_DIR/WU{params.workunit_id}_gsea_result.json"
+        BASEDIR="$(pwd)"
+        WU_DIR="$BASEDIR/{OUTPUT_DIR}/{wildcards.dataset}/WU_{params.workunit_id}_GSEA"
+        JSON_FILE="WU{params.workunit_id}_gsea_result.json"
 
-        # Copy QMD from vignettes, support files from inst/templates
-        cp "{VIGNETTES_DIR}/GSEA_report.qmd" "$OUTDIR/"
-        cp "{TEMPLATES_DIR}/_fgcz-report.yml" "$OUTDIR/"
-        cp "{TEMPLATES_DIR}/fgcz_header_quarto.html" "$OUTDIR/"
+        # Copy QMD + support files into WU dir
+        cp "{VIGNETTES_DIR}/GSEA_report.qmd" "$WU_DIR/"
+        cp "{TEMPLATES_DIR}/index.qmd" "$WU_DIR/"
+        cp "{TEMPLATES_DIR}/_fgcz-report.yml" "$WU_DIR/"
+        cp "{TEMPLATES_DIR}/fgcz_header_quarto.html" "$WU_DIR/"
 
-        # Render with the dataset's JSON (paths relative to OUTDIR)
-        cd "$OUTDIR" && quarto render GSEA_report.qmd \
-            -P json_path:"$JSON_FILE"
+        # Render GSEA report and index page
+        cd "$WU_DIR"
+        quarto render GSEA_report.qmd -P json_path:"$JSON_FILE"
+        quarto render index.qmd \
+            -P workunit_id:"{params.workunit_id}" -P package_dir:"."
 
         # Clean up rendering artifacts
-        rm -f "$OUTDIR/GSEA_report.qmd" "$OUTDIR/_fgcz-report.yml" "$OUTDIR/fgcz_header_quarto.html"
-        rm -rf "$OUTDIR/plots" "$OUTDIR/GSEA_report_files"
+        rm -f GSEA_report.qmd index.qmd _fgcz-report.yml fgcz_header_quarto.html
+        rm -rf plots GSEA_report_files index_files
+        rm -f index.rmarkdown
+
+        touch "$BASEDIR/{output.html}"
         """
 
 
-# Assemble deliverables into GSEA_WU{id}/ package directory + zip + outputs.yml
+# Zip WU_{id}_GSEA/ and write outputs.yml
 rule package_results:
     input:
         done=OUTPUT_DIR / "{dataset}" / "gsea_done.txt",
-        report=OUTPUT_DIR / "{dataset}" / "GSEA_report.html"
+        render=OUTPUT_DIR / "{dataset}" / "render_done.txt"
     output:
         yml=OUTPUT_DIR / "{dataset}" / "outputs.yml"
     params:
         workunit_id=lambda wc: load_params(wc.dataset)["execution"]["workunit_id"]
     run:
-        import gzip, shutil
+        import shutil
 
         wu_id = params.workunit_id
         base = Path(f"{OUTPUT_DIR}/{wildcards.dataset}")
         wu_gsea = base / f"WU_{wu_id}_GSEA"
-        pkg_dir = base / f"GSEA_WU{wu_id}"
-        pkg_dir.mkdir(parents=True, exist_ok=True)
 
-        # Copy report
-        shutil.copy2(str(input.report), str(pkg_dir / "GSEA_report.html"))
-
-        # Copy XLSX files
-        for xlsx in wu_gsea.glob("*.xlsx"):
-            shutil.copy2(str(xlsx), str(pkg_dir / xlsx.name))
-
-        # Gzip JSON
-        json_file = wu_gsea / f"WU{wu_id}_gsea_result.json"
-        if json_file.exists():
-            with open(json_file, "rb") as f_in:
-                with gzip.open(str(pkg_dir / f"{json_file.name}.gz"), "wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-
-        # Flatten PNGs from subdirectories
-        for png in wu_gsea.rglob("*_results.png"):
-            shutil.copy2(str(png), str(pkg_dir / png.name))
-
-        # Render index.html
-        shutil.copy2(str(TEMPLATES_DIR / "index.qmd"), str(pkg_dir / "index.qmd"))
-        shutil.copy2(str(TEMPLATES_DIR / "_fgcz-report.yml"), str(pkg_dir / "_fgcz-report.yml"))
-        shutil.copy2(str(TEMPLATES_DIR / "fgcz_header_quarto.html"), str(pkg_dir / "fgcz_header_quarto.html"))
-        shell(f'cd "{pkg_dir}" && quarto render index.qmd -P workunit_id:"{wu_id}" -P package_dir:"."')
-
-        # Clean up rendering artifacts
-        for f in ["index.qmd", "_fgcz-report.yml", "fgcz_header_quarto.html"]:
-            (pkg_dir / f).unlink(missing_ok=True)
-        shutil.rmtree(str(pkg_dir / "index_files"), ignore_errors=True)
-
-        # Zip
-        zip_path = str(base / f"GSEA_WU{wu_id}.zip")
+        # Zip the directory as-is
+        zip_path = str(base / f"WU_{wu_id}_GSEA.zip")
         shutil.make_archive(
             zip_path.removesuffix(".zip"), "zip",
-            root_dir=str(pkg_dir.parent), base_dir=pkg_dir.name
+            root_dir=str(wu_gsea.parent), base_dir=wu_gsea.name
         )
         print(f"Package: {Path(zip_path).resolve()}")
 
-        # Write outputs.yml (inline to avoid dependency on string_gsea package)
+        # Write outputs.yml
         outputs_data = {"outputs": [{
             "local_path": str(Path(zip_path).resolve()),
             "store_entry_path": Path(zip_path).name,
