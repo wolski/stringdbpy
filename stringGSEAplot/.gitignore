@@ -1,1 +1,6 @@
 inst/doc
+vignettes/plots/
+vignettes/GSEA_report.html
+vignettes/GSEA_report_files/
+vignettes/_fgcz-report.yml
+vignettes/fgcz_header_quarto.html

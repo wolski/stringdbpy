@@ -1,6 +1,6 @@
 Package: stringGSEAplot
 Title: Read STRING-GSEA JSON Results into enrichResult Objects
-Version: 0.0.0.9000
+Version: 0.0.1
 Authors@R:
     person("Witold", "Wolski", , "wew@fgcz.ethz.ch", role = c("aut", "cre"))
 Description: Reads JSON files produced by the string-gsea Python pipeline
@@ -14,14 +14,16 @@ Imports:
     DOSE,
     jsonlite,
     methods
-Suggests: 
+Suggests:
+    DT,
     enrichplot,
     ggplot2,
     ggupset,
     knitr,
     patchwork,
+    quarto,
     rmarkdown,
     rprojroot,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
-VignetteBuilder: knitr
+VignetteBuilder: knitr, quarto

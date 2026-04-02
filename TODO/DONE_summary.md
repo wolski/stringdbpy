@@ -60,6 +60,43 @@
 - Added naming discussion to `TODO/TODO_data_structures.md`
 - **Remaining:** ORA models, serializers, plotting migration (Phases 2–5 in TODO_data_structures.md)
 
+## Code Review — Dead Code Removal (2026-04-01)
+
+- Removed duplicate `save_session()` from `StringGSEAResults` (kept `StringGSEABuilder.save_session()`)
+- Removed 3 orphaned conftest fixtures: `datasets_dir`, `human_rnk_2848501_zip`, `no_matching_dir`
+- Removed stale `__main__` blocks from `string_gsea_builder.py`, `string_gsea_results.py`, `ranks_from_dea_xlsx.py`
+- Cleaned up unused imports (`os`, `shutil`, `tempfile`, `OxFieldsZip`, `get_rank_files`)
+- Removed stale comment referencing deleted `network.py` in `gsea_models.py`
+- Fixed `rank_col` type mismatch in `DiffXLSX`: removed unused `id_col`/`rank_col` params from `_get_ranks_by_contrast()` and `rank_dict()`, hardcoded defaults internally
+- Removed `print(xd)` debug line from `string_gsea_run.py`
+- Replaced 2 `print()` calls with `logger.debug()` in `ranks_from_dea_xlsx.py`
+- Removed commented-out `save_session()` call from `string_gsea_run.py`
+
+## Code Review — Module Split + Config Cleanup (2026-04-01)
+
+- Split `get_species.py` (243 lines, 3 concerns) into:
+  - `species_detection.py` — FASTA/ZIP OX field parsing + `get_species_taxon()` orchestrator
+  - `taxon_utils.py` — `TaxonUtils` class (STRING/NCBI taxonomy tree traversal)
+  - `string_api_client.py` — added `determine_species()` + `_fetch_ncbi_taxon_ids()`
+- Deleted `get_species.py`
+- Centralized config validation: extracted `_validate()` and `_from_data()` in `GSEAConfig`, removing duplication between `read_toml()` and `from_dict()`
+
+## Code Review — Structural Cleanup (2026-04-01)
+
+- Converted static-only classes to module functions: `GetTaxonID`, `OxFieldsZip` → module functions in `get_species.py`; `GSEAResultProcessor` → module functions in `gsea_result_processor.py`
+- Extracted `StringAPIClient` from `StringGSEABuilder` into `string_api_client.py` (HTTP submit + poll)
+- Builder is now a thin orchestrator delegating HTTP to `StringAPIClient`
+
+## Code Review — Test Coverage (2026-04-01)
+
+- Added 19 new unit tests across 4 new files:
+  - `test_string_api_client.py` (5) — submit/poll with mocked HTTP
+  - `test_builder.py` (6) — submit, poll, get_result, write_rank_files, save_session
+  - `test_result_processor.py` (3) — JSON + XLSX creation, empty dir
+  - `test_results_write.py` (5) — get_links, write_links, write_tsv, write_graphs, zip_folder
+- Rewrote `test_taxon_utils.py` — replaced 3 private method tests with 5 public API tests
+- Total: 69 tests passing (was 48)
+
 ## Phase 3 — Dead Visualization Code Removal (2026-03-30)
 
 - Deleted `src/string_gsea/docs/python_notebooks/` directory (only contained orphaned `CircularGraph.qmd`)

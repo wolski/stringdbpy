@@ -1,0 +1,63 @@
+---
+title: "STRING-GSEA Results"
+metadata-files: ["_fgcz-report.yml"]
+params:
+  workunit_id: "unknown"
+  package_dir: "."
+---
+
+```{r setup}
+#| include: false
+pkg_dir <- params$package_dir
+wu_id <- params$workunit_id
+
+files <- list.files(pkg_dir, recursive = FALSE)
+# Exclude index.html itself and support files
+files <- files[!files %in% c("index.html", "index.qmd",
+                              "index.rmarkdown", "index_files",
+                              "_fgcz-report.yml", "fgcz_header_quarto.html",
+                              "plots")]
+
+classify <- function(f) {
+  ext <- tolower(tools::file_ext(f))
+  if (f == "GSEA_report.html") return("Report")
+  if (ext == "xlsx") return("Excel")
+  if (ext == "png") return("Figure")
+  if (ext %in% c("json", "gz")) return("Data")
+  "Other"
+}
+
+file_df <- data.frame(
+  File = vapply(files, function(f) {
+    paste0("<a href='", f, "'>", f, "</a>")
+  }, character(1)),
+  Type = vapply(files, classify, character(1)),
+  Size = vapply(files, function(f) {
+    sz <- file.info(file.path(pkg_dir, f))$size
+    if (is.na(sz)) return("")
+    if (sz > 1e6) return(sprintf("%.1f MB", sz / 1e6))
+    if (sz > 1e3) return(sprintf("%.0f KB", sz / 1e3))
+    sprintf("%d B", sz)
+  }, character(1)),
+  stringsAsFactors = FALSE,
+  row.names = NULL
+)
+
+# Sort: Report first, then Excel, Figure, Data, Other
+type_order <- c("Report", "Excel", "Figure", "Data", "Other")
+file_df$Type <- factor(file_df$Type, levels = type_order)
+file_df <- file_df[order(file_df$Type, file_df$File), ]
+```
+
+## Workunit `r wu_id`
+
+```{r file-table}
+#| echo: false
+DT::datatable(
+  file_df,
+  caption = paste("Deliverables for workunit", wu_id),
+  filter = "none", rownames = FALSE, escape = FALSE,
+  class = "compact stripe",
+  options = list(pageLength = 50, scrollX = TRUE, dom = "t")
+)
+```

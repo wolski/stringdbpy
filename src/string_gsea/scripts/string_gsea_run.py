@@ -75,7 +75,14 @@ def string_gsea_run(
 
     # 7) Parse into typed model
     metadata = RunMetadata.from_config(config, workunit_id=workunit_id, species=species)
-    gsea_result = parse_gsea_results(rank_lists, raw_results.tsv_content, metadata=metadata)
+    # Flatten links: {analysis: {contrast: url}} -> {contrast_key: url}
+    link_map = {}
+    for _analysis, contrasts in raw_results.get_links().items():
+        for contrast, url in contrasts.items():
+            link_map[f"{contrast}_results.tsv"] = url
+    gsea_result = parse_gsea_results(
+        rank_lists, raw_results.tsv_content, metadata=metadata, links=link_map
+    )
 
     # 8) Write outputs
     write_rank_files(rank_lists, res_path)

@@ -399,6 +399,7 @@ class GSEAResult:
     data: dict[str, MultiCategoryGSEA]
     rank_lists: dict[str, RankList]
     metadata: RunMetadata | None = None
+    links: dict[str, str] | None = None  # contrast_key -> page_url
 
     @property
     def contrast_names(self) -> list[str]:
@@ -428,6 +429,8 @@ class GSEAResult:
         }
         if self.metadata is not None:
             d["metadata"] = self.metadata.to_dict()
+        if self.links is not None:
+            d["links"] = self.links
         return d
 
     @classmethod
@@ -435,7 +438,8 @@ class GSEAResult:
         data = {name: MultiCategoryGSEA.from_dict(mc_d) for name, mc_d in d["data"].items()}
         rank_lists = {name: RankList.from_dict(rl_d) for name, rl_d in d["rank_lists"].items()}
         metadata = RunMetadata.from_dict(d["metadata"]) if "metadata" in d else None
-        return cls(data=data, rank_lists=rank_lists, metadata=metadata)
+        links = d.get("links")
+        return cls(data=data, rank_lists=rank_lists, metadata=metadata, links=links)
 
     def to_json(self, path: Path) -> Path:
         """Serialize to JSON file."""
@@ -708,6 +712,7 @@ def parse_gsea_results(
     tsv_content: dict[tuple[str, str], str],
     *,
     metadata: RunMetadata | None = None,
+    links: dict[str, str] | None = None,
     categories: set[str] | None = None,
 ) -> GSEAResult:
     """Build a GSEAResult from in-memory downloaded TSV content.
@@ -734,4 +739,4 @@ def parse_gsea_results(
             rl = rank_lists[contrast]
             rl_dict[contrast_key] = RankList(contrast=contrast_key, entries=rl.entries)
 
-    return GSEAResult(data=data, rank_lists=rl_dict, metadata=metadata)
+    return GSEAResult(data=data, rank_lists=rl_dict, metadata=metadata, links=links)

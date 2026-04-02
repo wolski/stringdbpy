@@ -36,10 +36,16 @@ def load_params(dataset):
 DATASETS = get_datasets()
 
 
-# Default target: run all datasets
+# R package source directories (relative to tests/)
+R_PKG_DIR = Path("../stringGSEAplot")
+TEMPLATES_DIR = R_PKG_DIR / "inst" / "templates"
+VIGNETTES_DIR = R_PKG_DIR / "vignettes"
+
+
+# Default target: full pipeline through packaging
 rule all:
     input:
-        expand(OUTPUT_DIR / "{dataset}" / "gsea_done.txt", dataset=DATASETS)
+        expand(OUTPUT_DIR / "{dataset}" / "outputs.yml", dataset=DATASETS)
 
 
 # Run GSEA analysis for a dataset
@@ -76,11 +82,105 @@ rule run_gsea:
 
 
 
+# Render Quarto GSEA report for a dataset
+rule render_report:
+    input:
+        done=OUTPUT_DIR / "{dataset}" / "gsea_done.txt"
+    output:
+        html=OUTPUT_DIR / "{dataset}" / "GSEA_report.html"
+    params:
+        workunit_id=lambda wc: load_params(wc.dataset)["execution"]["workunit_id"]
+    shell:
+        """
+        OUTDIR="{OUTPUT_DIR}/{wildcards.dataset}"
+        WU_DIR="WU_{params.workunit_id}_GSEA"
+        JSON_FILE="$WU_DIR/WU{params.workunit_id}_gsea_result.json"
+
+        # Copy QMD from vignettes, support files from inst/templates
+        cp "{VIGNETTES_DIR}/GSEA_report.qmd" "$OUTDIR/"
+        cp "{TEMPLATES_DIR}/_fgcz-report.yml" "$OUTDIR/"
+        cp "{TEMPLATES_DIR}/fgcz_header_quarto.html" "$OUTDIR/"
+
+        # Render with the dataset's JSON (paths relative to OUTDIR)
+        cd "$OUTDIR" && quarto render GSEA_report.qmd \
+            -P json_path:"$JSON_FILE"
+
+        # Clean up rendering artifacts
+        rm -f "$OUTDIR/GSEA_report.qmd" "$OUTDIR/_fgcz-report.yml" "$OUTDIR/fgcz_header_quarto.html"
+        rm -rf "$OUTDIR/plots" "$OUTDIR/GSEA_report_files"
+        """
+
+
+# Assemble deliverables into GSEA_WU{id}/ package directory + zip + outputs.yml
+rule package_results:
+    input:
+        done=OUTPUT_DIR / "{dataset}" / "gsea_done.txt",
+        report=OUTPUT_DIR / "{dataset}" / "GSEA_report.html"
+    output:
+        yml=OUTPUT_DIR / "{dataset}" / "outputs.yml"
+    params:
+        workunit_id=lambda wc: load_params(wc.dataset)["execution"]["workunit_id"]
+    run:
+        import gzip, shutil
+
+        wu_id = params.workunit_id
+        base = Path(f"{OUTPUT_DIR}/{wildcards.dataset}")
+        wu_gsea = base / f"WU_{wu_id}_GSEA"
+        pkg_dir = base / f"GSEA_WU{wu_id}"
+        pkg_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy report
+        shutil.copy2(str(input.report), str(pkg_dir / "GSEA_report.html"))
+
+        # Copy XLSX files
+        for xlsx in wu_gsea.glob("*.xlsx"):
+            shutil.copy2(str(xlsx), str(pkg_dir / xlsx.name))
+
+        # Gzip JSON
+        json_file = wu_gsea / f"WU{wu_id}_gsea_result.json"
+        if json_file.exists():
+            with open(json_file, "rb") as f_in:
+                with gzip.open(str(pkg_dir / f"{json_file.name}.gz"), "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+
+        # Flatten PNGs from subdirectories
+        for png in wu_gsea.rglob("*_results.png"):
+            shutil.copy2(str(png), str(pkg_dir / png.name))
+
+        # Render index.html
+        shutil.copy2(str(TEMPLATES_DIR / "index.qmd"), str(pkg_dir / "index.qmd"))
+        shutil.copy2(str(TEMPLATES_DIR / "_fgcz-report.yml"), str(pkg_dir / "_fgcz-report.yml"))
+        shutil.copy2(str(TEMPLATES_DIR / "fgcz_header_quarto.html"), str(pkg_dir / "fgcz_header_quarto.html"))
+        shell(f'cd "{pkg_dir}" && quarto render index.qmd -P workunit_id:"{wu_id}" -P package_dir:"."')
+
+        # Clean up rendering artifacts
+        for f in ["index.qmd", "_fgcz-report.yml", "fgcz_header_quarto.html"]:
+            (pkg_dir / f).unlink(missing_ok=True)
+        shutil.rmtree(str(pkg_dir / "index_files"), ignore_errors=True)
+
+        # Zip
+        zip_path = str(base / f"GSEA_WU{wu_id}.zip")
+        shutil.make_archive(
+            zip_path.removesuffix(".zip"), "zip",
+            root_dir=str(pkg_dir.parent), base_dir=pkg_dir.name
+        )
+        print(f"Package: {Path(zip_path).resolve()}")
+
+        # Write outputs.yml (inline to avoid dependency on string_gsea package)
+        outputs_data = {"outputs": [{
+            "local_path": str(Path(zip_path).resolve()),
+            "store_entry_path": Path(zip_path).name,
+            "type": "bfabric_copy_resource",
+        }]}
+        with open(str(output.yml), "w") as f:
+            yaml.dump(outputs_data, f, default_flow_style=False)
+
+
 # Run only small datasets tagged with "ci"
 rule ci:
     input:
         expand(
-            OUTPUT_DIR / "{dataset}" / "gsea_done.txt",
+            OUTPUT_DIR / "{dataset}" / "outputs.yml",
             dataset=[d for d in DATASETS if "ci" in load_params(d).get("metadata", {}).get("tags", [])]
         )
 
@@ -95,9 +195,11 @@ for ds in DATASETS:
 
 # Clean outputs
 rule clean:
+    params:
+        outdir=str(OUTPUT_DIR)
     shell:
         """
-        rm -rf {OUTPUT_DIR}/*
+        rm -rf {params.outdir}/*
         """
 
 
@@ -111,7 +213,7 @@ STRING-GSEA Snakemake Workflow
 Usage: snakemake [rule] --cores N
 
 Available rules:
-  all          - Run GSEA for all datasets (default)
+  all          - Run GSEA + render reports for all datasets (default)
   ci           - Run only small datasets tagged with "ci" (fast)
   run_<NAME>   - Run a single dataset (e.g., run_mouse_xlsx)
   clean        - Remove all outputs

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := check
 
-.PHONY: check check-fast build build-vignettes document test coverage install lint format clean help site deploy
+.PHONY: check check-fast build build-vignettes document test coverage install lint format clean help site deploy render-report
 
 DOCUMENT_CMD = Rscript -e "devtools::document()"
 BUILD_CMD = Rscript -e "devtools::build()"
@@ -23,6 +23,7 @@ help:
 	@echo "  make lint       - run lintr"
 	@echo "  make format     - format package with air"
 	@echo "  make clean      - remove build artifacts"
+	@echo "  make render-report - render GSEA_report.qmd (installs package first)"
 	@echo ""
 	@echo "Advanced:"
 	@echo "  make document   - generate roxygen2 docs"
@@ -70,7 +71,16 @@ site: document
 deploy: document
 	$(DEPLOY_CMD)
 
+REPORT_QMD = vignettes/GSEA_report.qmd
+REPORT_OUT = vignettes/GSEA_report.html
+
+render-report: install
+	cd vignettes && quarto render GSEA_report.qmd
+
 clean:
 	rm -rf *.Rcheck
 	rm -f Rplots.pdf
 	rm -rf inst/doc doc Meta
+	rm -f $(REPORT_OUT)
+	rm -rf vignettes/plots vignettes/GSEA_report_files
+	rm -f vignettes/_fgcz-report.yml vignettes/fgcz_header_quarto.html

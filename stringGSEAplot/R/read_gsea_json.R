@@ -18,6 +18,18 @@
 read_gsea_json <- function(json_path) {
   json_data <- jsonlite::fromJSON(json_path, simplifyVector = FALSE)
 
+  # Validate required top-level keys
+  required_keys <- c("data", "rank_lists", "metadata", "links")
+  missing <- setdiff(required_keys, names(json_data))
+  if (length(missing) > 0) {
+    stop(
+      "JSON is missing required keys: ", paste(missing, collapse = ", "),
+      ". Re-run the pipeline with a current version of string_gsea to ",
+      "produce a complete JSON file.",
+      call. = FALSE
+    )
+  }
+
   contrasts_data <- json_data[["data"]]
   rank_lists <- json_data[["rank_lists"]]
 
@@ -37,6 +49,9 @@ read_gsea_json <- function(json_path) {
     }
     result_list[[contrast_name]] <- contrast_results
   }
+
+  attr(result_list, "metadata") <- json_data[["metadata"]]
+  attr(result_list, "links") <- json_data[["links"]]
 
   result_list
 }

@@ -1,0 +1,370 @@
+---
+title: "STRING-GSEA Enrichment Report"
+metadata-files: ["_fgcz-report.yml"]
+params:
+  json_path: !expr system.file("extdata", "WU2848501_gsea_result.json.gz", package = "stringGSEAplot")
+  show_category: 20
+vignette: >
+  %\VignetteIndexEntry{STRING-GSEA Enrichment Report}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup}
+#| include: false
+library(stringGSEAplot)
+
+# Copy FGCZ report support files into the working directory
+templates_dir <- system.file("templates", package = "stringGSEAplot")
+for (f in c("_fgcz-report.yml", "fgcz_header_quarto.html")) {
+  src <- file.path(templates_dir, f)
+  if (nzchar(src) && file.exists(src) && !file.exists(f)) {
+    file.copy(src, f)
+  }
+}
+
+results <- read_gsea_json(params$json_path)
+contrast_names <- names(results)
+all_categories <- Reduce(union, lapply(results, names))
+shared_categories <- Reduce(intersect, lapply(results, names))
+run_metadata <- attr(results, "metadata")
+run_links <- attr(results, "links")
+
+plots_dir <- "plots"
+dir.create(plots_dir, showWarnings = FALSE, recursive = TRUE)
+plot_counter <- 0L
+
+# Save a ggplot/grid object to PNG and return the relative path, or NULL on failure.
+save_plot <- function(plot_obj, width = 10, height = 8, res = 150) {
+  plot_counter <<- plot_counter + 1L
+  fname <- sprintf("plot_%04d.png", plot_counter)
+  fpath <- file.path(plots_dir, fname)
+  tryCatch({
+    grDevices::png(fpath, width = width, height = height, units = "in", res = res)
+    on.exit(grDevices::dev.off())
+    print(plot_obj)
+    fpath
+  }, error = function(e) {
+    tryCatch(grDevices::dev.off(), error = function(e2) NULL)
+    NULL
+  })
+}
+
+# Number of significant terms in an enrichResult
+n_terms <- function(er) nrow(er@result[er@result$p.adjust < 0.05, ])
+
+# Truncate Description labels in an enrichResult (returns a copy)
+truncate_descriptions <- function(er, max_chars = 60) {
+  er_copy <- er
+  desc <- er_copy@result$Description
+  long <- nchar(desc) > max_chars
+  desc[long] <- paste0(substr(desc[long], 1, max_chars - 3), "...")
+  er_copy@result$Description <- desc
+  er_copy
+}
+
+# Shortcut - adjust max_chars here to control label length globally
+td <- function(er) truncate_descriptions(er, max_chars = 60)
+
+# Columns to show in the summary DT table
+table_cols <- c("ID", "Description", "GeneRatio", "BgRatio",
+                "pvalue", "p.adjust", "qvalue", "Count")
+```
+
+::: {.panel-tabset}
+
+# Settings
+
+```{r settings-metadata}
+#| echo: false
+if (!is.null(run_metadata)) {
+  meta_df <- data.frame(
+    Parameter = c("Workunit ID", "Species (NCBI Taxon)", "FDR threshold",
+                   "Rank direction", "Caller identity", "STRING API"),
+    Value = c(
+      as.character(run_metadata$workunit_id),
+      as.character(run_metadata$species),
+      as.character(run_metadata$fdr),
+      as.character(run_metadata$ge_enrichment_rank_direction),
+      as.character(run_metadata$caller_identity),
+      as.character(run_metadata$api_base_url)
+    )
+  )
+  DT::datatable(
+    meta_df, caption = "Analysis parameters", filter = "none",
+    rownames = FALSE, class = "compact stripe",
+    options = list(pageLength = 10, scrollX = TRUE, dom = "t")
+  )
+}
+```
+
+```{r settings-links}
+#| echo: false
+if (!is.null(run_links)) {
+  links_df <- data.frame(
+    Contrast = names(run_links),
+    Link = vapply(run_links, function(url) {
+      paste0("<a href='", url, "' target='_blank'>", url, "</a>")
+    }, character(1)),
+    stringsAsFactors = FALSE
+  )
+  DT::datatable(
+    links_df, caption = "STRING-DB permanent links", filter = "none",
+    rownames = FALSE, class = "compact stripe", escape = FALSE,
+    options = list(pageLength = 20, scrollX = TRUE, dom = "t")
+  )
+}
+```
+
+
+```{r per-contrast}
+#| echo: false
+#| results: asis
+
+for (cn in contrast_names) {
+  cat("#", cn, "\n\n")
+  categories <- names(results[[cn]])
+
+  cat("::: {.panel-tabset}\n\n")
+
+  for (cat_name in categories) {
+    er <- results[[cn]][[cat_name]]
+    nt <- n_terms(er)
+    if (nt < 1) next
+
+    cat("##", cat_name, "\n\n")
+    cat("::: {.panel-tabset}\n\n")
+
+    # --- Table -----------------------------------------------------------
+    cat("### Table\n\n")
+    top_df <- er@result[order(er@result$p.adjust), ]
+    show_cols <- intersect(table_cols, colnames(top_df))
+    top_df <- top_df[seq_len(min(params$show_category, nrow(top_df))), show_cols]
+    tbl <- DT::datatable(
+      top_df,
+      caption = paste("Top enriched terms -", cat_name),
+      filter = "none", rownames = FALSE, class = "compact stripe",
+      options = list(pageLength = 20, scrollX = TRUE, dom = "tip")
+    )
+    # DT widgets need special handling in results:asis chunks
+    tbl_html <- as.character(htmltools::tagList(tbl))
+    cat(tbl_html)
+    cat("\n\n")
+
+    er_td <- td(er)
+    n_show <- min(params$show_category, nt)
+
+    # --- Dotplot ---------------------------------------------------------
+    p <- tryCatch(
+      enrichplot::dotplot(er_td, showCategory = n_show) +
+        ggplot2::ggtitle(paste(cat_name, "-", cn)),
+      error = function(e) NULL
+    )
+    if (!is.null(p)) {
+      fpath <- save_plot(p)
+      if (!is.null(fpath)) {
+        cat("### Dotplot\n\n")
+        cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+      }
+    }
+
+    # --- Barplot ---------------------------------------------------------
+    p <- tryCatch(
+      barplot(er_td, showCategory = n_show) +
+        ggplot2::ggtitle(paste(cat_name, "-", cn)),
+      error = function(e) NULL
+    )
+    if (!is.null(p)) {
+      fpath <- save_plot(p)
+      if (!is.null(fpath)) {
+        cat("### Barplot\n\n")
+        cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+      }
+    }
+
+    # --- Cnetplot --------------------------------------------------------
+    if (nt >= 2) {
+      n_cnet <- min(10, nt)
+      p <- tryCatch(
+        enrichplot::cnetplot(er_td, showCategory = n_cnet,
+          cex.params = list(category_label = 0.7, gene_label = 0.5)),
+        error = function(e) NULL
+      )
+      if (!is.null(p)) {
+        fpath <- save_plot(p, width = 10, height = 8)
+        if (!is.null(fpath)) {
+          cat("### Cnetplot\n\n")
+          cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+        }
+      }
+    }
+
+    # --- Heatplot --------------------------------------------------------
+    if (nt >= 2) {
+      n_heat <- min(15, nt)
+      p <- tryCatch(
+        enrichplot::heatplot(er_td, showCategory = n_heat),
+        error = function(e) NULL
+      )
+      if (!is.null(p)) {
+        fpath <- save_plot(p, width = 10, height = 6)
+        if (!is.null(fpath)) {
+          cat("### Heatplot\n\n")
+          cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+        }
+      }
+    }
+
+    # --- Enrichment Map --------------------------------------------------
+    if (nt >= 3) {
+      n_emap <- min(30, nt)
+      p <- tryCatch({
+        er_sim <- enrichplot::pairwise_termsim(er_td)
+        enrichplot::emapplot(er_sim, showCategory = n_emap)
+      }, error = function(e) NULL)
+      if (!is.null(p)) {
+        fpath <- save_plot(p, width = 8, height = 8)
+        if (!is.null(fpath)) {
+          cat("### Enrichment Map\n\n")
+          cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+        }
+      }
+    }
+
+    # --- Treeplot --------------------------------------------------------
+    if (nt >= 3) {
+      n_tree <- min(30, nt)
+      p <- tryCatch({
+        er_sim <- enrichplot::pairwise_termsim(er_td)
+        enrichplot::treeplot(er_sim, showCategory = n_tree)
+      }, error = function(e) NULL)
+      if (!is.null(p)) {
+        fpath <- save_plot(p, width = 10, height = 10)
+        if (!is.null(fpath)) {
+          cat("### Treeplot\n\n")
+          cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+        }
+      }
+    }
+
+    # --- UpSet Plot ------------------------------------------------------
+    if (nt >= 2) {
+      n_upset <- min(10, nt)
+      p <- tryCatch(
+        enrichplot::upsetplot(er_td, n = n_upset),
+        error = function(e) NULL
+      )
+      if (!is.null(p)) {
+        fpath <- save_plot(p, width = 8, height = 6)
+        if (!is.null(fpath)) {
+          cat("### UpSet Plot\n\n")
+          cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+        }
+      }
+    }
+
+    cat(":::\n\n")
+  }
+
+  cat(":::\n\n")
+}
+```
+
+
+# Cross-Contrast
+
+::: {.callout-note collapse="true"}
+## About
+Comparison of enrichment results across all contrasts using
+`compareClusterResult` objects from `build_compareClusterResult()`.
+:::
+
+```{r cross-contrast}
+#| echo: false
+#| results: asis
+
+cat("::: {.panel-tabset}\n\n")
+
+# --- Dotplot -----------------------------------------------------------
+plots <- list()
+for (cat_name in shared_categories) {
+  cat_list <- lapply(results, function(x) td(x[[cat_name]]))
+  p <- tryCatch({
+    ccr <- build_compareClusterResult(cat_list)
+    enrichplot::dotplot(ccr, showCategory = 10) +
+      ggplot2::ggtitle(paste(cat_name, "- across contrasts"))
+  }, error = function(e) NULL)
+  if (!is.null(p)) plots[[cat_name]] <- p
+}
+if (length(plots) > 0) {
+  cat("## Dotplot\n\n")
+  cat("::: {.panel-tabset}\n\n")
+  for (cat_name in names(plots)) {
+    fpath <- save_plot(plots[[cat_name]], width = 10, height = 10)
+    if (!is.null(fpath)) {
+      cat("###", cat_name, "\n\n")
+      cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+    }
+  }
+  cat(":::\n\n")
+}
+
+# --- Cnetplot ----------------------------------------------------------
+plots <- list()
+for (cat_name in shared_categories) {
+  cat_list <- lapply(results, function(x) td(x[[cat_name]]))
+  p <- tryCatch({
+    ccr <- build_compareClusterResult(cat_list)
+    enrichplot::cnetplot(ccr, showCategory = 5)
+  }, error = function(e) NULL)
+  if (!is.null(p)) plots[[cat_name]] <- p
+}
+if (length(plots) > 0) {
+  cat("## Cnetplot\n\n")
+  cat("::: {.panel-tabset}\n\n")
+  for (cat_name in names(plots)) {
+    fpath <- save_plot(plots[[cat_name]], width = 10, height = 8)
+    if (!is.null(fpath)) {
+      cat("###", cat_name, "\n\n")
+      cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+    }
+  }
+  cat(":::\n\n")
+}
+
+# --- Enrichment Map ----------------------------------------------------
+plots <- list()
+for (cat_name in shared_categories) {
+  cat_list <- lapply(results, function(x) td(x[[cat_name]]))
+  p <- tryCatch({
+    ccr <- build_compareClusterResult(cat_list)
+    ccr_sim <- enrichplot::pairwise_termsim(ccr)
+    enrichplot::emapplot(ccr_sim, showCategory = 20)
+  }, error = function(e) NULL)
+  if (!is.null(p)) plots[[cat_name]] <- p
+}
+if (length(plots) > 0) {
+  cat("## Enrichment Map\n\n")
+  cat("::: {.panel-tabset}\n\n")
+  for (cat_name in names(plots)) {
+    fpath <- save_plot(plots[[cat_name]], width = 10, height = 8)
+    if (!is.null(fpath)) {
+      cat("###", cat_name, "\n\n")
+      cat(sprintf("![%s](%s)\n\n", cat_name, fpath))
+    }
+  }
+  cat(":::\n\n")
+}
+
+cat(":::\n\n")
+```
+
+
+# Session Info
+
+```{r session-info}
+#| echo: false
+utils::sessionInfo()
+```
+
+:::
