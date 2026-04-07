@@ -1,5 +1,4 @@
 # Snakefile for STRING-GSEA batch processing
-# Run from tests/ directory: snakemake --cores 1
 #
 # Available rules:
 #   all          - Run GSEA + render reports for all datasets (default)
@@ -10,7 +9,7 @@
 
 from pathlib import Path
 
-from helpers import (
+from string_gsea.workflow.helpers import (
     get_ci_datasets,
     get_datasets,
     load_params,
@@ -136,9 +135,7 @@ Datasets discovered: {', '.join(DATASETS)}
 CI datasets (tagged "ci"): {', '.join(ci_ds)}
 
 Examples:
-  snakemake --cores 1          # Run all datasets
-  snakemake ci --cores 1       # Run CI datasets only
-  snakemake run_mouse_xlsx     # Run single dataset
-  snakemake -n                 # Dry-run
-  snakemake clean              # Remove outputs
+  string_gsea_workflow --cores 1          # Run all datasets
+  string_gsea_workflow --target ci        # Run CI datasets only
+  string_gsea_workflow --dry-run          # Dry-run
         """)

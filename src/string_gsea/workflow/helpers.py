@@ -53,11 +53,18 @@ def _r_system_file(*args: str, package: str = "stringGSEAplot") -> Path | None:
 
 
 def resolve_template_dirs() -> tuple[Path, Path]:
-    """Resolve template/vignette paths: installed R package first, local dev fallback."""
-    installed = _r_system_file("templates")
-    if installed:
-        return installed, installed  # GSEA_report.qmd copied into templates at install
+    """Resolve template and vignette paths.
 
+    Returns (templates_dir, vignettes_dir):
+    - templates_dir: index.qmd, _fgcz-report.yml, fgcz_header_quarto.html
+    - vignettes_dir: GSEA_report.qmd
+    """
+    templates = _r_system_file("templates")
+    vignettes = _r_system_file("doc")  # vignette sources installed here
+    if templates and vignettes:
+        return templates, vignettes
+
+    # Local dev fallback
     r_pkg_dir = Path("../stringGSEAplot")
     return r_pkg_dir / "inst" / "templates", r_pkg_dir / "vignettes"
 
