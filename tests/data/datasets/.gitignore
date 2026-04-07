@@ -1,0 +1,9 @@
+# Only CI-tagged datasets are tracked; ignore the rest
+*
+!.gitignore
+!human_rnk_2848501/
+!human_rnk_2848501/**
+!mouse_xlsx/
+!mouse_xlsx/**
+!yeast_rnk/
+!yeast_rnk/**
