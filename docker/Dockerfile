@@ -25,11 +25,11 @@ RUN wget -q "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUART
 # ── R / Bioconductor packages ───────────────────────────────────────
 ENV R_LIBS_USER=/usr/local/lib/R/site-library
 RUN R -e "install.packages('BiocManager', repos='https://cloud.r-project.org')" \
-    && R -e "BiocManager::install(c('DOSE', 'enrichplot'), ask=FALSE, update=FALSE)" \
+    && R -e "BiocManager::install(c('DOSE', 'enrichplot'), ask=FALSE, update=TRUE)" \
     && R -e "install.packages(c('ggplot2','ggupset','patchwork','DT','jsonlite','knitr','rmarkdown','quarto','remotes'), repos='https://cloud.r-project.org')"
 
 # ── stringGSEAplot R package (from GitHub, build_vignettes so doc/ has QMD sources) ──
-RUN R -e "remotes::install_github('wolski/stringdbpy', subdir='stringGSEAplot', build_vignettes=TRUE)"
+RUN R -e "options(repos = BiocManager::repositories()); remotes::install_github('wolski/stringdbpy', subdir='stringGSEAplot', build_vignettes=TRUE)"
 
 # ── Python: uv + string-gsea from GitHub (includes snakemake) ────────
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
