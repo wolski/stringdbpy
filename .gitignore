@@ -25,3 +25,4 @@ stringGSEAplot_*.tar.gz
 tests/data/outputs/
 tests/marshli/
 tests/errors/
+.cache/
