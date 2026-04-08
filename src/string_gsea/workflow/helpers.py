@@ -62,7 +62,9 @@ def render_report(
     for name in ["GSEA_report.qmd"]:
         shutil.copy2(Path(vignettes_dir) / name, wu_dir / name)
     for name in ["index.qmd", "_fgcz-report.yml", "fgcz_header_quarto.html"]:
-        shutil.copy2(Path(templates_dir) / name, wu_dir / name)
+        src = Path(templates_dir) / name
+        if src.exists():
+            shutil.copy2(src, wu_dir / name)
 
     # Render GSEA report and index page
     subprocess.run(
@@ -117,7 +119,7 @@ def render_report_cli() -> None:
     """CLI entry point: render_report dataset_dir workunit_id vignettes_dir templates_dir done_file."""
     args = sys.argv[1:]
     if len(args) != 5:
-        print(f"Usage: _string_gsea_render <dataset_dir> <workunit_id> <vignettes_dir> <templates_dir> <done_file>")
+        print("Usage: _string_gsea_render <dataset_dir> <workunit_id> <vignettes_dir> <templates_dir> <done_file>")
         sys.exit(1)
     render_report(*args)
 
@@ -126,6 +128,6 @@ def package_results_cli() -> None:
     """CLI entry point: package_results output_base workunit_id outputs_yml_path."""
     args = sys.argv[1:]
     if len(args) != 3:
-        print(f"Usage: _string_gsea_package <output_base> <workunit_id> <outputs_yml_path>")
+        print("Usage: _string_gsea_package <output_base> <workunit_id> <outputs_yml_path>")
         sys.exit(1)
     package_results(*args)

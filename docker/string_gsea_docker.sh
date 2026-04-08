@@ -37,7 +37,7 @@ set -euo pipefail
 
 # Default values
 IMAGE_VERSION="latest"
-IMAGE_REPO="docker.io/wolski/string-gsea"
+IMAGE_REPO="wolski/string-gsea"
 
 usage() {
   echo "Usage: $0 [--image-version VERSION] [--image-repo REPO] [-- container_args]"
@@ -121,7 +121,7 @@ run() {
 
     # Config mount: writable for "config" command, read-only otherwise
     local config_dir="${HOME}/.config/string_gsea"
-    local config_mount_opts="type=bind,source=${config_dir},target=/root/.config/string_gsea"
+    local config_mount_opts="type=bind,source=${config_dir},target=/work/.config/string_gsea"
     if [[ "${container_args[0]:-}" == "config" ]]; then
         mkdir -p "$config_dir"
     else
@@ -132,6 +132,7 @@ run() {
     $DOCKER run \
         --init \
         --user "$(id -u):$(id -g)" \
+        -e HOME=/work \
         --rm $docker_args \
         --mount "type=bind,source=$(pwd),target=/work" \
         --mount "$config_mount_opts" \

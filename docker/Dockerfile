@@ -37,9 +37,11 @@ RUN R -e "remotes::install_github('wolski/stringdbpy', subdir='stringGSEAplot', 
 
 # ── Python: uv + string-gsea from GitHub (includes snakemake) ────────
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
 RUN uv python install 3.13 \
     && uv venv /opt/venv \
-    && uv pip install --python /opt/venv "string-gsea @ git+https://github.com/wolski/stringdbpy.git"
+    && uv pip install --python /opt/venv "string-gsea @ git+https://github.com/wolski/stringdbpy.git" \
+    && chmod -R a+rX /opt/python /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /work

@@ -62,13 +62,19 @@ def dummy_session_yml() -> Path:
 @pytest.fixture
 def multi_contrast_tsv_dir() -> Path:
     """Directory with multiple contrast TSV files."""
-    return OUTPUTS_DIR / "human_rnk_2848501" / "WU_2848501_GSEA" / "from_rnk"
+    d = OUTPUTS_DIR / "human_rnk_2848501" / "WU_2848501_GSEA" / "from_rnk"
+    if not d.exists():
+        pytest.skip("integration output not available (run 'make test-integration' first)")
+    return d
 
 
 @pytest.fixture
 def single_contrast_tsv() -> Path:
     """Single-contrast STRING-DB GSEA TSV file for model tests."""
-    return OUTPUTS_DIR / "human_rnk_2848501" / "WU_2848501_GSEA" / "from_rnk" / "Bait_NCP_pUbT12_results.tsv"
+    f = OUTPUTS_DIR / "human_rnk_2848501" / "WU_2848501_GSEA" / "from_rnk" / "Bait_NCP_pUbT12_results.tsv"
+    if not f.exists():
+        pytest.skip("integration output not available (run 'make test-integration' first)")
+    return f
 
 
 @pytest.fixture

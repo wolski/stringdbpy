@@ -1,3 +1,5 @@
+DOCKER_IMAGE := wolski/string-gsea:latest
+
 .DEFAULT_GOAL := help
 .PHONY: help check test-smoke test-integration docker-build test-docker clean-integration lint format
 
@@ -22,7 +24,7 @@ test-integration:              ## Run full workflow on all CI datasets (requires
 	uv run pytest -m integration tests -v -s
 
 docker-build:                  ## Build the Docker image locally
-	docker buildx build -f docker/Dockerfile -t string-gsea:local --load .
+	docker buildx build -f docker/Dockerfile -t $(DOCKER_IMAGE) --load .
 
 test-docker:                   ## Run mouse_xlsx workflow in Docker (requires built image)
 	rm -rf tests/data/outputs/mouse_xlsx_docker
