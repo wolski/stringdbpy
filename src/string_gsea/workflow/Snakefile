@@ -1,141 +1,99 @@
-# Snakefile for STRING-GSEA batch processing
+# Snakefile for STRING-GSEA single-dataset processing
 #
-# Available rules:
-#   all          - Run GSEA + render reports for all datasets (default)
-#   ci           - Run only small datasets tagged with "ci"
-#   run_<NAME>   - Run a single dataset (e.g., run_mouse_xlsx)
-#   clean        - Remove all outputs
-#   help         - Show this help message
+# Usage:
+#   snakemake --config zip_path=... workunit_id=... out_dir=... [which=...] [fdr=...]
+#
+# Or via the CLI wrapper:
+#   string_gsea_workflow input.zip WU123 ./output --which pep_1 --fdr 0.1
+#
+# Set which=none for RNK input (default: pep_2_no_imputed for XLSX)
 
 from pathlib import Path
 
-from string_gsea.workflow.helpers import (
-    get_ci_datasets,
-    get_datasets,
-    load_params,
-    package_results,
-    render_report,
-    resolve_template_dirs,
-    run_gsea,
-)
+from string_gsea.workflow.helpers import resolve_template_dirs
 
-# Configuration (overridable via --config datasets_dir=... output_dir=...)
-DATASETS_DIR = Path(config.get("datasets_dir", "data/datasets"))
-OUTPUT_DIR = Path(config.get("output_dir", "data/outputs"))
-DATASETS = get_datasets(DATASETS_DIR)
+# Configuration from --config key=value
+ZIP_PATH = config["zip_path"]
+WORKUNIT_ID = str(config["workunit_id"])
+OUT_DIR = Path(config.get("out_dir", "."))
+WHICH = config.get("which", "pep_2_no_imputed")
+FDR = config.get("fdr", None)
 TEMPLATES_DIR, VIGNETTES_DIR = resolve_template_dirs()
 
-localrules: help, clean, ci
+# Build the string_gsea_run CLI command
+_gsea_cmd_parts = ["string_gsea_run", ZIP_PATH, WORKUNIT_ID, str(OUT_DIR), "--which", WHICH]
+if FDR is not None:
+    _gsea_cmd_parts.extend(["--fdr", str(FDR)])
+GSEA_CMD = " ".join(_gsea_cmd_parts)
 
 
 # Default target: full pipeline through packaging
 rule all:
     input:
-        expand(OUTPUT_DIR / "{dataset}" / "outputs.yml", dataset=DATASETS)
+        OUT_DIR / "outputs.yml"
 
 
-# Run GSEA analysis for a dataset
+# Run GSEA analysis
 rule run_gsea:
     input:
-        zip_file=DATASETS_DIR / "{dataset}" / "input.zip",
-        params_file=DATASETS_DIR / "{dataset}" / "params.yml"
+        zip_file=ZIP_PATH
     output:
-        done=OUTPUT_DIR / "{dataset}" / "gsea_done.txt"
+        done=OUT_DIR / "gsea_done.txt"
     log:
-        "logs/{dataset}/gsea.log"
-    run:
-        p = load_params(wildcards.dataset, DATASETS_DIR)
-        run_gsea(
-            zip_file=str(input.zip_file),
-            workunit_id=p["execution"]["workunit_id"],
-            output_dir=str(OUTPUT_DIR / wildcards.dataset),
-            from_rnk=p["input"]["from_rnk"],
-            which=p["input"].get("which"),
-            done_file=str(output.done),
-        )
+        str(OUT_DIR / "gsea.log")
+    shell:
+        """
+        {GSEA_CMD} 2>&1 | tee {log}
+        touch {output.done}
+        """
 
 
-# Render Quarto reports into WU_{id}_GSEA/
+# Render Quarto reports
 rule render_report:
     input:
-        done=OUTPUT_DIR / "{dataset}" / "gsea_done.txt"
+        done=OUT_DIR / "gsea_done.txt"
     output:
-        done=OUTPUT_DIR / "{dataset}" / "render_done.txt"
+        done=OUT_DIR / "render_done.txt"
     log:
-        "logs/{dataset}/render.log"
-    run:
-        p = load_params(wildcards.dataset, DATASETS_DIR)
-        render_report(
-            dataset_dir=str(OUTPUT_DIR / wildcards.dataset),
-            workunit_id=p["execution"]["workunit_id"],
-            vignettes_dir=str(VIGNETTES_DIR),
-            templates_dir=str(TEMPLATES_DIR),
-            done_file=str(output.done),
-        )
+        str(OUT_DIR / "render.log")
+    shell:
+        """
+        _string_gsea_render {OUT_DIR} {WORKUNIT_ID} {VIGNETTES_DIR} {TEMPLATES_DIR} {output.done} 2>&1 | tee {log}
+        """
 
 
-# Zip WU_{id}_GSEA/ and write outputs.yml
+# Zip results and write outputs.yml
 rule package_results:
     input:
-        done=OUTPUT_DIR / "{dataset}" / "gsea_done.txt",
-        render=OUTPUT_DIR / "{dataset}" / "render_done.txt"
+        done=OUT_DIR / "gsea_done.txt",
+        render=OUT_DIR / "render_done.txt"
     output:
-        yml=OUTPUT_DIR / "{dataset}" / "outputs.yml"
-    run:
-        p = load_params(wildcards.dataset, DATASETS_DIR)
-        package_results(
-            output_base=str(OUTPUT_DIR / wildcards.dataset),
-            workunit_id=p["execution"]["workunit_id"],
-            outputs_yml_path=str(output.yml),
-        )
-
-
-# Run only small datasets tagged with "ci"
-rule ci:
-    input:
-        expand(
-            OUTPUT_DIR / "{dataset}" / "outputs.yml",
-            dataset=get_ci_datasets(DATASETS, DATASETS_DIR),
-        )
-
-
-# Run a single dataset by name (use as target: snakemake run_mouse_xlsx)
-for ds in DATASETS:
-    rule:
-        name: f"run_{ds}"
-        input:
-            OUTPUT_DIR / ds / "gsea_done.txt"
+        yml=OUT_DIR / "outputs.yml"
+    shell:
+        """
+        _string_gsea_package {OUT_DIR} {WORKUNIT_ID} {output.yml}
+        """
 
 
 # Clean outputs
 rule clean:
     shell:
-        "rm -rf {OUTPUT_DIR}/* logs/"
+        "rm -rf {OUT_DIR}/*"
 
 
 # Help message
 rule help:
     run:
-        ci_ds = get_ci_datasets(DATASETS, DATASETS_DIR)
-        print(f"""
+        print("""
 STRING-GSEA Snakemake Workflow
 ==============================
 
-Usage: snakemake [rule] --cores N
+Usage:
+  string_gsea_workflow <zip_path> <workunit_id> <out_dir> [options]
 
-Available rules:
-  all          - Run GSEA + render reports for all datasets (default)
-  ci           - Run only small datasets tagged with "ci" (fast)
-  run_<NAME>   - Run a single dataset (e.g., run_mouse_xlsx)
-  clean        - Remove all outputs
-  help         - Show this help message
-
-Datasets discovered: {', '.join(DATASETS)}
-
-CI datasets (tagged "ci"): {', '.join(ci_ds)}
-
-Examples:
-  string_gsea_workflow --cores 1          # Run all datasets
-  string_gsea_workflow --target ci        # Run CI datasets only
-  string_gsea_workflow --dry-run          # Dry-run
+Options:
+  --which TEXT     Analysis type: pep_1, pep_1_no_imputed, pep_2, pep_2_no_imputed, or none for RNK input (default: pep_2_no_imputed)
+  --fdr FLOAT      FDR threshold (default: from config.toml)
+  --cores INT      Number of cores (default: 1)
+  --dry-run        Show what would be done without executing
         """)

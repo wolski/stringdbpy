@@ -21,8 +21,8 @@ def string_gsea_run(
     zip_path: str,
     workunit_id: str,
     out_dir: str = ".",
-    from_rnk: bool = False,
-    which: Literal["pep_1", "pep_1_no_imputed", "pep_2", "pep_2_no_imputed"] = "pep_2_no_imputed",
+    which: Literal["pep_1", "pep_1_no_imputed", "pep_2", "pep_2_no_imputed", "none"] = "pep_2_no_imputed",
+    fdr: float | None = None,
     create_zip: bool = False,
 ):
     """
@@ -32,18 +32,23 @@ def string_gsea_run(
         zip_path (str): Path to the input zip file containing rank data.
         workunit_id (str): Identifier for this analysis run.
         out_dir (str, optional): Base directory for output files. Defaults to ".".
+        which: Analysis type for XLSX input. "none" means RNK input.
     """
+    if which == "none":
+        which = None
     zip_path = Path(zip_path)
     base_dir = Path(out_dir)
 
     # 1) Configuration
     config = get_configuration()
+    if fdr is not None:
+        config.fdr = fdr
     base_dir.mkdir(exist_ok=True)
     if not zip_path.exists():
         raise FileNotFoundError(f"Zip file not found: {zip_path}")
 
     # 2) Read rank data
-    if from_rnk:
+    if which is None:
         rank_lists = get_rank_files(zip_path)
     else:
         df_xlsx = DiffXLSX(zip_path)

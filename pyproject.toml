@@ -44,6 +44,8 @@ test = [
 "string_gsea_run" = "string_gsea.scripts.string_gsea_run:app"
 "string_ora_run" = "string_gsea.scripts.string_ora_run:app"
 "string_gsea_workflow" = "string_gsea.scripts.run_workflow:app"
+"_string_gsea_render" = "string_gsea.workflow.helpers:render_report_cli"
+"_string_gsea_package" = "string_gsea.workflow.helpers:package_results_cli"
 
 
 [tool.hatch.version]
@@ -83,10 +85,11 @@ exclude_lines = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --tb=short -m 'not integration'"
+addopts = "-v --tb=short -m 'not integration and not smoke'"
 filterwarnings = ["ignore::DeprecationWarning"]
 markers = [
-    "integration: tests that make live STRING-DB API calls (deselect with '-m \"not integration\"')",
+    "integration: full workflow tests on all CI datasets (STRING-DB + Quarto + R)",
+    "smoke: quick single-dataset workflow test (yeast RNK, ~4 MB)",
 ]
 
 [tool.ruff]

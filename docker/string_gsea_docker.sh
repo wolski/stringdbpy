@@ -10,26 +10,24 @@
 #   1. Docker (or Podman) installed
 #   2. Config file at ~/.config/string_gsea/config.toml
 #      (generate with: ./string_gsea_docker.sh config)
-#   3. Dataset directories with input.zip + params.yml
 #
 # Setup (first time):
 #   ./string_gsea_docker.sh config
 #
-# Run full pipeline on all datasets:
-#   cd /path/to/project    # must contain data/datasets/*/params.yml
-#   ./docker/string_gsea_docker.sh --cores 4
+# Run pipeline on a single dataset:
+#   ./docker/string_gsea_docker.sh data/input.zip WU123 results --cores 4
 #
-# Run only CI-tagged datasets:
-#   ./docker/string_gsea_docker.sh --target ci --cores 2
+# RNK input (no XLSX):
+#   ./docker/string_gsea_docker.sh data/input.zip WU123 results --which none --cores 2
 #
-# Custom input/output directories (relative to cwd):
-#   ./docker/string_gsea_docker.sh --datasets-dir my_datasets --output-dir my_results --cores 4
+# With custom FDR threshold:
+#   ./docker/string_gsea_docker.sh data/input.zip WU123 results --fdr 0.1 --cores 4
 #
 # Dry-run (show what would execute without running):
-#   ./docker/string_gsea_docker.sh --dry-run
+#   ./docker/string_gsea_docker.sh data/input.zip WU123 results --dry-run
 #
 # Use a specific image version:
-#   ./docker/string_gsea_docker.sh --image-version 0.1.0 -- --cores 4
+#   ./docker/string_gsea_docker.sh --image-version 0.1.0 -- data/input.zip WU123 results --cores 4
 #
 # Limitations:
 #   - Paths must be relative to cwd and must not go outside of it.
@@ -52,10 +50,9 @@ usage() {
   echo "Everything after known options (or after --) is passed to string_gsea_workflow."
   echo ""
   echo "Examples:"
-  echo "  $0 --cores 4"
-  echo "  $0 --target ci --cores 2"
-  echo "  $0 --datasets-dir data/datasets --output-dir results --cores 4"
-  echo "  $0 --dry-run"
+  echo "  $0 data/input.zip WU123 results --cores 4"
+  echo "  $0 data/input.zip WU123 results --which none --cores 2"
+  echo "  $0 data/input.zip WU123 results --dry-run"
   echo "  $0 config"
   exit 1
 }

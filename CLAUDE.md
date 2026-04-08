@@ -8,6 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Key dependencies: Python 3.13+, UV package manager, Quarto (for report generation)
 
+## R Package (stringGSEAplot)
+
+The companion R package `stringGSEAplot` must be installed with `devtools::install(build_vignettes = TRUE)` so that QMD sources (e.g. `GSEA_report.qmd`) are available in `system.file("doc")`. Never suggest moving files into `inst/` of the R package — always use the vignette build approach.
+
 ## Development Commands
 
 ### Installation and Setup

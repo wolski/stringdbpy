@@ -1,24 +1,8 @@
 .DEFAULT_GOAL := help
-.PHONY: help test test-integration test-all test-ci clean-ci lint format check
+.PHONY: help check test-smoke test-integration docker-build test-docker clean-integration lint format
 
 help:                          ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
-
-## Testing
-test:                          ## Run fast/unit tests only (default)
-	uv run pytest tests
-
-test-integration:              ## Run integration tests (requires STRING-DB access)
-	uv run pytest -m integration tests
-
-test-all:                      ## Run all tests (unit + integration)
-	uv run pytest -m "" tests
-
-test-ci:                       ## Run Snakemake CI datasets (small, single-contrast)
-	cd tests && uv run snakemake -s Snakefile ci -j1
-
-clean-ci:                      ## Remove Snakemake CI outputs (forces re-run)
-	cd tests && uv run snakemake -s Snakefile clean -j1
 
 ## Code quality
 lint:                          ## Check linting
@@ -27,4 +11,28 @@ lint:                          ## Check linting
 format:                        ## Auto-format code
 	uv run ruff format src/ tests/
 
-check: lint test               ## Lint + unit tests
+check: lint                    ## Lint + unit tests
+	uv run pytest tests
+
+## Integration
+test-smoke:                    ## Quick workflow test (yeast RNK, single contrast)
+	uv run pytest -m smoke tests -v -s
+
+test-integration:              ## Run full workflow on all CI datasets (requires STRING-DB + Quarto + R)
+	uv run pytest -m integration tests -v -s
+
+docker-build:                  ## Build the Docker image locally
+	docker buildx build -f docker/Dockerfile -t string-gsea:local --load .
+
+test-docker:                   ## Run mouse_xlsx workflow in Docker (requires built image)
+	rm -rf tests/data/outputs/mouse_xlsx_docker
+	./docker/string_gsea_docker.sh \
+		tests/data/datasets/mouse_xlsx/input.zip mouse_fasta \
+		tests/data/outputs/mouse_xlsx_docker \
+		--which pep_2_no_imputed --cores 1
+	@echo "--- Verifying outputs ---"
+	@test -f tests/data/outputs/mouse_xlsx_docker/outputs.yml && echo "PASS: outputs.yml exists" || (echo "FAIL: outputs.yml missing" && exit 1)
+	@test -f tests/data/outputs/mouse_xlsx_docker/WU_mouse_fasta_GSEA.zip && echo "PASS: zip exists" || (echo "FAIL: zip missing" && exit 1)
+
+clean-integration:             ## Remove integration test outputs (forces re-run)
+	rm -rf tests/data/outputs/

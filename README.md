@@ -90,22 +90,25 @@ string_gsea_write_config
 ### `string_gsea_run` -- GSEA Analysis
 
 ```bash
-# Run analysis with XLSX input (default)
+# Run analysis with XLSX input (default: pep_2_no_imputed)
 string_gsea_run "path/to/data.zip" "workunit_id" "output_directory"
 
-# Run analysis with RNK files
-string_gsea_run "path/to/data.zip" "workunit_id" "output_directory" --from-rnk
-
-# Specify analysis type for XLSX input
+# Specify analysis type
 string_gsea_run "path/to/data.zip" "workunit_id" "output_directory" --which "pep_1"
+
+# Override FDR threshold
+string_gsea_run "path/to/data.zip" "workunit_id" "output_directory" --fdr 0.05
+
+# Run with RNK files (set --which none)
+string_gsea_run "path/to/data.zip" "workunit_id" "output_directory" --which none
 ```
 
 Parameters:
 - `zip_path`: Path to input ZIP file containing rank data
 - `workunit_id`: Unique identifier for this analysis run
 - `out_dir`: Output directory (default: current directory)
-- `--from-rnk`: Use RNK files instead of XLSX (default: False)
-- `--which`: Analysis type for XLSX input (default: "pep_2_no_imputed"). Valid: `pep_1`, `pep_1_no_imputed`, `pep_2`, `pep_2_no_imputed`
+- `--which`: Analysis type (default: `pep_2_no_imputed`). Valid: `pep_1`, `pep_1_no_imputed`, `pep_2`, `pep_2_no_imputed`, or `none` for RNK input
+- `--fdr`: FDR threshold (overrides value from config.toml)
 
 ### `string_ora_run` -- Over-Representation Analysis
 
@@ -145,26 +148,30 @@ output_directory/
 
 ## Batch Workflow
 
-The `string_gsea_workflow` command runs GSEA, renders Quarto reports, and packages results for multiple datasets using Snakemake.
+The `string_gsea_workflow` command runs GSEA, renders Quarto reports, and packages results via Snakemake. It takes the same core arguments as `string_gsea_run`.
 
 ```bash
-# Run all datasets
-string_gsea_workflow --cores 4
+# Run a single dataset
+string_gsea_workflow "path/to/data.zip" "workunit_id" "./output"
 
-# CI-tagged datasets only
-string_gsea_workflow --target ci --cores 2
-
-# Custom input/output directories
-string_gsea_workflow --datasets-dir /path/to/datasets --output-dir /path/to/outputs
+# With options
+string_gsea_workflow "path/to/data.zip" "workunit_id" "./output" --which pep_1 --fdr 0.1 --cores 4
 
 # Dry-run
-string_gsea_workflow --dry-run
+string_gsea_workflow "path/to/data.zip" "workunit_id" "./output" --dry-run
 
 # Generate config
 string_gsea_workflow config
 ```
 
-The workflow expects datasets in `data/datasets/{name}/` with `input.zip` and `params.yml`. Results are written to `data/outputs/{name}/`.
+Parameters:
+- `zip_path`: Path to input ZIP file
+- `workunit_id`: Unique identifier for this analysis run
+- `out_dir`: Output directory (default: current directory)
+- `--which`: Analysis type (default: `pep_2_no_imputed`, or `none` for RNK input)
+- `--fdr`: FDR threshold (overrides config.toml)
+- `--cores`: Number of Snakemake cores (default: 1)
+- `--dry-run`: Show what would be done without executing
 
 ## Docker
 
@@ -186,19 +193,14 @@ The recommended way to run the container is via `docker/string_gsea_docker.sh`. 
 # First time: generate config.toml (mounts ~/.config/string_gsea writable)
 ./docker/string_gsea_docker.sh config
 
-# Run the pipeline from your project directory
-# Expects data/datasets/{name}/input.zip + params.yml under cwd by default
-cd /path/to/my/project
-./docker/string_gsea_docker.sh --cores 4
+# Run the pipeline
+./docker/string_gsea_docker.sh data/input.zip WU123 ./output --cores 4
 
-# Or specify where your datasets and outputs live (relative to cwd)
-./docker/string_gsea_docker.sh --datasets-dir my_datasets --output-dir my_results --cores 4
-
-# Dry-run: show what would execute without running anything
-./docker/string_gsea_docker.sh --dry-run
+# Dry-run
+./docker/string_gsea_docker.sh data/input.zip WU123 ./output --dry-run
 
 # Pin a specific image version
-./docker/string_gsea_docker.sh --image-version 0.1.0 -- --cores 4
+./docker/string_gsea_docker.sh --image-version 0.1.0 -- data/input.zip WU123 ./output --cores 4
 ```
 
 ### Usage with plain docker
@@ -211,22 +213,13 @@ docker run --rm -it --init \
   -v "$(pwd):/work" -w /work \
   string-gsea:local config
 
-# Run full pipeline (current directory mounted as /work)
+# Run pipeline (current directory mounted as /work)
 docker run --rm -it --init \
   --user "$(id -u):$(id -g)" \
   -v "$(pwd):/work" -w /work \
   -v ~/.config/string_gsea:/root/.config/string_gsea:ro \
-  string-gsea:local --cores 4
-
-# Custom input/output directories
-docker run --rm -it --init \
-  --user "$(id -u):$(id -g)" \
-  -v "$(pwd):/work" -w /work \
-  -v ~/.config/string_gsea:/root/.config/string_gsea:ro \
-  string-gsea:local --datasets-dir my_datasets --output-dir my_results --cores 4
+  string-gsea:local data/input.zip WU123 ./output --cores 4
 ```
-
-The container expects the working directory to contain `data/datasets/{name}/input.zip` + `params.yml` (or use `--datasets-dir`/`--output-dir` to override). Results are written to `data/outputs/` by default.
 
 ## Interactive Notebooks
 

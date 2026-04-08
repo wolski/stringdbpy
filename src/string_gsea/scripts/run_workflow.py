@@ -3,44 +3,50 @@
 import importlib.resources
 import subprocess
 import sys
-from enum import Enum
 
 from cyclopts import App
 
 app = App(help="Run the STRING-GSEA Snakemake workflow.")
 
 
-class Target(str, Enum):
-    all = "all"  # GSEA + reports + packaging
-    ci = "ci"  # CI-tagged datasets only
-    clean = "clean"
-    help = "help"
-
-
 @app.default
 def main(
-    datasets_dir: str = "data/datasets",
-    output_dir: str = "data/outputs",
-    cores: int = 1,
+    zip_path: str,
+    workunit_id: str,
+    out_dir: str = ".",
     *,
-    target: Target = Target.all,
+    which: str = "pep_2_no_imputed",
+    fdr: float | None = None,
+    cores: int = 1,
     dry_run: bool = False,
 ) -> None:
-    """Run STRING-GSEA batch processing via Snakemake.
+    """Run STRING-GSEA analysis via Snakemake.
 
     Args:
-        datasets_dir: Path to directory containing dataset folders with params.yml.
-        output_dir: Path for output files.
+        zip_path: Path to the input zip file.
+        workunit_id: Identifier for this analysis run.
+        out_dir: Path for output files.
+        which: Analysis type (pep_1, pep_1_no_imputed, pep_2, pep_2_no_imputed, or none for RNK input).
+        fdr: FDR threshold (overrides config.toml).
         cores: Number of cores for Snakemake.
-        target: Workflow target (all, ci, clean, help).
         dry_run: Show what would be done without executing.
     """
     snakefile = importlib.resources.files("string_gsea.workflow") / "Snakefile"
+
+    config_args = [
+        f"zip_path={zip_path}",
+        f"workunit_id={workunit_id}",
+        f"out_dir={out_dir}",
+        f"which={which}",
+    ]
+    if fdr is not None:
+        config_args.append(f"fdr={fdr}")
+
     cmd = [
         "snakemake", "-s", str(snakefile),
         "--cores", str(cores),
-        target.value,
-        "--config", f"datasets_dir={datasets_dir}", f"output_dir={output_dir}",
+        "all",
+        "--config", *config_args,
     ]
     if dry_run:
         cmd.append("-n")
