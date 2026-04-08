@@ -85,9 +85,7 @@ def string_gsea_run(
     for _analysis, contrasts in raw_results.get_links().items():
         for contrast, url in contrasts.items():
             link_map[f"{contrast}_results.tsv"] = url
-    gsea_result = parse_gsea_results(
-        rank_lists, raw_results.tsv_content, metadata=metadata, links=link_map
-    )
+    gsea_result = parse_gsea_results(rank_lists, raw_results.tsv_content, metadata=metadata, links=link_map)
 
     # 8) Write outputs
     write_rank_files(rank_lists, res_path)

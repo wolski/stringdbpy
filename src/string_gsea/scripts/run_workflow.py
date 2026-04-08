@@ -43,10 +43,14 @@ def main(
         config_args.append(f"fdr={fdr}")
 
     cmd = [
-        "snakemake", "-s", str(snakefile),
-        "--cores", str(cores),
+        "snakemake",
+        "-s",
+        str(snakefile),
+        "--cores",
+        str(cores),
         "all",
-        "--config", *config_args,
+        "--config",
+        *config_args,
     ]
     if dry_run:
         cmd.append("-n")

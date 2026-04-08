@@ -20,9 +20,7 @@ def _r_system_file(*args: str, package: str = "stringGSEAplot") -> Path | None:
     r_args = ", ".join(f"'{a}'" for a in args)
     r_code = f"cat(system.file({r_args}, package='{package}'))"
     try:
-        result = subprocess.check_output(
-            ["Rscript", "-e", r_code], text=True, stderr=subprocess.DEVNULL
-        ).strip()
+        result = subprocess.check_output(["Rscript", "-e", r_code], text=True, stderr=subprocess.DEVNULL).strip()
         if result:
             return Path(result)
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -69,18 +67,17 @@ def render_report(
     # Render GSEA report and index page
     subprocess.run(
         ["quarto", "render", "GSEA_report.qmd", "-P", f"json_path:{json_file}"],
-        cwd=wu_dir, check=True,
+        cwd=wu_dir,
+        check=True,
     )
     subprocess.run(
-        ["quarto", "render", "index.qmd",
-         "-P", f"workunit_id:{workunit_id}",
-         "-P", "package_dir:."],
-        cwd=wu_dir, check=True,
+        ["quarto", "render", "index.qmd", "-P", f"workunit_id:{workunit_id}", "-P", "package_dir:."],
+        cwd=wu_dir,
+        check=True,
     )
 
     # Clean up rendering artifacts
-    for name in ["GSEA_report.qmd", "index.qmd", "_fgcz-report.yml",
-                  "fgcz_header_quarto.html", "index.rmarkdown"]:
+    for name in ["GSEA_report.qmd", "index.qmd", "_fgcz-report.yml", "fgcz_header_quarto.html", "index.rmarkdown"]:
         (wu_dir / name).unlink(missing_ok=True)
     for dirname in ["plots", "GSEA_report_files", "index_files"]:
         d = wu_dir / dirname
@@ -101,16 +98,22 @@ def package_results(
     zip_path = base / f"WU_{workunit_id}_GSEA.zip"
 
     shutil.make_archive(
-        str(zip_path).removesuffix(".zip"), "zip",
-        root_dir=str(wu_gsea.parent), base_dir=wu_gsea.name,
+        str(zip_path).removesuffix(".zip"),
+        "zip",
+        root_dir=str(wu_gsea.parent),
+        base_dir=wu_gsea.name,
     )
     logger.info("Package: %s", zip_path.resolve())
 
-    outputs_data = {"outputs": [{
-        "local_path": str(zip_path.resolve()),
-        "store_entry_path": zip_path.name,
-        "type": "bfabric_copy_resource",
-    }]}
+    outputs_data = {
+        "outputs": [
+            {
+                "local_path": str(zip_path.resolve()),
+                "store_entry_path": zip_path.name,
+                "type": "bfabric_copy_resource",
+            }
+        ]
+    }
     with open(outputs_yml_path, "w") as f:
         yaml.dump(outputs_data, f, default_flow_style=False)
 

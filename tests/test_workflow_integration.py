@@ -52,8 +52,10 @@ def _run_workflow(ds_name, workunit_id, which):
         zip_path,
         workunit_id,
         str(out_dir),
-        "--which", which,
-        "--cores", "1",
+        "--which",
+        which,
+        "--cores",
+        "1",
     ]
     result = subprocess.run(cmd)
     assert result.returncode == 0, f"Workflow failed for {ds_name}"
