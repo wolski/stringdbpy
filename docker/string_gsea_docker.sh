@@ -37,7 +37,7 @@ set -euo pipefail
 
 # Default values
 IMAGE_VERSION="latest"
-IMAGE_REPO="wolski/string-gsea"
+IMAGE_REPO="ghcr.io/wolski/string-gsea"
 
 usage() {
   echo "Usage: $0 [--image-version VERSION] [--image-repo REPO] [-- container_args]"

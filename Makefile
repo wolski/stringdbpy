@@ -1,4 +1,4 @@
-DOCKER_IMAGE := wolski/string-gsea:latest
+DOCKER_IMAGE := ghcr.io/wolski/string-gsea:latest
 
 .DEFAULT_GOAL := help
 .PHONY: help check test-smoke test-integration docker-build test-docker clean-integration lint format
