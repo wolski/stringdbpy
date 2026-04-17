@@ -1,3 +1,4 @@
+import zipfile
 from pathlib import Path
 from typing import Literal
 
@@ -12,6 +13,11 @@ from string_gsea.ranks_from_dea_xlsx import DiffXLSX
 from string_gsea.species_detection import get_species_taxon
 from string_gsea.string_gsea_builder import StringGSEABuilder
 from string_gsea.string_gsea_results import StringGSEAResults
+
+def _zip_has_xlsx(zip_path: Path) -> bool:
+    with zipfile.ZipFile(zip_path) as z:
+        return any(f.endswith(".xlsx") and "DE_" in f for f in z.namelist())
+
 
 app = App()
 
@@ -47,12 +53,14 @@ def string_gsea_run(
     if not zip_path.exists():
         raise FileNotFoundError(f"Zip file not found: {zip_path}")
 
-    # 2) Read rank data
+    # 2) Read rank data — prefer XLSX when present, fall back to RNK files
+    if which is not None and not _zip_has_xlsx(zip_path):
+        logger.info("No XLSX found in zip; falling back to RNK files.")
+        which = None
     if which is None:
         rank_lists = get_rank_files(zip_path)
     else:
-        df_xlsx = DiffXLSX(zip_path)
-        rank_lists = df_xlsx.rank_dict(which=which)
+        rank_lists = DiffXLSX(zip_path).rank_dict(which=which)
 
     # 3) Detect species
     species = get_species_taxon(zip_path, rank_lists, api_base_url=config.api_base_url)
