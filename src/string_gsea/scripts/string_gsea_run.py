@@ -14,6 +14,7 @@ from string_gsea.species_detection import get_species_taxon
 from string_gsea.string_gsea_builder import StringGSEABuilder
 from string_gsea.string_gsea_results import StringGSEAResults
 
+
 def _zip_has_xlsx(zip_path: Path) -> bool:
     with zipfile.ZipFile(zip_path) as z:
         return any(f.endswith(".xlsx") and "DE_" in f for f in z.namelist())
