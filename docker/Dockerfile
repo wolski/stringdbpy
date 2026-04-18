@@ -41,16 +41,14 @@ RUN uv python install 3.13 \
     && chmod -R a+rX /opt/python /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# ── stringGSEAplot R package — install from the uv git checkout so both
-#    packages use exactly the same source tree (no second GitHub clone).
-#    Skip vignette compilation (fragile in CI); copy QMD sources manually.  ──
-RUN R_PKG_SRC=$(find /root/.cache/uv -name 'DESCRIPTION' -path '*/stringGSEAplot/*' | head -1 | xargs dirname) \
-    && echo "Installing stringGSEAplot from: $R_PKG_SRC" \
-    && R -e "remotes::install_local('${R_PKG_SRC}', build_vignettes=FALSE, repos=BiocManager::repositories(), force=TRUE)" \
-    && R_PKG_INST=$(Rscript -e "cat(find.package('stringGSEAplot'))") \
-    && mkdir -p "${R_PKG_INST}/doc" \
-    && cp "${R_PKG_SRC}/vignettes/GSEA_report.qmd" "${R_PKG_INST}/doc/" \
-    && echo "Installed to: $R_PKG_INST"
+# ── stringGSEAplot R package — install from local source in build context.
+#    Skip vignette compilation (fragile); copy QMD sources manually into doc/.  ──
+COPY stringGSEAplot /tmp/stringGSEAplot
+RUN R -e "remotes::install_local('/tmp/stringGSEAplot', build_vignettes=FALSE, repos=BiocManager::repositories(), force=TRUE)" \
+    && inst=$(Rscript -e "cat(find.package('stringGSEAplot'))") \
+    && mkdir -p "$inst/doc" \
+    && cp /tmp/stringGSEAplot/vignettes/GSEA_report.qmd "$inst/doc/" \
+    && rm -rf /tmp/stringGSEAplot
 
 WORKDIR /work
 ENTRYPOINT ["string_gsea_workflow"]
