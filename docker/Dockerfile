@@ -29,8 +29,9 @@ ENV R_LIBS_USER=/usr/local/lib/R/site-library
 RUN echo 'options(repos = c(CRAN = "https://cloud.r-project.org"))' >> /usr/local/lib/R/etc/Rprofile.site
 
 RUN R -e "install.packages('BiocManager')" \
-    && R -e "BiocManager::install(c('DOSE', 'enrichplot'), ask=FALSE, update=TRUE)" \
-    && R -e "install.packages(c('ggplot2','ggupset','patchwork','DT','jsonlite','knitr','rmarkdown','quarto','remotes'))"
+    && R -e "install.packages(c('Rcpp','yulab.utils','ggplot2','ggupset','patchwork','DT','jsonlite','knitr','rmarkdown','quarto','remotes'))" \
+    && R -e "BiocManager::install(c('AnnotationDbi','GO.db','GOSemSim','DOSE','enrichplot'), ask=FALSE, update=FALSE)" \
+    && Rscript -e "stopifnot(requireNamespace('DOSE'), requireNamespace('enrichplot'))"
 
 # ── Python: uv + string-gsea from GitHub (includes snakemake) ────────
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
