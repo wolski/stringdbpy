@@ -1,7 +1,8 @@
-DOCKER_IMAGE := ghcr.io/wolski/string-gsea:latest
+DOCKER_IMAGE_LOCAL := string-gsea:local
+DOCKER_IMAGE_REMOTE := ghcr.io/wolski/string-gsea:latest
 
 .DEFAULT_GOAL := help
-.PHONY: help check test-smoke test-integration docker-build test-docker clean-integration lint format
+.PHONY: help check test-smoke test-integration docker-build docker-build-local test-docker clean-integration lint format
 
 help:                          ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -23,8 +24,11 @@ test-smoke:                    ## Quick workflow test (yeast RNK, single contras
 test-integration:              ## Run full workflow on all CI datasets (requires STRING-DB + Quarto + R)
 	uv run pytest -m integration tests -v -s
 
-docker-build:                  ## Build the Docker image locally
-	docker buildx build -f docker/Dockerfile -t $(DOCKER_IMAGE) --load .
+docker-build-local:            ## Build Docker image locally as string-gsea:local (native arch)
+	docker buildx build -f docker/Dockerfile -t $(DOCKER_IMAGE_LOCAL) --load .
+
+docker-build:                  ## Build Docker image as ghcr.io tag (CI only — requires docker login ghcr.io)
+	docker buildx build -f docker/Dockerfile -t $(DOCKER_IMAGE_REMOTE) --load .
 
 test-docker:                   ## Run mouse_xlsx workflow in Docker (requires built image)
 	rm -rf tests/data/outputs/mouse_xlsx_docker
