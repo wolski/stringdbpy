@@ -44,7 +44,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # ── stringGSEAplot R package — install from local source in build context.
 #    Skip vignette compilation (fragile); copy QMD sources manually into doc/.  ──
 COPY stringGSEAplot /tmp/stringGSEAplot
-RUN R -e "remotes::install_local('/tmp/stringGSEAplot', build_vignettes=FALSE, repos=BiocManager::repositories(), force=TRUE)" \
+RUN R -e "remotes::install_local('/tmp/stringGSEAplot', build_vignettes=FALSE, dependencies=FALSE, force=TRUE)" \
     && inst=$(Rscript -e "cat(find.package('stringGSEAplot'))") \
     && mkdir -p "$inst/doc" \
     && cp /tmp/stringGSEAplot/vignettes/GSEA_report.qmd "$inst/doc/" \
