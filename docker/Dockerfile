@@ -32,9 +32,6 @@ RUN R -e "install.packages('BiocManager')" \
     && R -e "BiocManager::install(c('DOSE', 'enrichplot'), ask=FALSE, update=TRUE)" \
     && R -e "install.packages(c('ggplot2','ggupset','patchwork','DT','jsonlite','knitr','rmarkdown','quarto','remotes'))"
 
-# ── stringGSEAplot R package (from GitHub, build_vignettes so doc/ has QMD sources) ──
-RUN R -e "remotes::install_github('wolski/stringdbpy', subdir='stringGSEAplot', build_vignettes=TRUE, repos=BiocManager::repositories())"
-
 # ── Python: uv + string-gsea from GitHub (includes snakemake) ────────
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
@@ -43,6 +40,13 @@ RUN uv python install 3.13 \
     && uv pip install --python /opt/venv "string-gsea @ git+https://github.com/wolski/stringdbpy.git" \
     && chmod -R a+rX /opt/python /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+
+# ── stringGSEAplot R package — install from the uv git checkout so both
+#    packages use exactly the same source tree (no second GitHub clone) ──
+RUN R_PKG=$(find /root/.cache/uv -name 'DESCRIPTION' -path '*/stringGSEAplot/*' | head -1 | xargs dirname) \
+    && echo "Installing stringGSEAplot from: $R_PKG" \
+    && R -e "remotes::install_local('${R_PKG}', build_vignettes=TRUE, repos=BiocManager::repositories(), force=TRUE)" \
+    && Rscript -e "stopifnot(nzchar(system.file('doc', package='stringGSEAplot')))"
 
 WORKDIR /work
 ENTRYPOINT ["string_gsea_workflow"]
