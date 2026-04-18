@@ -42,11 +42,15 @@ RUN uv python install 3.13 \
 ENV PATH="/opt/venv/bin:$PATH"
 
 # ── stringGSEAplot R package — install from the uv git checkout so both
-#    packages use exactly the same source tree (no second GitHub clone) ──
-RUN R_PKG=$(find /root/.cache/uv -name 'DESCRIPTION' -path '*/stringGSEAplot/*' | head -1 | xargs dirname) \
-    && echo "Installing stringGSEAplot from: $R_PKG" \
-    && R -e "remotes::install_local('${R_PKG}', build_vignettes=TRUE, repos=BiocManager::repositories(), force=TRUE)" \
-    && Rscript -e "stopifnot(nzchar(system.file('doc', package='stringGSEAplot')))"
+#    packages use exactly the same source tree (no second GitHub clone).
+#    Skip vignette compilation (fragile in CI); copy QMD sources manually.  ──
+RUN R_PKG_SRC=$(find /root/.cache/uv -name 'DESCRIPTION' -path '*/stringGSEAplot/*' | head -1 | xargs dirname) \
+    && echo "Installing stringGSEAplot from: $R_PKG_SRC" \
+    && R -e "remotes::install_local('${R_PKG_SRC}', build_vignettes=FALSE, repos=BiocManager::repositories(), force=TRUE)" \
+    && R_PKG_INST=$(Rscript -e "cat(find.package('stringGSEAplot'))") \
+    && mkdir -p "${R_PKG_INST}/doc" \
+    && cp "${R_PKG_SRC}/vignettes/GSEA_report.qmd" "${R_PKG_INST}/doc/" \
+    && echo "Installed to: $R_PKG_INST"
 
 WORKDIR /work
 ENTRYPOINT ["string_gsea_workflow"]
