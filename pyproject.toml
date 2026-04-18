@@ -45,6 +45,7 @@ test = [
 "string_ora_run" = "string_gsea.scripts.string_ora_run:app"
 "string_gsea_workflow" = "string_gsea.scripts.run_workflow:app"
 "_string_gsea_render" = "string_gsea.workflow.helpers:render_report_cli"
+"_string_gsea_render_only" = "string_gsea.workflow.helpers:render_only_cli"
 "_string_gsea_package" = "string_gsea.workflow.helpers:package_results_cli"
 
 

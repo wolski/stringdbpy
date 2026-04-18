@@ -17,6 +17,9 @@
 # Run pipeline on a single dataset:
 #   ./docker/string_gsea_docker.sh data/input.zip WU123 results --cores 4
 #
+# Re-render reports only (skip STRING submission, reuse existing results):
+#   ./docker/string_gsea_docker.sh render results WU123
+#
 # RNK input (no XLSX):
 #   ./docker/string_gsea_docker.sh data/input.zip WU123 results --which none --cores 2
 #
@@ -126,6 +129,25 @@ run() {
         mkdir -p "$config_dir"
     else
         config_mount_opts="${config_mount_opts},readonly"
+    fi
+
+    # render subcommand: re-render reports only, skipping STRING submission
+    # Usage: render <out_dir> <workunit_id>
+    if [[ "${container_args[0]:-}" == "render" ]]; then
+        local out_dir="${container_args[1]}"
+        local workunit_id="${container_args[2]}"
+        $DOCKER run \
+            --init \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/work \
+            --rm $docker_args \
+            --mount "type=bind,source=$(pwd),target=/work" \
+            --mount "$config_mount_opts" \
+            -w /work \
+            --entrypoint _string_gsea_render_only \
+            "$image" \
+            "$out_dir" "$workunit_id"
+        return
     fi
 
     # Mount cwd as /work (read-write), run as current user

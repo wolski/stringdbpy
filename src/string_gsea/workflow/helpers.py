@@ -127,6 +127,22 @@ def render_report_cli() -> None:
     render_report(*args)
 
 
+def render_only_cli() -> None:
+    """CLI entry point: re-render reports for an existing result dir without re-running STRING.
+
+    Usage: _string_gsea_render_only <dataset_dir> <workunit_id>
+    Resolves R package paths internally — useful inside Docker.
+    """
+    args = sys.argv[1:]
+    if len(args) != 2:
+        print("Usage: _string_gsea_render_only <dataset_dir> <workunit_id>")
+        sys.exit(1)
+    dataset_dir, workunit_id = args
+    templates_dir, vignettes_dir = resolve_template_dirs()
+    done_file = str(Path(dataset_dir) / f"WU_{workunit_id}_GSEA" / "render_done.txt")
+    render_report(dataset_dir, workunit_id, str(vignettes_dir), str(templates_dir), done_file)
+
+
 def package_results_cli() -> None:
     """CLI entry point: package_results output_base workunit_id outputs_yml_path."""
     args = sys.argv[1:]
