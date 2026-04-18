@@ -46,12 +46,16 @@ save_plot <- function(plot_obj, width = 10, height = 8, res = 150) {
     fpath
   }, error = function(e) {
     tryCatch(grDevices::dev.off(), error = function(e2) NULL)
+    message("save_plot failed [", fname, "]: ", conditionMessage(e))
     NULL
   })
 }
 
 # Shortcut — single place to control default plot size
 sp <- function(plot_obj) save_plot(plot_obj, width = 10, height = 8, res = 150)
+
+# Try a plot expression, log any error and return NULL
+try_plot <- function(label, expr) tryCatch(expr, error = function(e) { message(label, " failed: ", conditionMessage(e)); NULL })
 
 # Number of significant terms in an enrichResult
 n_terms <- function(er) nrow(er@result[er@result$p.adjust < 0.05, ])
@@ -169,11 +173,8 @@ for (cn in contrast_names) {
     n_show <- min(params$show_category, nt)
 
     # --- Dotplot ---------------------------------------------------------
-    p <- tryCatch(
-      enrichplot::dotplot(er_td, showCategory = n_show) +
-        ggplot2::ggtitle(paste(cat_name, "-", cn)),
-      error = function(e) NULL
-    )
+    p <- try_plot("dotplot", enrichplot::dotplot(er_td, showCategory = n_show) +
+        ggplot2::ggtitle(paste(cat_name, "-", cn)))
     if (!is.null(p)) {
       fpath <- sp(p)
       if (!is.null(fpath)) {
@@ -183,11 +184,8 @@ for (cn in contrast_names) {
     }
 
     # --- Barplot ---------------------------------------------------------
-    p <- tryCatch(
-      barplot(er_td, showCategory = n_show) +
-        ggplot2::ggtitle(paste(cat_name, "-", cn)),
-      error = function(e) NULL
-    )
+    p <- try_plot("barplot", barplot(er_td, showCategory = n_show) +
+        ggplot2::ggtitle(paste(cat_name, "-", cn)))
     if (!is.null(p)) {
       fpath <- sp(p)
       if (!is.null(fpath)) {
@@ -199,11 +197,8 @@ for (cn in contrast_names) {
     # --- Cnetplot --------------------------------------------------------
     if (nt >= 2) {
       n_cnet <- min(10, nt)
-      p <- tryCatch(
-        enrichplot::cnetplot(er_td, showCategory = n_cnet,
-          cex.params = list(category_label = 0.7, gene_label = 0.5)),
-        error = function(e) NULL
-      )
+      p <- try_plot("cnetplot", enrichplot::cnetplot(er_td, showCategory = n_cnet,
+          cex.params = list(category_label = 0.7, gene_label = 0.5)))
       if (!is.null(p)) {
         fpath <- sp(p)
         if (!is.null(fpath)) {
@@ -216,10 +211,7 @@ for (cn in contrast_names) {
     # --- Heatplot --------------------------------------------------------
     if (nt >= 2) {
       n_heat <- min(15, nt)
-      p <- tryCatch(
-        enrichplot::heatplot(er_td, showCategory = n_heat),
-        error = function(e) NULL
-      )
+      p <- try_plot("heatplot", enrichplot::heatplot(er_td, showCategory = n_heat))
       if (!is.null(p)) {
         fpath <- sp(p)
         if (!is.null(fpath)) {
@@ -232,10 +224,10 @@ for (cn in contrast_names) {
     # --- Enrichment Map --------------------------------------------------
     if (nt >= 3) {
       n_emap <- min(30, nt)
-      p <- tryCatch({
+      p <- try_plot("emapplot", {
         er_sim <- enrichplot::pairwise_termsim(er_td)
         enrichplot::emapplot(er_sim, showCategory = n_emap)
-      }, error = function(e) NULL)
+      })
       if (!is.null(p)) {
         fpath <- sp(p)
         if (!is.null(fpath)) {
@@ -248,10 +240,10 @@ for (cn in contrast_names) {
     # --- Treeplot --------------------------------------------------------
     if (nt >= 3) {
       n_tree <- min(30, nt)
-      p <- tryCatch({
+      p <- try_plot("treeplot", {
         er_sim <- enrichplot::pairwise_termsim(er_td)
         enrichplot::treeplot(er_sim, showCategory = n_tree)
-      }, error = function(e) NULL)
+      })
       if (!is.null(p)) {
         fpath <- sp(p)
         if (!is.null(fpath)) {
@@ -264,10 +256,7 @@ for (cn in contrast_names) {
     # --- UpSet Plot ------------------------------------------------------
     if (nt >= 2) {
       n_upset <- min(10, nt)
-      p <- tryCatch(
-        enrichplot::upsetplot(er_td, n = n_upset),
-        error = function(e) NULL
-      )
+      p <- try_plot("upsetplot", enrichplot::upsetplot(er_td, n = n_upset))
       if (!is.null(p)) {
         fpath <- sp(p)
         if (!is.null(fpath)) {
@@ -303,11 +292,11 @@ cat("::: {.panel-tabset}\n\n")
 plots <- list()
 for (cat_name in shared_categories) {
   cat_list <- lapply(results, function(x) td(x[[cat_name]]))
-  p <- tryCatch({
+  p <- try_plot("cross dotplot", {
     ccr <- build_compareClusterResult(cat_list)
     enrichplot::dotplot(ccr, showCategory = 10) +
       ggplot2::ggtitle(paste(cat_name, "- across contrasts"))
-  }, error = function(e) NULL)
+  })
   if (!is.null(p)) plots[[cat_name]] <- p
 }
 if (length(plots) > 0) {
@@ -327,10 +316,10 @@ if (length(plots) > 0) {
 plots <- list()
 for (cat_name in shared_categories) {
   cat_list <- lapply(results, function(x) td(x[[cat_name]]))
-  p <- tryCatch({
+  p <- try_plot("cross cnetplot", {
     ccr <- build_compareClusterResult(cat_list)
     enrichplot::cnetplot(ccr, showCategory = 5)
-  }, error = function(e) NULL)
+  })
   if (!is.null(p)) plots[[cat_name]] <- p
 }
 if (length(plots) > 0) {
@@ -350,11 +339,11 @@ if (length(plots) > 0) {
 plots <- list()
 for (cat_name in shared_categories) {
   cat_list <- lapply(results, function(x) td(x[[cat_name]]))
-  p <- tryCatch({
+  p <- try_plot("cross emapplot", {
     ccr <- build_compareClusterResult(cat_list)
     ccr_sim <- enrichplot::pairwise_termsim(ccr)
     enrichplot::emapplot(ccr_sim, showCategory = 20)
-  }, error = function(e) NULL)
+  })
   if (!is.null(p)) plots[[cat_name]] <- p
 }
 if (length(plots) > 0) {
