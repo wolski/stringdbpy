@@ -2,8 +2,10 @@
 
 export(build_compareClusterResult)
 export(build_enrichResult)
+export(build_gseaResult)
 export(read_gsea_json)
 importClassesFrom(DOSE,compareClusterResult)
 importClassesFrom(DOSE,enrichResult)
+importClassesFrom(DOSE,gseaResult)
 importFrom(methods,new)
 importFrom(methods,slot)
