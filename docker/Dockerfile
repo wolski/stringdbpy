@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcurl4-openssl-dev libxml2-dev libssl-dev \
     libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
     libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
-    cmake wget curl git && rm -rf /var/lib/apt/lists/*
+    libglpk-dev cmake wget curl git && rm -rf /var/lib/apt/lists/*
 
 # ── Quarto ───────────────────────────────────────────────────────────
 ARG QUARTO_VERSION=1.9.36
