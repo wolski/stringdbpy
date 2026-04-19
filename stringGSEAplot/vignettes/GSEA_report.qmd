@@ -266,6 +266,24 @@ for (cn in contrast_names) {
       }
     }
 
+    # --- Ridgeplot -------------------------------------------------------
+    if (nt >= 2) {
+      n_ridge <- min(params$show_category, nt)
+      p <- try_plot("ridgeplot", {
+        raw <- attr(results, "raw_data")[[cn]]
+        gr  <- build_gseaResult(raw$cats[[cat_name]], raw$gene_pool, raw$rank_list)
+        enrichplot::ridgeplot(gr, showCategory = n_ridge) +
+          ggplot2::ggtitle(paste(cat_name, "-", cn))
+      })
+      if (!is.null(p)) {
+        fpath <- sp(p)
+        if (!is.null(fpath)) {
+          cat("### Ridgeplot\n\n")
+          cat(sprintf("![Ridgeplot: distribution of gene ranking scores for genes in each enriched %s term. Color = adjusted p-value.](%s){width=700px}\n\n", cat_name, fpath))
+        }
+      }
+    }
+
     cat(":::\n\n")
   }
 

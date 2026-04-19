@@ -34,12 +34,13 @@ read_gsea_json <- function(json_path) {
   rank_lists <- json_data[["rank_lists"]]
 
   result_list <- list()
+  raw_data    <- list()
 
   for (contrast_name in names(contrasts_data)) {
-    contrast <- contrasts_data[[contrast_name]]
+    contrast  <- contrasts_data[[contrast_name]]
     gene_pool <- contrast[["gene_pool"]]
     rank_list <- rank_lists[[contrast_name]]
-    cats <- contrast[["categories"]]
+    cats      <- contrast[["categories"]]
 
     contrast_results <- list()
     for (cat_name in names(cats)) {
@@ -48,10 +49,14 @@ read_gsea_json <- function(json_path) {
       contrast_results[[cat_name]] <- build_enrichResult(cat_data, gene_pool, rank_list)
     }
     result_list[[contrast_name]] <- contrast_results
+    raw_data[[contrast_name]]    <- list(gene_pool = gene_pool,
+                                         rank_list = rank_list,
+                                         cats      = cats)
   }
 
   attr(result_list, "metadata") <- json_data[["metadata"]]
-  attr(result_list, "links") <- json_data[["links"]]
+  attr(result_list, "links")    <- json_data[["links"]]
+  attr(result_list, "raw_data") <- raw_data
 
   result_list
 }
