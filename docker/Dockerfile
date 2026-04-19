@@ -25,15 +25,19 @@ RUN wget -q "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUART
 # ── R / Bioconductor packages ───────────────────────────────────────
 ENV R_LIBS_USER=/usr/local/lib/R/site-library
 
-# Install pak (binary package manager)
-RUN R -e "install.packages('pak', repos='https://r-lib.github.io/p/pak/stable/')"
-
-# CRAN packages via pak (uses PPM binaries where available)
-RUN R -e "pak::pkg_install(c('Rcpp','yulab.utils','ggplot2','ggupset','patchwork','DT','jsonlite','knitr','rmarkdown','quarto','remotes','dplyr','tidyr','tibble','pillar','cli','rlang','vctrs','lifecycle','scales','reshape2','igraph','purrr','plyr','stringr'))"
-
-# Bioconductor packages via pak
-RUN R -e "pak::pkg_install(c('bioc::BiocGenerics','bioc::Biobase','bioc::S4Vectors','bioc::IRanges','bioc::AnnotationDbi','bioc::GO.db','bioc::GOSemSim','bioc::BiocParallel','bioc::fgsea','bioc::DOSE','bioc::enrichplot'))" \
-    && Rscript -e "stopifnot(requireNamespace('DOSE'), requireNamespace('enrichplot'))"
+# Use Posit Package Manager for pre-built Linux binaries (CRAN + Bioc)
+ENV PPM_CRAN="https://packagemanager.posit.co/cran/__linux__/noble/latest"
+ENV PPM_BIOC="https://packagemanager.posit.co/bioconductor/3.22"
+RUN Rscript -e "\
+    repos <- c(CRAN='${PPM_CRAN}', BioCsoft='${PPM_BIOC}', BioCann='${PPM_BIOC}'); \
+    options(repos=repos); \
+    install.packages(c('BiocManager','remotes','Rcpp','yulab.utils','ggplot2','ggupset', \
+      'patchwork','DT','jsonlite','knitr','rmarkdown','quarto','dplyr','tidyr', \
+      'tibble','pillar','cli','rlang','vctrs','lifecycle','scales','reshape2', \
+      'igraph','purrr','plyr','stringr','ggnewscale','ggrepel','ggfun','ggplotify', \
+      'ggforce','gridGraphics','cowplot','aplot')); \
+    install.packages(c('AnnotationDbi','GO.db','GOSemSim','BiocParallel','fgsea','DOSE','enrichplot')); \
+    stopifnot(requireNamespace('DOSE'), requireNamespace('enrichplot'))"
 
 # ── Python: uv + string-gsea from GitHub (includes snakemake) ────────
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
