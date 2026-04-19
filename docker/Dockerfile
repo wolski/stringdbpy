@@ -23,14 +23,12 @@ RUN wget -q "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUART
     && dpkg -i quarto-*.deb && rm quarto-*.deb
 
 # ── R / Bioconductor packages ───────────────────────────────────────
-# Override rocker's pinned CRAN snapshot with live CRAN to avoid
-# stale dependency versions (e.g. yulab.utils 0.2.0 vs >= 0.2.1 needed by GOSemSim)
 ENV R_LIBS_USER=/usr/local/lib/R/site-library
-RUN echo 'options(repos = c(CRAN = "https://cloud.r-project.org"))' >> /usr/local/lib/R/etc/Rprofile.site
 
-RUN R -e "install.packages('BiocManager')" \
-    && R -e "install.packages(c('Rcpp','yulab.utils','ggplot2','ggupset','patchwork','DT','jsonlite','knitr','rmarkdown','quarto','remotes'))" \
-    && R -e "BiocManager::install(c('AnnotationDbi','GO.db','GOSemSim','DOSE','enrichplot'), ask=FALSE, update=FALSE)" \
+# Use pak for fast binary installs (PPM) + BiocManager for Bioc packages
+RUN R -e "install.packages('pak', repos='https://r-lib.github.io/p/pak/stable/')" \
+    && R -e "pak::pkg_install(c('Rcpp','yulab.utils','ggplot2','ggupset','patchwork','DT','jsonlite','knitr','rmarkdown','quarto','remotes'))" \
+    && R -e "pak::pkg_install(c('bioc::AnnotationDbi','bioc::GO.db','bioc::GOSemSim','bioc::DOSE','bioc::enrichplot'))" \
     && Rscript -e "stopifnot(requireNamespace('DOSE'), requireNamespace('enrichplot'))"
 
 # ── Python: uv + string-gsea from GitHub (includes snakemake) ────────
