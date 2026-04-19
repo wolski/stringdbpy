@@ -24,8 +24,8 @@ test-smoke:                    ## Quick workflow test (yeast RNK, single contras
 test-integration:              ## Run full workflow on all CI datasets (requires STRING-DB + Quarto + R)
 	uv run pytest -m integration tests -v -s
 
-docker-build-local:            ## Build Docker image locally as string-gsea:local (native arch)
-	docker buildx build -f docker/Dockerfile -t $(DOCKER_IMAGE_LOCAL) --load .
+docker-build-local:            ## Build Docker image locally as string-gsea:local (amd64, matches CI)
+	docker buildx build --platform linux/amd64 -f docker/Dockerfile -t $(DOCKER_IMAGE_LOCAL) --load .
 
 docker-build:                  ## Build Docker image as ghcr.io tag (CI only — requires docker login ghcr.io)
 	docker buildx build -f docker/Dockerfile -t $(DOCKER_IMAGE_REMOTE) --load .

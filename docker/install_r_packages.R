@@ -1,3 +1,5 @@
+options(timeout = 300)
+
 # Use PPM for fast binary CRAN installs (amd64 + arm64 on Ubuntu Noble)
 ppm <- "https://packagemanager.posit.co/cran/__linux__/noble/latest"
 options(repos = c(CRAN = ppm))
