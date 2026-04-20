@@ -272,7 +272,7 @@ for (cn in contrast_names) {
       p <- try_plot("ridgeplot", {
         raw <- attr(results, "raw_data")[[cn]]
         gr  <- build_gseaResult(raw$cats[[cat_name]], raw$gene_pool, raw$rank_list)
-        enrichplot::ridgeplot(gr, showCategory = n_ridge) +
+        enrichplot::ridgeplot(gr, showCategory = as.numeric(n_ridge)) +
           ggplot2::ggtitle(paste(cat_name, "-", cn))
       })
       if (!is.null(p)) {
