@@ -44,5 +44,8 @@ render-docker:                 ## Re-render reports for existing mouse_xlsx_dock
 	./docker/string_gsea_docker.sh --image-repo string-gsea --image-version local render \
 		tests/data/outputs/mouse_xlsx_docker mouse_fasta
 
+render:                        ## Re-render reports locally (no Docker, no STRING re-run)
+	uv run _string_gsea_render_only tests/data/outputs/mouse_xlsx_docker mouse_fasta
+
 clean-integration:             ## Remove integration test outputs (forces re-run)
 	rm -rf tests/data/outputs/

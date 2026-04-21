@@ -40,8 +40,9 @@ def resolve_template_dirs() -> tuple[Path, Path]:
     if templates and vignettes:
         return templates, vignettes
 
-    # Local dev fallback
-    r_pkg_dir = Path("../stringGSEAplot")
+    # Local dev fallback: stringGSEAplot is a subdirectory of the repo root
+    repo_root = Path(__file__).resolve().parents[3]
+    r_pkg_dir = repo_root / "stringGSEAplot"
     return r_pkg_dir / "inst" / "templates", r_pkg_dir / "vignettes"
 
 
