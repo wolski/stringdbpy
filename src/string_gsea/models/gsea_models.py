@@ -310,17 +310,22 @@ class CategoryGSEA:
 
 @dataclass(frozen=True, slots=True)
 class MultiCategoryGSEA:
-    """All categories for one contrast (= what STRING returns for one submission)."""
+    """All categories for one contrast (= what STRING returns for one submission).
+
+    The ``gene_pool`` is the full ranked gene list for the contrast and is
+    shared by every child ``CategoryGSEA``. It is owned here (not derived from
+    a category) so a contrast with no enriched terms still serializes cleanly.
+    """
 
     contrast: str
+    gene_pool: GenePool
     categories: dict[str, CategoryGSEA]
 
     def to_dict(self) -> dict:
-        # Store gene_pool once per contrast (all categories share it)
-        any_cat = next(iter(self.categories.values()))
+        # gene_pool is stored once per contrast (all categories share it)
         return {
             "contrast": self.contrast,
-            "gene_pool": any_cat.gene_pool.to_dict(),
+            "gene_pool": self.gene_pool.to_dict(),
             "categories": {name: cat.to_dict() for name, cat in self.categories.items()},
         }
 
@@ -328,7 +333,7 @@ class MultiCategoryGSEA:
     def from_dict(cls, d: dict) -> MultiCategoryGSEA:
         gene_pool = GenePool.from_dict(d["gene_pool"])
         categories = {name: CategoryGSEA.from_dict(cat_d, gene_pool) for name, cat_d in d["categories"].items()}
-        return cls(contrast=d["contrast"], categories=categories)
+        return cls(contrast=d["contrast"], gene_pool=gene_pool, categories=categories)
 
 
 @dataclass(frozen=True, slots=True)
@@ -590,11 +595,13 @@ def _parse_gsea_df(
     df: pl.DataFrame,
     contrast: str,
     categories: set[str] | None = None,
-) -> dict[str, CategoryGSEA]:
-    """Core parsing logic: DataFrame → dict of CategoryGSEA.
+) -> tuple[dict[str, CategoryGSEA], GenePool]:
+    """Core parsing logic: DataFrame → (dict of CategoryGSEA, shared gene pool).
 
     Builds one shared gene pool from all rows (all categories), then
-    passes it to each category.
+    passes it to each category. The gene pool is returned alongside the
+    categories so it can be owned at the contrast level — a contrast with
+    no enriched terms yields an empty category dict but a valid gene pool.
     """
     gene_pool = _build_gene_pool(df)
 
@@ -606,7 +613,7 @@ def _parse_gsea_df(
         name = cat_name[0]
         result[name] = _parse_category_group(cat_df, contrast, name, gene_pool)
 
-    return result
+    return result, gene_pool
 
 
 def parse_gsea_tsv(
@@ -614,7 +621,7 @@ def parse_gsea_tsv(
     *,
     contrast: str | None = None,
     categories: set[str] | None = None,
-) -> dict[str, CategoryGSEA]:
+) -> tuple[dict[str, CategoryGSEA], GenePool]:
     """Parse a single-contrast STRING-DB GSEA TSV into CategoryGSEA objects.
 
     Args:
@@ -623,7 +630,8 @@ def parse_gsea_tsv(
         categories: If provided, only parse these categories. None means all.
 
     Returns:
-        Dict keyed by category name.
+        A ``(categories, gene_pool)`` tuple: the categories dict keyed by
+        category name, and the shared gene pool for the contrast.
     """
     df = pl.read_csv(path, separator="\t")
     if contrast is None:
@@ -636,7 +644,7 @@ def parse_gsea_tsv_from_string(
     *,
     contrast: str,
     categories: set[str] | None = None,
-) -> dict[str, CategoryGSEA]:
+) -> tuple[dict[str, CategoryGSEA], GenePool]:
     """Parse a single-contrast STRING-DB GSEA TSV from a string.
 
     Same as ``parse_gsea_tsv`` but reads from an in-memory string
@@ -648,7 +656,8 @@ def parse_gsea_tsv_from_string(
         categories: If provided, only parse these categories. None means all.
 
     Returns:
-        Dict keyed by category name.
+        A ``(categories, gene_pool)`` tuple: the categories dict keyed by
+        category name, and the shared gene pool for the contrast.
     """
     import io
 
@@ -696,8 +705,8 @@ def parse_gsea_tsv_dir(
     rank_lists: dict[str, RankList] = {}
     for tsv_path in tsv_files:
         contrast = tsv_path.name
-        cat_dict = parse_gsea_tsv(tsv_path, contrast=contrast, categories=categories)
-        data[contrast] = MultiCategoryGSEA(contrast=contrast, categories=cat_dict)
+        cat_dict, gene_pool = parse_gsea_tsv(tsv_path, contrast=contrast, categories=categories)
+        data[contrast] = MultiCategoryGSEA(contrast=contrast, gene_pool=gene_pool, categories=cat_dict)
 
         # e.g. "Bait_NCP_pUbT12_results.tsv" → stem "Bait_NCP_pUbT12_results" → strip "_results"
         rnk_stem = tsv_path.stem.removesuffix("_results")
@@ -732,8 +741,8 @@ def parse_gsea_results(
 
     for (_analysis, contrast), tsv_text in tsv_content.items():
         contrast_key = f"{contrast}_results.tsv"
-        cat_dict = parse_gsea_tsv_from_string(tsv_text, contrast=contrast_key, categories=categories)
-        data[contrast_key] = MultiCategoryGSEA(contrast=contrast_key, categories=cat_dict)
+        cat_dict, gene_pool = parse_gsea_tsv_from_string(tsv_text, contrast=contrast_key, categories=categories)
+        data[contrast_key] = MultiCategoryGSEA(contrast=contrast_key, gene_pool=gene_pool, categories=cat_dict)
 
         if contrast in rank_lists:
             rl = rank_lists[contrast]

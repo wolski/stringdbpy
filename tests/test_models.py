@@ -5,6 +5,7 @@ from string_gsea.models.gsea_models import (
     CategoryGSEA,
     GenePool,
     GSEAResult,
+    MultiCategoryGSEA,
     RankList,
     RankListCollection,
     RunMetadata,
@@ -19,7 +20,8 @@ from string_gsea.models.gsea_models import (
 
 @pytest.fixture
 def parsed_categories(single_contrast_tsv):
-    return parse_gsea_tsv(single_contrast_tsv)
+    cats, _gene_pool = parse_gsea_tsv(single_contrast_tsv)
+    return cats
 
 
 def test_parse_returns_all_categories(parsed_categories):
@@ -29,7 +31,7 @@ def test_parse_returns_all_categories(parsed_categories):
 
 
 def test_parse_category_filter(single_contrast_tsv):
-    result = parse_gsea_tsv(single_contrast_tsv, categories={"KEGG"})
+    result, _gene_pool = parse_gsea_tsv(single_contrast_tsv, categories={"KEGG"})
     assert list(result.keys()) == ["KEGG"]
 
 
@@ -69,7 +71,7 @@ def test_contrast_from_filename(parsed_categories):
 
 
 def test_contrast_override(single_contrast_tsv):
-    result = parse_gsea_tsv(single_contrast_tsv, contrast="custom_name", categories={"KEGG"})
+    result, _gene_pool = parse_gsea_tsv(single_contrast_tsv, contrast="custom_name", categories={"KEGG"})
     assert result["KEGG"].contrast == "custom_name"
 
 
@@ -179,7 +181,7 @@ def test_mean_input_value(parsed_categories):
 def test_rank_nes(multi_contrast_tsv_dir):
     """rank_nes needs total ranked genes (from RankList), not per-category pool size."""
     rl = parse_rank_file(multi_contrast_tsv_dir / "Bait_NCP_pUbT12.rnk")
-    cats = parse_gsea_tsv(
+    cats, _gene_pool = parse_gsea_tsv(
         multi_contrast_tsv_dir / "Bait_NCP_pUbT12_results.tsv",
         categories={"GO Process"},
     )
@@ -339,6 +341,36 @@ def test_json_rank_list_round_trip(gsea_result, tmp_path):
         assert rest_rl.n_genes == orig_rl.n_genes
 
 
+def test_no_enrichment_contrast_round_trip(single_contrast_tsv, tmp_path):
+    """A contrast with no enriched terms (header-only TSV) must serialize.
+
+    Regression: STRING can return success with zero enriched terms for a
+    contrast, yielding an empty categories dict. MultiCategoryGSEA.to_dict
+    previously did ``next(iter(self.categories.values()))`` to recover the
+    shared gene_pool and raised StopIteration. The gene_pool is now owned by
+    the contrast, so an empty contrast round-trips cleanly.
+    """
+    header = single_contrast_tsv.read_text().splitlines()[0] + "\n"
+
+    cat_dict, gene_pool = parse_gsea_tsv_from_string(header, contrast="empty_results.tsv")
+    assert cat_dict == {}
+    assert gene_pool.n_genes == 0
+
+    mc = MultiCategoryGSEA(contrast="empty_results.tsv", gene_pool=gene_pool, categories=cat_dict)
+    result = GSEAResult(
+        data={"empty_results.tsv": mc},
+        rank_lists={},
+    )
+
+    json_path = tmp_path / "empty.json"
+    result.to_json(json_path)  # previously raised StopIteration here
+    restored = GSEAResult.from_json(json_path)
+
+    assert restored.contrast_names == ["empty_results.tsv"]
+    assert restored.category_names == []
+    assert restored.get_multi_category("empty_results.tsv").categories == {}
+
+
 # ---------------------------------------------------------------------------
 # RankList — new features
 # ---------------------------------------------------------------------------
@@ -436,8 +468,8 @@ def test_parse_gsea_tsv_from_string(single_contrast_tsv):
     content = single_contrast_tsv.read_text()
     contrast = single_contrast_tsv.name
 
-    from_file = parse_gsea_tsv(single_contrast_tsv, contrast=contrast)
-    from_string = parse_gsea_tsv_from_string(content, contrast=contrast)
+    from_file, _ = parse_gsea_tsv(single_contrast_tsv, contrast=contrast)
+    from_string, _ = parse_gsea_tsv_from_string(content, contrast=contrast)
 
     assert set(from_file.keys()) == set(from_string.keys())
     for cat_name in from_file:
@@ -446,7 +478,7 @@ def test_parse_gsea_tsv_from_string(single_contrast_tsv):
 
 def test_parse_gsea_tsv_from_string_category_filter(single_contrast_tsv):
     content = single_contrast_tsv.read_text()
-    result = parse_gsea_tsv_from_string(content, contrast="test", categories={"KEGG"})
+    result, _gene_pool = parse_gsea_tsv_from_string(content, contrast="test", categories={"KEGG"})
     assert list(result.keys()) == ["KEGG"]
 
 
