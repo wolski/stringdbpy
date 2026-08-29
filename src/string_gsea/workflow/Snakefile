@@ -1,7 +1,8 @@
 # Snakefile for STRING-GSEA single-dataset processing
 #
 # Usage:
-#   snakemake --config zip_path=... workunit_id=... out_dir=... [which=...] [fdr=...]
+#   snakemake --config zip_path=... workunit_id=... out_dir=... \
+#       templates_dir=... vignettes_dir=... [which=...] [fdr=...]
 #
 # Or via the CLI wrapper:
 #   string_gsea_workflow input.zip WU123 ./output --which pep_1 --fdr 0.1
@@ -10,15 +11,14 @@
 
 from pathlib import Path
 
-from string_gsea.workflow.helpers import resolve_template_dirs
-
 # Configuration from --config key=value
 ZIP_PATH = config["zip_path"]
 WORKUNIT_ID = str(config["workunit_id"])
 OUT_DIR = Path(config.get("out_dir", "."))
 WHICH = config.get("which", "pep_2_no_imputed")
 FDR = config.get("fdr", None)
-TEMPLATES_DIR, VIGNETTES_DIR = resolve_template_dirs()
+TEMPLATES_DIR = Path(config["templates_dir"])
+VIGNETTES_DIR = Path(config["vignettes_dir"])
 
 # Build the string_gsea_run CLI command
 _gsea_cmd_parts = ["string_gsea_run", ZIP_PATH, WORKUNIT_ID, str(OUT_DIR), "--which", WHICH]

@@ -124,6 +124,9 @@ curl "https://version-12-0.string-db.org/api/json/enrichment?identifiers=Brca1%0
 | `fdr` | False discovery rate (Benjamini-Hochberg corrected) |
 | `description` | Human-readable term description |
 
+The persisted `enrichment_results.json` contract is available as the packaged JSON Schema
+[`src/string_gsea/ora/enrichment_results.schema.json`](../src/string_gsea/ora/enrichment_results.schema.json).
+
 ---
 
 ## Step 3: Get Network Link (Optional)
@@ -180,7 +183,7 @@ Currently, the `/json/get_link` endpoint returns a link to the **network visuali
 
 ## Python Implementation
 
-See `src/string_gsea/scripts/string_ora_run.py` for the full implementation.
+See `src/string_gsea/ora_cli.py` for composition, `src/string_gsea/ora/application.py` for the use case, and `src/string_gsea/stringdb_adapters.py` for the requests implementation.
 
 ### Key Code Snippets
 

@@ -7,15 +7,11 @@ on:
 
 jobs:
   quality:
-    uses: ./.github/workflows/code_quality.yml
-
-  tests:
-    uses: ./.github/workflows/run_unit_tests.yml
-    secrets: inherit
+    uses: ./.github/workflows/quality.yml
 
   docker:
     name: Build and Push Docker Image
-    needs: [quality, tests]
+    needs: quality
     runs-on: ubuntu-latest
     permissions:
       contents: read

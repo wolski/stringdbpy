@@ -1,13 +1,15 @@
+# pyright: reportUnknownMemberType=false
+
+import tempfile
+from pathlib import Path
+
 import polars as pl
 import pytest
 
-from string_gsea.models.gsea_models import (
+from string_gsea.gsea.model.enrichment import (
     CategoryGSEA,
-    GenePool,
     GSEAResult,
     MultiCategoryGSEA,
-    RankList,
-    RankListCollection,
     RunMetadata,
     TermGSEA,
     parse_gsea_results,
@@ -16,32 +18,34 @@ from string_gsea.models.gsea_models import (
     parse_gsea_tsv_from_string,
     parse_rank_file,
 )
+from string_gsea.gsea.model.json_boundary import InvalidModelDocument
+from string_gsea.gsea.model.ranks import GenePool, RankList, RankListCollection
 
 
 @pytest.fixture
-def parsed_categories(single_contrast_tsv):
+def parsed_categories(single_contrast_tsv: Path) -> dict[str, CategoryGSEA]:
     cats, _gene_pool = parse_gsea_tsv(single_contrast_tsv)
     return cats
 
 
-def test_parse_returns_all_categories(parsed_categories):
-    assert len(parsed_categories) > 10
+def test_parse_returns_all_categories(parsed_categories: dict[str, CategoryGSEA]) -> None:
+    assert len(parsed_categories) == 2
     assert "KEGG" in parsed_categories
     assert "GO Process" in parsed_categories
 
 
-def test_parse_category_filter(single_contrast_tsv):
+def test_parse_category_filter(single_contrast_tsv: Path) -> None:
     result, _gene_pool = parse_gsea_tsv(single_contrast_tsv, categories={"KEGG"})
     assert list(result.keys()) == ["KEGG"]
 
 
-def test_gene_pool_shared_across_categories(parsed_categories):
+def test_gene_pool_shared_across_categories(parsed_categories: dict[str, CategoryGSEA]) -> None:
     """All categories for one contrast share the same gene pool object."""
     pools = [cat.gene_pool for cat in parsed_categories.values()]
     assert all(p is pools[0] for p in pools)
 
 
-def test_gene_hit_values(parsed_categories):
+def test_gene_hit_values(parsed_categories: dict[str, CategoryGSEA]) -> None:
     """Check a known gene from the first row (GO:0006364)."""
     cat = parsed_categories["GO Process"]
     term = next(t for t in cat.terms if t.term_id == "GO:0006364")
@@ -51,41 +55,43 @@ def test_gene_hit_values(parsed_categories):
     assert hit.label == "TSR3"
     assert hit.input_label == "Q9UJK0"
     assert pytest.approx(hit.input_value, rel=1e-3) == 1.8687
-    assert hit.rank == 2241
+    assert hit.rank == 4
 
 
-def test_term_gsea_values(parsed_categories):
+def test_term_gsea_values(parsed_categories: dict[str, CategoryGSEA]) -> None:
     cat = parsed_categories["GO Process"]
     term = next(t for t in cat.terms if t.term_id == "GO:0006364")
     assert pytest.approx(term.enrichment_score, rel=1e-4) == 2.09208
     assert term.direction == "bottom"
     assert pytest.approx(term.fdr, rel=1e-2) == 6.99e-20
-    assert term.genes_mapped == 168
-    assert term.genes_in_set == 220
-    assert len(term.gene_ids) == 168
+    assert term.genes_mapped == 2
+    assert term.genes_in_set == 4
+    assert len(term.gene_ids) == 2
 
 
-def test_contrast_from_filename(parsed_categories):
+def test_contrast_from_filename(parsed_categories: dict[str, CategoryGSEA]) -> None:
     cat = next(iter(parsed_categories.values()))
     assert cat.contrast == "Bait_NCP_pUbT12_results.tsv"
 
 
-def test_contrast_override(single_contrast_tsv):
-    result, _gene_pool = parse_gsea_tsv(single_contrast_tsv, contrast="custom_name", categories={"KEGG"})
+def test_contrast_override(single_contrast_tsv: Path) -> None:
+    result, _gene_pool = parse_gsea_tsv(
+        single_contrast_tsv, contrast="custom_name", categories={"KEGG"}
+    )
     assert result["KEGG"].contrast == "custom_name"
 
 
-def test_frozen_immutability(parsed_categories):
+def test_frozen_immutability(parsed_categories: dict[str, CategoryGSEA]) -> None:
     cat = next(iter(parsed_categories.values()))
     hit = next(iter(cat.gene_pool.values()))
     with pytest.raises(AttributeError):
-        hit.label = "changed"
+        hit.label = "changed"  # pyright: ignore[reportAttributeAccessIssue]
     term = cat.terms[0]
     with pytest.raises(AttributeError):
-        term.fdr = 0.99
+        term.fdr = 0.99  # pyright: ignore[reportAttributeAccessIssue]
 
 
-def test_invalid_pool_reference():
+def test_invalid_pool_reference() -> None:
     pool = GenePool(entries={})
     term = TermGSEA(
         term_id="GO:0000001",
@@ -114,37 +120,37 @@ def test_invalid_pool_reference():
 
 
 @pytest.fixture
-def gsea_result(multi_contrast_tsv_dir) -> GSEAResult:
+def gsea_result(multi_contrast_tsv_dir: Path) -> GSEAResult:
     return parse_gsea_tsv_dir(multi_contrast_tsv_dir)
 
 
-def test_parse_dir_returns_both_contrasts(gsea_result):
+def test_parse_dir_returns_both_contrasts(gsea_result: GSEAResult) -> None:
     assert len(gsea_result.contrast_names) == 2
     assert any("pUbT12_" in c for c in gsea_result.contrast_names)
     assert any("pUbT12T14_" in c for c in gsea_result.contrast_names)
 
 
-def test_gsea_result_category_names(gsea_result):
+def test_gsea_result_category_names(gsea_result: GSEAResult) -> None:
     cats = gsea_result.category_names
     assert "KEGG" in cats
     assert "GO Process" in cats
-    assert len(cats) > 10
+    assert len(cats) == 2
 
 
-def test_get_multi_category(gsea_result):
+def test_get_multi_category(gsea_result: GSEAResult) -> None:
     contrast = gsea_result.contrast_names[0]
     mc = gsea_result.get_multi_category(contrast)
     assert mc.contrast == contrast
     assert "KEGG" in mc.categories
 
 
-def test_get_multi_contrast(gsea_result):
+def test_get_multi_contrast(gsea_result: GSEAResult) -> None:
     mc = gsea_result.get_multi_contrast("KEGG")
     assert mc.category == "KEGG"
     assert len(mc.contrasts) == 2
 
 
-def test_get_category(gsea_result):
+def test_get_category(gsea_result: GSEAResult) -> None:
     contrast = gsea_result.contrast_names[0]
     cat = gsea_result.get_category(contrast, "KEGG")
     assert isinstance(cat, CategoryGSEA)
@@ -157,20 +163,20 @@ def test_get_category(gsea_result):
 # ---------------------------------------------------------------------------
 
 
-def test_gene_pool_n_genes(parsed_categories):
+def test_gene_pool_n_genes(parsed_categories: dict[str, CategoryGSEA]) -> None:
     """Shared gene pool has n_genes property."""
     cat = parsed_categories["GO Process"]
-    assert cat.gene_pool.n_genes > 1000
+    assert cat.gene_pool.n_genes == 3
     assert cat.gene_pool.n_genes == len(cat.gene_pool)
 
 
-def test_gene_ratio(parsed_categories):
+def test_gene_ratio(parsed_categories: dict[str, CategoryGSEA]) -> None:
     cat = parsed_categories["GO Process"]
     term = next(t for t in cat.terms if t.term_id == "GO:0006364")
-    assert pytest.approx(term.gene_ratio, rel=1e-2) == 168 / 220
+    assert pytest.approx(term.gene_ratio, rel=1e-2) == 2 / 4
 
 
-def test_mean_input_value(parsed_categories):
+def test_mean_input_value(parsed_categories: dict[str, CategoryGSEA]) -> None:
     cat = parsed_categories["GO Process"]
     term = next(t for t in cat.terms if t.term_id == "GO:0006364")
     miv = term.mean_input_value(cat.gene_pool)
@@ -178,7 +184,7 @@ def test_mean_input_value(parsed_categories):
     assert miv != 0.0
 
 
-def test_rank_nes(multi_contrast_tsv_dir):
+def test_rank_nes(multi_contrast_tsv_dir: Path) -> None:
     """rank_nes needs total ranked genes (from RankList), not per-category pool size."""
     rl = parse_rank_file(multi_contrast_tsv_dir / "Bait_NCP_pUbT12.rnk")
     cats, _gene_pool = parse_gsea_tsv(
@@ -201,22 +207,22 @@ def test_rank_nes(multi_contrast_tsv_dir):
 # ---------------------------------------------------------------------------
 
 
-def test_parse_rank_file(multi_contrast_tsv_dir):
+def test_parse_rank_file(multi_contrast_tsv_dir: Path) -> None:
     rnk_path = multi_contrast_tsv_dir / "Bait_NCP_pUbT12.rnk"
     rl = parse_rank_file(rnk_path)
     assert rl.contrast == "Bait_NCP_pUbT12"
-    assert rl.n_genes > 3000
+    assert rl.n_genes == 5
     assert "A0AV96" in rl.entries
     assert pytest.approx(rl.entries["A0AV96"], rel=1e-3) == 2.2147
 
 
-def test_gsea_result_has_rank_lists(gsea_result):
+def test_gsea_result_has_rank_lists(gsea_result: GSEAResult) -> None:
     assert len(gsea_result.rank_lists) == 2
     for contrast in gsea_result.contrast_names:
         assert contrast in gsea_result.rank_lists
 
 
-def test_mapping_efficiency(gsea_result):
+def test_mapping_efficiency(gsea_result: GSEAResult) -> None:
     for contrast in gsea_result.contrast_names:
         eff = gsea_result.mapping_efficiency(contrast)
         assert 0.5 < eff < 1.0
@@ -227,7 +233,7 @@ def test_mapping_efficiency(gsea_result):
 # ---------------------------------------------------------------------------
 
 
-def test_to_polars_long_columns(gsea_result):
+def test_to_polars_long_columns(gsea_result: GSEAResult) -> None:
     df = gsea_result.to_polars_long()
     expected_cols = {
         "contrast",
@@ -251,14 +257,16 @@ def test_to_polars_long_columns(gsea_result):
     assert set(df.columns) == expected_cols
 
 
-def test_to_polars_long_row_count(gsea_result):
+def test_to_polars_long_row_count(gsea_result: GSEAResult) -> None:
     df = gsea_result.to_polars_long()
     # Row count should equal total number of terms across all contrasts/categories
-    total_terms = sum(len(cat.terms) for mc in gsea_result.data.values() for cat in mc.categories.values())
+    total_terms = sum(
+        len(cat.terms) for mc in gsea_result.data.values() for cat in mc.categories.values()
+    )
     assert len(df) == total_terms
 
 
-def test_to_polars_long_values(gsea_result):
+def test_to_polars_long_values(gsea_result: GSEAResult) -> None:
     """Spot-check a known term's values in the long DataFrame."""
     df = gsea_result.to_polars_long()
     # Filter for a known term from the first contrast
@@ -269,8 +277,8 @@ def test_to_polars_long_values(gsea_result):
     assert row["category"][0] == "GO Process"
     assert row["direction"][0] == "bottom"
     assert row["directionNR"][0] == -1
-    assert row["genesMapped"][0] == 168
-    assert row["genesInSet"][0] == 220
+    assert row["genesMapped"][0] == 2
+    assert row["genesInSet"][0] == 4
     # Protein columns should be comma-separated strings
     assert "," in row["proteinIDs"][0]
 
@@ -280,7 +288,7 @@ def test_to_polars_long_values(gsea_result):
 # ---------------------------------------------------------------------------
 
 
-def test_json_round_trip(gsea_result, tmp_path):
+def test_json_round_trip(gsea_result: GSEAResult, tmp_path: Path) -> None:
     """Serialize to JSON and deserialize — result should be identical."""
     json_path = tmp_path / "gsea_result.json"
     gsea_result.to_json(json_path)
@@ -300,7 +308,7 @@ def test_json_round_trip(gsea_result, tmp_path):
     assert cat_restored.terms[0].gene_ids == cat_orig.terms[0].gene_ids
 
 
-def test_json_shared_gene_pool(gsea_result, tmp_path):
+def test_json_shared_gene_pool(gsea_result: GSEAResult, tmp_path: Path) -> None:
     """After round-trip, gene pool is still shared across categories."""
     json_path = tmp_path / "gsea_result.json"
     gsea_result.to_json(json_path)
@@ -312,7 +320,7 @@ def test_json_shared_gene_pool(gsea_result, tmp_path):
     assert all(p is pools[0] for p in pools)
 
 
-def test_json_gene_hit_values(gsea_result, tmp_path):
+def test_json_gene_hit_values(gsea_result: GSEAResult, tmp_path: Path) -> None:
     """Gene hit values survive round-trip."""
     json_path = tmp_path / "gsea_result.json"
     gsea_result.to_json(json_path)
@@ -328,7 +336,7 @@ def test_json_gene_hit_values(gsea_result, tmp_path):
     assert pytest.approx(hit.input_value, rel=1e-3) == 1.8687
 
 
-def test_json_rank_list_round_trip(gsea_result, tmp_path):
+def test_json_rank_list_round_trip(gsea_result: GSEAResult, tmp_path: Path) -> None:
     """Rank lists survive round-trip."""
     json_path = tmp_path / "gsea_result.json"
     gsea_result.to_json(json_path)
@@ -341,7 +349,7 @@ def test_json_rank_list_round_trip(gsea_result, tmp_path):
         assert rest_rl.n_genes == orig_rl.n_genes
 
 
-def test_no_enrichment_contrast_round_trip(single_contrast_tsv, tmp_path):
+def test_no_enrichment_contrast_round_trip(single_contrast_tsv: Path, tmp_path: Path) -> None:
     """A contrast with no enriched terms (header-only TSV) must serialize.
 
     Regression: STRING can return success with zero enriched terms for a
@@ -376,7 +384,7 @@ def test_no_enrichment_contrast_round_trip(single_contrast_tsv, tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_rank_list_to_rnk_string():
+def test_rank_list_to_rnk_string() -> None:
     rl = RankList(contrast="c", entries={"GENE1": 1.5, "GENE2": -0.3})
     text = rl.to_rnk_string()
     lines = text.strip().split("\n")
@@ -385,7 +393,7 @@ def test_rank_list_to_rnk_string():
     assert lines[1] == "GENE2\t-0.3"
 
 
-def test_rank_list_sample_identifiers():
+def test_rank_list_sample_identifiers() -> None:
     entries = {f"G{i}": float(i) for i in range(20)}
     rl = RankList(contrast="c", entries=entries)
     sampled = rl.sample_identifiers(5)
@@ -393,24 +401,29 @@ def test_rank_list_sample_identifiers():
     assert all(s in entries for s in sampled)
 
 
-def test_rank_list_sample_identifiers_fewer_than_nr():
+def test_rank_list_sample_identifiers_fewer_than_nr() -> None:
     rl = RankList(contrast="c", entries={"G1": 1.0, "G2": 2.0})
     sampled = rl.sample_identifiers(10)
     assert len(sampled) == 2
 
 
-def test_rank_list_from_polars():
+def test_rank_list_from_polars() -> None:
     df = pl.DataFrame({"id": ["GENE1", "GENE2"], "statistic": [1.5, -0.3]})
     rl = RankList.from_polars(df, contrast="test")
     assert rl.contrast == "test"
     assert rl.entries == {"GENE1": 1.5, "GENE2": -0.3}
 
 
-def test_rank_list_json_round_trip():
+def test_rank_list_json_round_trip() -> None:
     rl = RankList(contrast="c", entries={"G1": 1.0})
     d = rl.to_dict()
     restored = RankList.from_dict(d)
     assert restored == rl
+
+
+def test_rank_list_rejects_unvalidated_json_shape() -> None:
+    with pytest.raises(InvalidModelDocument, match=r"entries\.G1 must be numeric"):
+        RankList.from_dict({"contrast": "c", "entries": {"G1": "high"}})
 
 
 # ---------------------------------------------------------------------------
@@ -418,7 +431,7 @@ def test_rank_list_json_round_trip():
 # ---------------------------------------------------------------------------
 
 
-def test_rank_list_collection_basic():
+def test_rank_list_collection_basic() -> None:
     rl1 = RankList(contrast="A", entries={"G1": 1.0})
     rl2 = RankList(contrast="B", entries={"G2": 2.0})
     coll = RankListCollection(analysis="pep_1", rank_lists=[rl1, rl2])
@@ -428,7 +441,7 @@ def test_rank_list_collection_basic():
     assert "B" in coll
 
 
-def test_rank_list_collection_iteration():
+def test_rank_list_collection_iteration() -> None:
     rl1 = RankList(contrast="A", entries={"G1": 1.0})
     rl2 = RankList(contrast="B", entries={"G2": 2.0})
     coll = RankListCollection(analysis="pep_1", rank_lists=[rl1, rl2])
@@ -438,20 +451,20 @@ def test_rank_list_collection_iteration():
     assert rl2 in items
 
 
-def test_rank_list_collection_contrasts():
+def test_rank_list_collection_contrasts() -> None:
     rl1 = RankList(contrast="A", entries={"G1": 1.0})
     rl2 = RankList(contrast="B", entries={"G2": 2.0})
     coll = RankListCollection(analysis="pep_2", rank_lists=[rl1, rl2])
     assert coll.contrasts == ["A", "B"]
 
 
-def test_rank_list_collection_first():
+def test_rank_list_collection_first() -> None:
     rl1 = RankList(contrast="A", entries={"G1": 1.0})
     coll = RankListCollection(analysis="pep_1", rank_lists=[rl1])
     assert coll.first() is rl1
 
 
-def test_rank_list_collection_add():
+def test_rank_list_collection_add() -> None:
     coll = RankListCollection(analysis="pep_1", rank_lists=[])
     assert len(coll) == 0
     coll.add(RankList(contrast="A", entries={"G1": 1.0}))
@@ -463,7 +476,7 @@ def test_rank_list_collection_add():
 # ---------------------------------------------------------------------------
 
 
-def test_parse_gsea_tsv_from_string(single_contrast_tsv):
+def test_parse_gsea_tsv_from_string(single_contrast_tsv: Path) -> None:
     """parse_gsea_tsv_from_string should produce the same result as parse_gsea_tsv."""
     content = single_contrast_tsv.read_text()
     contrast = single_contrast_tsv.name
@@ -476,7 +489,7 @@ def test_parse_gsea_tsv_from_string(single_contrast_tsv):
         assert len(from_file[cat_name].terms) == len(from_string[cat_name].terms)
 
 
-def test_parse_gsea_tsv_from_string_category_filter(single_contrast_tsv):
+def test_parse_gsea_tsv_from_string_category_filter(single_contrast_tsv: Path) -> None:
     content = single_contrast_tsv.read_text()
     result, _gene_pool = parse_gsea_tsv_from_string(content, contrast="test", categories={"KEGG"})
     assert list(result.keys()) == ["KEGG"]
@@ -487,7 +500,7 @@ def test_parse_gsea_tsv_from_string_category_filter(single_contrast_tsv):
 # ---------------------------------------------------------------------------
 
 
-def test_parse_gsea_results(single_contrast_tsv):
+def test_parse_gsea_results(single_contrast_tsv: Path) -> None:
     """parse_gsea_results should build GSEAResult from in-memory TSV content."""
     content = single_contrast_tsv.read_text()
 
@@ -506,7 +519,7 @@ def test_parse_gsea_results(single_contrast_tsv):
     assert gsea_result.metadata is None
 
 
-def test_run_metadata_round_trip():
+def test_run_metadata_round_trip() -> None:
     """RunMetadata should survive dict serialization round-trip."""
     meta = RunMetadata(
         workunit_id="WU123",
@@ -521,27 +534,7 @@ def test_run_metadata_round_trip():
     assert restored == meta
 
 
-def test_run_metadata_from_config():
-    """RunMetadata.from_config should extract non-sensitive fields from GSEAConfig."""
-    from string_gsea.gsea_config import GSEAConfig
-
-    config = GSEAConfig(
-        api_key="secret-key-123",
-        fdr=0.05,
-        ge_enrichment_rank_direction=1,
-        caller_identity="test@example.com",
-        api_base_url="https://version-12-0.string-db.org/api",
-    )
-    meta = RunMetadata.from_config(config, workunit_id="WU456", species=10090)
-    assert meta.workunit_id == "WU456"
-    assert meta.species == 10090
-    assert meta.fdr == 0.05
-    assert meta.caller_identity == "test@example.com"
-    # api_key must NOT leak into RunMetadata
-    assert not hasattr(meta, "api_key")
-
-
-def test_gsea_result_with_metadata_round_trip(single_contrast_tsv):
+def test_gsea_result_with_metadata_round_trip(single_contrast_tsv: Path) -> None:
     """GSEAResult with metadata should survive JSON round-trip."""
     content = single_contrast_tsv.read_text()
     rank_lists = RankListCollection(
@@ -562,9 +555,6 @@ def test_gsea_result_with_metadata_round_trip(single_contrast_tsv):
     assert gsea_result.metadata == meta
 
     # JSON round-trip
-    import tempfile
-    from pathlib import Path
-
     with tempfile.TemporaryDirectory() as tmp:
         json_path = Path(tmp) / "result.json"
         gsea_result.to_json(json_path)

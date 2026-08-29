@@ -4,14 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from string_gsea.gsea_config import GSEAConfig
+from string_gsea.configuration import GSEAConfig
 
 # Base paths
 TEST_DIR = Path(__file__).parent
 DATA_DIR = TEST_DIR / "data"
 DATASETS_DIR = DATA_DIR / "datasets"
 FIXTURES_DIR = DATA_DIR / "fixtures"
-OUTPUTS_DIR = DATA_DIR / "outputs"
 
 
 # ============================================================
@@ -62,19 +61,13 @@ def dummy_session_yml() -> Path:
 @pytest.fixture
 def multi_contrast_tsv_dir() -> Path:
     """Directory with multiple contrast TSV files."""
-    d = OUTPUTS_DIR / "human_rnk_2848501" / "WU_2848501_GSEA" / "from_rnk"
-    if not d.exists():
-        pytest.skip("integration output not available (run 'make test-integration' first)")
-    return d
+    return FIXTURES_DIR / "gsea_output"
 
 
 @pytest.fixture
 def single_contrast_tsv() -> Path:
     """Single-contrast STRING-DB GSEA TSV file for model tests."""
-    f = OUTPUTS_DIR / "human_rnk_2848501" / "WU_2848501_GSEA" / "from_rnk" / "Bait_NCP_pUbT12_results.tsv"
-    if not f.exists():
-        pytest.skip("integration output not available (run 'make test-integration' first)")
-    return f
+    return FIXTURES_DIR / "gsea_output" / "Bait_NCP_pUbT12_results.tsv"
 
 
 @pytest.fixture

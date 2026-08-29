@@ -1,5 +1,4 @@
 testing_examples
-uv.lock
 .vscode
 .idea
 __pycache__/
@@ -9,6 +8,11 @@ __pycache__/
 .snakemake/
 .claude/
 .quarto/
+.coverage
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
 
 # Quarto / R render outputs
 docs/_site/

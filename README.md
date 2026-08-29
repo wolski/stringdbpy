@@ -12,6 +12,8 @@
 - [Installation](#installation)
 - [Command-Line Interface](#command-line-interface)
 - [Batch Workflow](#batch-workflow)
+- [Architecture](#architecture)
+- [Development](#development)
 - [Docker](#docker)
 - [Interactive Notebooks](#interactive-notebooks)
 - [TODO](#todo)
@@ -21,16 +23,15 @@
 
 ## Features
 
-- **Builder pattern** for clean separation between job submission and result handling via `StringGSEABuilder`
-- **YAML-backed session** to serialize/deserialize STRING-DB session using `GSEASession`
+- **Injected GSEA and ORA gateways** behind typed `RunGSEA` and `RunORA` use cases
+- **Validated YAML and JSON boundaries** that preserve the established persisted formats
 - **Automatic polling** of STRING-DB until results are ready with configurable timeouts
 - **Multiple input formats** support for both RNK files and XLSX files with differential expression data
 - **ORA analysis** with custom background gene sets via `string_ora_run`
-- **Export utilities** for rank files, result TSVs, enrichment graphs, and links via `StringGSEAResults`
-- **Excel report generation** with pivoted and merged formats via `GSEAResultProcessor`
+- **Concrete filesystem writers** for rank files, result TSVs, enrichment graphs, links, JSON, and Excel reports
 - **Quarto report generation** with interactive visualizations and parameterized templates
 - **Snakemake batch workflow** for processing multiple datasets with a single command
-- **Species detection** from input files using `get_species_taxon`
+- **Ordered species resolvers** using FASTA evidence first and injected STRING identifier lookup second
 - **Configurable parameters** for FDR thresholds, enrichment direction, and API settings
 
 ## Installation
@@ -123,6 +124,9 @@ Input files:
 - `background.txt`: One protein/gene ID per line (all tested genes)
 - `proteome.fasta`: FASTA file with OX= fields for species detection
 
+The ORA `enrichment_results.json` format is defined by the packaged
+[`enrichment_results.schema.json`](src/string_gsea/ora/enrichment_results.schema.json) JSON Schema.
+
 ### `string_gsea_workflow` -- Batch Snakemake Workflow
 
 See [Batch Workflow](#batch-workflow) below.
@@ -134,9 +138,9 @@ After running `string_gsea_run`:
 ```
 output_directory/
 ├── WU_{workunit_id}_GSEA/
-│   ├── {contrast_name}/
-│   │   ├── results.tsv
-│   │   ├── results.png
+│   ├── {analysis_name}/
+│   │   ├── {contrast_name}_results.tsv
+│   │   ├── {contrast_name}_results.png
 │   │   ├── links.txt
 │   │   └── *.rnk
 │   ├── gsea_session.yml
@@ -145,6 +149,8 @@ output_directory/
 │   └── WU_{workunit_id}_string_gsea_results_merged.xlsx
 └── WU_{workunit_id}_GSEA.zip
 ```
+
+The ZIP is created only when requested directly or by the packaging workflow.
 
 ## Batch Workflow
 
@@ -172,6 +178,31 @@ Parameters:
 - `--fdr`: FDR threshold (overrides config.toml)
 - `--cores`: Number of Snakemake cores (default: 1)
 - `--dry-run`: Show what would be done without executing
+
+## Architecture
+
+The root CLI modules are composition roots. They construct the requests adapters, rank-source strategies, species resolvers, template locators, and use cases. The feature packages `gsea`, `ora`, `taxonomy`, and `workflow` do not import one another; root modules are the only cross-feature composition points.
+
+External boundaries are explicit and typed:
+
+- `GSEAGateway`, `ORAGateway`, `SpeciesResolver`, and `ApiKeyProvider` are consumer-owned capabilities.
+- `RequestsStringDB` and `RequestsApiKeyProvider` are concrete adapters.
+- XLSX and RNK archives are handled by injected `RankSource` implementations.
+- Analysis policies compose `RankFilter` implementations instead of returning operation names.
+- Installed R-package and workspace templates are handled by ordered `TemplateLocator` implementations.
+
+See [the architecture guide](docs/architecture.md) for dependency rules and extension points.
+
+## Development
+
+Synchronize and run every merge-blocking check:
+
+```bash
+make sync
+make check
+```
+
+`make check` verifies the uv lock, Ruff formatting/lint, Import Linter contracts, strict Pyright over production and tests, deptry, deterministic pytest with at least 90% branch coverage, and isolated sdist/wheel installation. Live STRING-DB workflow tests remain separately marked through `make test-smoke` and `make test-integration`.
 
 ## Docker
 

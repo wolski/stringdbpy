@@ -3,41 +3,62 @@
 import shutil
 import subprocess
 from pathlib import Path
+from typing import cast
 
 import pytest
+
+type DatasetParameters = tuple[str, str, str]
 
 DATASETS_DIR = Path(__file__).parent / "data" / "datasets"
 OUTPUTS_DIR = Path(__file__).parent / "data" / "outputs"
 
 # (dataset_name, workunit_id, which)  — which="none" means RNK input
-INTEGRATION_DATASETS = [
+INTEGRATION_DATASETS: list[DatasetParameters] = [
     ("mouse_xlsx", "mouse_fasta", "pep_2_no_imputed"),
     ("human_rnk_2848501", "2848501", "none"),
     ("yeast_rnk", "yeast_rnk", "none"),
 ]
 
-SMOKE_DATASETS = [
+SMOKE_DATASETS: list[DatasetParameters] = [
     ("yeast_rnk", "yeast_rnk", "none"),
 ]
 
 
-@pytest.fixture(params=INTEGRATION_DATASETS, ids=lambda d: d[0])
-def dataset_params(request):
-    return request.param
+def _dataset_id(value: object) -> str:
+    if not isinstance(value, tuple) or not value or not isinstance(value[0], str):
+        raise TypeError("Dataset parameter must be a non-empty tuple beginning with a name")
+    return value[0]
 
 
-@pytest.fixture(params=SMOKE_DATASETS, ids=lambda d: d[0])
-def smoke_params(request):
-    return request.param
+def _dataset_parameters(value: object) -> DatasetParameters:
+    if not isinstance(value, tuple):
+        raise TypeError("Dataset parameter must contain three strings")
+    items = cast(tuple[object, ...], value)
+    if len(items) != 3:
+        raise TypeError("Dataset parameter must contain three strings")
+    first, second, third = items
+    if not isinstance(first, str) or not isinstance(second, str) or not isinstance(third, str):
+        raise TypeError("Dataset parameter must contain three strings")
+    return first, second, third
+
+
+@pytest.fixture(params=INTEGRATION_DATASETS, ids=_dataset_id)
+def dataset_params(request: pytest.FixtureRequest) -> DatasetParameters:
+    return _dataset_parameters(request.param)
+
+
+@pytest.fixture(params=SMOKE_DATASETS, ids=_dataset_id)
+def smoke_params(request: pytest.FixtureRequest) -> DatasetParameters:
+    return _dataset_parameters(request.param)
 
 
 @pytest.mark.smoke
-def test_workflow_smoke(smoke_params):
+def test_workflow_smoke(smoke_params: DatasetParameters) -> None:
     """Quick single-contrast RNK workflow test (yeast, ~4 MB)."""
     _run_workflow(*smoke_params)
 
 
-def _run_workflow(ds_name, workunit_id, which):
+def _run_workflow(ds_name: str, workunit_id: str, which: str) -> None:
     """Run string_gsea_workflow end-to-end and verify outputs."""
     zip_path = str(DATASETS_DIR / ds_name / "input.zip")
     out_dir = OUTPUTS_DIR / ds_name
@@ -75,6 +96,6 @@ def _run_workflow(ds_name, workunit_id, which):
 
 
 @pytest.mark.integration
-def test_workflow_end_to_end(dataset_params):
+def test_workflow_end_to_end(dataset_params: DatasetParameters) -> None:
     """Run string_gsea_workflow end-to-end: GSEA -> render -> package."""
     _run_workflow(*dataset_params)

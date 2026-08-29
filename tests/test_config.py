@@ -1,150 +1,77 @@
-import shutil
-import tempfile
+"""Tests for the typed TOML configuration boundary."""
+
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
-from string_gsea.gsea_config import get_configuration, write_initial_configuration
+from string_gsea import configuration
+from string_gsea.configuration import GSEAConfig
 
 
-@pytest.fixture
-def temp_config_dir():
-    """Create a temporary directory for testing configuration."""
-    # Create a temporary directory
-    temp_dir = tempfile.mkdtemp()
-
-    # Mock the home directory path
-    with patch("string_gsea.gsea_config.Path.home") as mock_home:
-        mock_home.return_value = Path(temp_dir)
-
-        # Mock the APPDATA environment variable for Windows tests
-        with patch.dict("os.environ", {"APPDATA": temp_dir}):
-            # Define the expected config directory and file
-            config_dir = Path(temp_dir) / ".config" / "string_gsea"
-            config_file = config_dir / "config.toml"
-
-            yield {
-                "temp_dir": temp_dir,
-                "config_dir": config_dir,
-                "config_file": config_file,
-            }
-
-    # Clean up after the test
-    shutil.rmtree(temp_dir)
+def test_configuration_round_trip(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    expected = GSEAConfig(
+        api_key="secret",
+        fdr=0.05,
+        ge_enrichment_rank_direction=1,
+        caller_identity="tests",
+        creation_date="2026-08-29",
+        api_base_url="https://string.test/api",
+    )
+    expected.write_toml(path)
+    assert GSEAConfig.read_toml(path) == expected
 
 
-@pytest.fixture
-def mock_api_response():
-    """Mock API response for STRING-DB API key request."""
-    return [
-        {
-            "api_key": "test_api_key_123",
-            "note": "This key will be activated within 30 minutes.",
-        }
-    ]
+def test_configuration_from_dict_requires_all_fields() -> None:
+    with pytest.raises(ValueError, match="missing required keys"):
+        GSEAConfig.from_dict({"api_key": "secret"})
 
 
-def test_write_initial_configuration(temp_config_dir, mock_api_response):
-    """Test writing initial configuration with API key fetching."""
-    # Mock the API response
-    with patch("requests.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.json.return_value = mock_api_response
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
-
-        # Call the function with custom parameters
-        fdr = 0.1
-        caller_identity = "test.caller.com"
-
-        config_path = write_initial_configuration(fdr=fdr, caller_identity=caller_identity)
-
-        # Check that the config directory was created
-        assert temp_config_dir["config_dir"].exists()
-
-        # Check that the config file was created
-        assert config_path.exists()
-        assert config_path == temp_config_dir["config_file"]
-
-        # Verify the API was called
-        mock_get.assert_called_once_with("https://version-12-0.string-db.org/api/json/get_api_key")
-
-        # Read the config file and verify its contents
-        with open(config_path, "rb") as f:
-            import tomli
-
-            config = tomli.load(f)
-
-        # Check that the config contains the expected values
-        assert config["api_key"] == "test_api_key_123"
-        assert config["fdr"] == fdr
-        assert config["caller_identity"] == caller_identity
-        assert config["ge_enrichment_rank_direction"] == 1
-
-
-def test_get_configuration(temp_config_dir):
-    """Test getting configuration from a file."""
-    # First, create a config file
-    temp_config_dir["config_dir"].mkdir(parents=True, exist_ok=True)
-
-    # Create a sample config file
-    sample_config = {
-        "api_key": "test_api_key_456",
-        "fdr": 0.15,
-        "ge_enrichment_rank_direction": -1,
-        "caller_identity": "test.caller.com",
+@pytest.mark.parametrize(
+    "field, value, message",
+    [
+        ("api_key", "", "api_key"),
+        ("fdr", "0.25", "fdr"),
+        ("ge_enrichment_rank_direction", True, "rank_direction"),
+        ("caller_identity", "", "caller_identity"),
+        ("creation_date", 1, "creation_date"),
+        ("api_base_url", "", "api_base_url"),
+    ],
+)
+def test_configuration_validates_boundary_types(field: str, value: object, message: str) -> None:
+    data: dict[str, object] = {
+        "api_key": "secret",
+        "fdr": 0.25,
+        "ge_enrichment_rank_direction": 1,
+        "caller_identity": "tests",
     }
-
-    with open(temp_config_dir["config_file"], "wb") as f:
-        import tomli_w
-
-        tomli_w.dump(sample_config, f)
-
-    # Get the configuration
-    config = get_configuration()
-
-    # Verify the configuration using attribute access
-    assert config.api_key == "test_api_key_456"
-    assert config.fdr == 0.15
-    assert config.ge_enrichment_rank_direction == -1
-    assert config.caller_identity == "test.caller.com"
+    data[field] = value
+    with pytest.raises(ValueError, match=message):
+        GSEAConfig.from_dict(data)
 
 
-def test_get_configuration_missing_file(temp_config_dir):
-    """Test getting configuration when the file doesn't exist."""
-    # Ensure the config file doesn't exist
-    if temp_config_dir["config_file"].exists():
-        temp_config_dir["config_file"].unlink()
-
-    # Expect a FileNotFoundError
-    with pytest.raises(FileNotFoundError):
-        get_configuration()
+def test_get_configuration_reports_missing_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    missing = tmp_path / "missing.toml"
+    monkeypatch.setattr(configuration, "_get_config_path", lambda: missing)
+    with pytest.raises(FileNotFoundError, match="write_initial_configuration"):
+        configuration.get_configuration()
 
 
-def test_get_configuration_missing_keys(temp_config_dir):
-    """Test getting configuration when required keys are missing."""
-    # Create a config file with missing keys
-    temp_config_dir["config_dir"].mkdir(parents=True, exist_ok=True)
+def test_write_initial_configuration_writes_and_respects_declined_overwrite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class ApiKeys:
+        def fetch(self) -> tuple[str, str]:
+            return "secret", "note"
 
-    # Create an incomplete config file
-    incomplete_config = {
-        "api_key": "test_api_key_789",
-        # Missing 'fdr' and 'caller_identity'
-        "ge_enrichment_rank_direction": -1,
-    }
+    path = tmp_path / "config.toml"
+    monkeypatch.setattr(configuration, "_get_config_path", lambda: path)
+    assert configuration.write_initial_configuration(ApiKeys(), "tests", 0.05) == path
+    assert GSEAConfig.read_toml(path).caller_identity == "tests"
 
-    with open(temp_config_dir["config_file"], "wb") as f:
-        import tomli_w
-
-        tomli_w.dump(incomplete_config, f)
-
-    # Expect a ValueError about missing keys
-    with pytest.raises(ValueError) as excinfo:
-        get_configuration()
-
-    # Check that the error message mentions the missing keys
-    error_msg = str(excinfo.value)
-    assert "missing required keys" in error_msg
-    assert "fdr" in error_msg
-    assert "caller_identity" in error_msg
+    path.write_text("unchanged")
+    monkeypatch.setattr("builtins.input", lambda: "n")
+    assert configuration.write_initial_configuration(ApiKeys()) == path
+    assert path.read_text() == "unchanged"

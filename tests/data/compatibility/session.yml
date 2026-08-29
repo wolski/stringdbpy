@@ -1,0 +1,19 @@
+current_date: '2026-08-29 12:00:00'
+workunit_id: W1
+species: 9606
+config_dict:
+  api_key: secret
+  fdr: 0.25
+  ge_enrichment_rank_direction: 1
+  caller_identity: tests
+  creation_date: null
+  api_base_url: https://string.test/api
+base_path: /tmp/string-gsea
+res_job_id:
+  pep_1~A: job-1
+res_data:
+  pep_1~A:
+    status: success
+    page_url: https://string.test/page
+    download_url: https://string.test/result.tsv
+    graph_url: https://string.test/graph.png

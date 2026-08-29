@@ -1,316 +1,52 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
-**STRING-GSEA** is a Python toolkit for submitting gene set enrichment analyses (GSEA) to the STRING-DB API, polling for completion, and fetching/exporting results. The project uses a builder pattern for clean separation between job submission and result handling.
-
-Key dependencies: Python 3.13+, UV package manager, Quarto (for report generation)
-
-## R Package (stringGSEAplot)
-
-The companion R package `stringGSEAplot` must be installed with `devtools::install(build_vignettes = TRUE)` so that QMD sources (e.g. `GSEA_report.qmd`) are available in `system.file("doc")`. Never suggest moving files into `inst/` of the R package — always use the vignette build approach.
+STRING-GSEA is a Python 3.13+ package and CLI for STRING-DB GSEA and ORA, species resolution, report rendering, and result packaging. The public compatibility boundary is the console commands and persisted artifacts; internal modules are intentionally architecture-driven.
 
 ## Development Commands
 
-### Installation and Setup
-
 ```bash
-# Install in editable mode (recommended for development)
-uv pip install -e .
-
-# Install with test dependencies
-uv pip install -e ".[test]"
-
-# Install with notebook dependencies (Marimo)
-uv pip install -e ".[notebooks]"
+make sync          # synchronize the frozen uv development environment
+make format        # Ruff format and safe fixes
+make format-check  # verify formatting
+make lint          # Ruff plus Import Linter contracts
+make typecheck     # strict Pyright over src and tests
+make deps          # deptry dependency validation
+make test          # deterministic tests with >=90% branch coverage
+make build         # sdist/wheel, metadata, resource, and entry-point checks
+make check         # all merge-blocking checks
 ```
 
-### Configuration
-
-```bash
-# Create configuration file at $HOME/.config/string_gsea/config.toml
-string_gsea_write_config --help
-```
-
-### Testing
-
-```bash
-# Run all tests with nox (uses uv backend)
-nox -s test
-
-# Run tests with pytest directly
-pytest --durations=50 tests
-
-# Run specific test file
-pytest tests/test_gsea_session.py
-
-# Run with additional pytest arguments via nox
-nox -s test -- -v -k "test_name"
-
-# Run tests with coverage
-nox -s test -- --cov=string_gsea --cov-report=term
-```
-
-### Linting and Formatting
-
-```bash
-# Check linting issues
-ruff check src/ tests/
-
-# Check formatting
-ruff format --check src/ tests/
-
-# Auto-fix linting issues
-ruff check --fix src/ tests/
-
-# Auto-format code
-ruff format src/ tests/
-
-# Type checking (optional, continues on error in CI)
-mypy --install-types --non-interactive src/string_gsea
-```
-
-### Running Analysis
-
-```bash
-# Run GSEA with XLSX input (default)
-string_gsea_run "path/to/data.zip" "workunit_id" "output_dir"
-
-# Run GSEA with RNK files
-string_gsea_run "path/to/data.zip" "workunit_id" "output_dir" --from-rnk
-
-# Specify analysis type for XLSX input
-string_gsea_run "path/to/data.zip" "workunit_id" "output_dir" --which "pep_1"
-```
-
-Valid analysis types: `pep_1`, `pep_1_no_imputed`, `pep_2`, `pep_2_no_imputed`
-
-### Running ORA (Over-Representation Analysis)
-
-```bash
-# Run ORA with significant genes, background, and FASTA for species detection
-string_ora_run "significant.txt" "background.txt" "proteome.fasta" --out-dir "./results" --workunit-id "ORA001"
-```
-
-Input files:
-- `significant.txt`: One protein/gene ID per line (significant genes)
-- `background.txt`: One protein/gene ID per line (all tested genes)
-- `proteome.fasta`: FASTA file with OX= fields for species detection
-
-### Report Generation
-
-Two report generation systems are available: Quarto (default) and Marimo.
-
-```bash
-# Quarto reports (requires Quarto installed)
-string_gsea_render_reports "path/to/results" "path/to/output"
-string_gsea_render_reports "path/to/results" --FDR-threshold 0.01 --genes-mapped-threshold 5
-
-# Marimo reports (static HTML, no Quarto required)
-string_gsea_render_marimo "path/to/results" "path/to/output"
-string_gsea_render_marimo "path/to/results" --fdr-threshold 0.01 --genes-mapped-threshold 5
-```
-
-### Interactive Notebooks
-
-```bash
-# Run Marimo notebooks interactively
-marimo run docs/marimo_notebooks/getting_started.py
-marimo run docs/marimo_notebooks/gsea_exploration.py
-
-# Edit notebooks
-marimo edit docs/marimo_notebooks/gsea_exploration.py
-```
-
-### Running Internal Scripts
-
-```bash
-# Run internal validation scripts using nox
-nox -s run-internal-scripts
-
-# Run specific modules
-nox -s run-internal-scripts -- string_gsea.string_gsea_builder
-```
+Network-dependent tests are separate: `make test-smoke` and `make test-integration`.
 
 ## Architecture
 
-### Core Components
+- `gsea_cli.py`, `ora_cli.py`, `workflow_cli.py`, and `config_cli.py` are composition roots.
+- `stringdb_adapters.py` contains requests-backed implementations injected into consumer-owned ports.
+- `gsea/`, `ora/`, `taxonomy/`, and `workflow/` are mutually independent. Children never import root modules.
+- GSEA and ORA application classes express use cases (`RunGSEA`, `RunORA`). They receive narrow gateway capabilities in their constructors.
+- Rank sources, rank filters, species resolvers, and template locators perform variant behavior polymorphically. Ordered registries select an implementation once.
+- `configuration.py`, `gsea/session_yaml.py`, and the JSON model parsers validate untyped external data before constructing typed records.
+- Package `__init__.py` files stay empty. Do not add forwarding modules or broad re-exports.
 
-The codebase follows a builder pattern with clear separation of concerns:
+The executable rules are in `pyproject.toml` Import Linter contracts and `tests/test_architecture.py`. See `docs/architecture.md` for the dependency map.
 
-1. **StringGSEABuilder** (`string_gsea_builder.py`)
-   - Orchestrates the entire GSEA workflow
-   - Submits rank data to STRING-DB API
-   - Polls for job completion with configurable timeouts
-   - Builds StringGSEAResults objects
-   - Entry point: `StringGSEABuilder(rank_dataframes, config, workunit_id, species, base_path)`
+## Compatibility Requirements
 
-2. **GSEASession** (`gsea_session.py`)
-   - Data class for session state management
-   - Handles YAML serialization/deserialization of session data
-   - Stores job IDs, results, and configuration
-   - Keys for res_job_id and res_data are tuples: `(outer_key, inner_key)`
-   - Methods: `to_yaml()`, `from_yaml()`
+Preserve command names and arguments, `WU_{workunit_id}_GSEA` and `ORA_{workunit_id}` layouts, GSEA result JSON, session YAML (including `outer~inner` tuple-key encoding), `outputs.yml`, and packaged taxonomy/Snakefile resources.
 
-3. **StringGSEAResults** (`string_gsea_results.py`)
-   - Handles downloading and writing of results from STRING-DB
-   - Downloads TSV files, PNG graphs, and generates links
-   - Creates output directory structure
-   - Methods: `write_links()`, `write_gsea_tsv()`, `write_gsea_graphs()`, `zip_folder()`
+The removed `StringGSEABuilder` and `StringGSEAResults` APIs are not compatibility surfaces. Do not restore them with shims; compose `RunGSEA` with a `GSEAGateway` instead.
 
-4. **GSEAResultProcessor** (`gsea_result_processor.py`)
-   - Post-processes TSV results into Excel reports
-   - Creates three Excel formats: long, pivoted, and merged
-   - Uses pyexcelerate for efficient Excel writing
-   - Static method: `result_to_xlsx(tsv_dir, workunit_id)`
+## Running Commands
 
-### Input Processing
-
-5. **DiffXLSX** (`ranks_from_dea_xlsx.py`)
-   - Extracts rank data from differential expression Excel files in ZIP archives
-   - Filters by peptide counts and imputation status
-   - Returns dict with tuple keys: `{(analysis_type, contrast): DataFrame}`
-   - Analysis types: `pep_1`, `pep_1_no_imputed`, `pep_2`, `pep_2_no_imputed`
-
-6. **GetTaxonID / OxFieldsZip** (`get_species.py`)
-   - Determines species from protein identifiers
-   - Uses STRING API to fetch NCBI Taxon IDs
-   - Contains embedded species mapping data (ZIP files in `src/string_gsea/data/mappings/`)
-   - Function: `get_species_taxon(zip_path, dataframes)` returns taxon ID (e.g., 9606 for human)
-
-### Configuration
-
-7. **GSEAConfig** (`gsea_config.py`)
-   - Data class for GSEA configuration
-   - Fields: `api_key`, `fdr`, `caller_identity`, `ge_enrichment_rank_direction`
-   - Reads from `$HOME/.config/string_gsea/config.toml`
-   - Function: `get_configuration()` loads config
-
-### Visualization and Reporting
-
-8. **Quarto Reports** (`src/string_gsea/docs/`)
-   - Template-based reporting using Quarto
-   - Profiles: `multiple` (default), `single`
-   - Templates: `VisualizeMultipleContrastsGSEA.qmd`, `VisualizeNetworks.qmd`
-   - Configuration: `_quarto.yml`
-   - Rendered via `render_reports.py` which calls `quarto render` with parameters
-
-9. **Marimo Reports** (`src/string_gsea/marimo_reports/`)
-   - Alternative report generation using Marimo
-   - Static HTML export (no WASM runtime)
-   - Reports: `report_index.py`, `report_networks.py`, `report_multiple.py`
-   - Rendered via `render_marimo_reports.py` using `marimo export html`
-
-10. **Network Visualization** (`network.py`, `TermNetworkBuilder.py`, `TermNetworkPlotter.py`)
-    - Creates network graphs from GSEA results
-    - Uses networkx for graph structure
-    - Supports Cytoscape and pyvis visualization
-
-11. **Plotting** (`gsea_plotting.py`, `dotplot_endrichment.py`)
-    - Matplotlib/seaborn visualizations
-    - Dotplots for enrichment results
-
-### ORA Module
-
-12. **ORA Analysis** (`scripts/string_ora_run.py`)
-    - Over-representation analysis with custom background
-    - Maps identifiers to STRING IDs in batches
-    - Runs enrichment via `/json/enrichment` endpoint
-    - Saves results as JSON and TSV
-    - Entry point: `string_ora_run significant.txt background.txt proteome.fasta`
-
-### Scripts (Entry Points)
-
-Located in `src/string_gsea/scripts/`:
-- `string_gsea_run.py`: Main GSEA analysis workflow (uses cyclopts for CLI)
-- `string_ora_run.py`: ORA analysis with custom background
-- `render_reports.py`: Quarto report rendering
-- `render_marimo_reports.py`: Marimo report rendering (static HTML)
-- `write_config.py`: Configuration file creation
-
-All scripts are registered in `pyproject.toml` under `[project.scripts]`
-
-## Data Flow
-
-1. **Input**: ZIP file containing either RNK files or XLSX with differential expression data
-2. **Species Detection**: Automatic taxon ID detection from identifiers
-3. **Rank Extraction**: Parse input into rank DataFrames (dict with tuple keys)
-4. **Job Submission**: Submit to STRING-DB API, receive job IDs
-5. **Polling**: Wait for completion (configurable timeout, default 3600s)
-6. **Results Download**: Fetch TSV, PNG, and links from STRING-DB
-7. **Post-Processing**: Generate Excel reports (long, pivoted, merged)
-8. **Session Serialization**: Save YAML session file for reproducibility
-9. **Report Rendering**: Optional Quarto HTML reports with visualizations
-
-## Output Structure
-
-After running `string_gsea_run`:
-```
-output_directory/
-├── WU_{workunit_id}_GSEA/
-│   ├── {contrast_name}/
-│   │   ├── {inner_key}_results.tsv
-│   │   ├── {inner_key}_results.png
-│   │   ├── links.txt
-│   │   └── *.rnk
-│   ├── gsea_session.yml
-│   ├── WU_{workunit_id}_string_gsea_results_long.xlsx
-│   ├── WU_{workunit_id}_string_gsea_results_pivoted.xlsx
-│   └── WU_{workunit_id}_string_gsea_results_merged.xlsx
-└── WU_{workunit_id}_GSEA.zip
+```bash
+string_gsea_write_config --help
+string_gsea_run --help
+string_ora_run --help
+string_gsea_workflow --help
 ```
 
-After running `render_reports`:
-```
-output_directory/rendered_reports/
-├── index.html
-├── VisualizeNetworks.html
-└── EnrichmentResults.html
-```
+Use `--which none` for RNK archives. The other supported analysis policies are `pep_1`, `pep_1_no_imputed`, `pep_2`, and `pep_2_no_imputed`.
 
-## Important Implementation Details
-
-### Nested Dictionary Keys
-Throughout the codebase, results are keyed by tuples `(outer_key, inner_key)`:
-- **outer_key**: Analysis type (e.g., "pep_1", "pep_2_no_imputed") or contrast group
-- **inner_key**: Specific contrast name
-
-When serializing to YAML, these are converted to strings with "~" separator: `"outer~inner"`
-
-### API Configuration
-STRING-DB API base: `https://version-12-0.string-db.org/api`
-
-GSEA endpoints:
-- Submit: `/json/valuesranks_enrichment_submit`
-- Status: `/json/valuesranks_enrichment_status`
-- Get IDs: `/json/get_string_ids`
-
-ORA endpoints:
-- Enrichment: `/json/enrichment` (accepts `background_string_identifiers`)
-- Get link: `/json/get_link`
-
-Required parameters: `species`, `caller_identity`, `api_key`, `ge_fdr`, `ge_enrichment_rank_direction`
-
-### Polling Behavior
-Default polling: 10-second intervals, 3600-second max timeout
-Failure statuses: `'nothing found'`, `'unknown organism'`
-Success status: `'success'`
-
-### Data Processing with Polars
-The project uses Polars DataFrames exclusively (not pandas). When adding features:
-- Use `pl.read_csv()`, `pl.read_excel()` for reading
-- Use `.write_csv()`, `.select()`, `.filter()` for transformations
-- Results include computed column: `directionNR` (1 for "top", -1 for "bottom", 0 otherwise)
-
-## Testing Notes
-
-Test data located in `tests/data/`:
-- `DE_mouse_fasta_xlsx.zip`: Mouse differential expression example
-- `2848501.zip`: Human RNK file example
-
-Tests use pytest with fixtures. When writing tests:
-- Mock external API calls to STRING-DB
-- Use temporary directories for file outputs
-- Test YAML serialization round-trips
+The companion R package `stringGSEAplot` supplies report templates. Installed-package and workspace lookup are explicit injected locators; do not add exception-based fallback.

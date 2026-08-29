@@ -1,0 +1,4 @@
+outputs:
+- local_path: <OUTPUT>/WU_W1_GSEA.zip
+  store_entry_path: WU_W1_GSEA.zip
+  type: bfabric_copy_resource

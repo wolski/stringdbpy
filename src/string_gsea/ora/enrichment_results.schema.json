@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/wolski/stringdbpy/main/src/string_gsea/ora/enrichment_results.schema.json",
+  "title": "STRING-GSEA ORA enrichment results",
+  "description": "The persisted enrichment_results.json document written for one STRING-DB ORA run.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "category",
+      "term",
+      "number_of_genes",
+      "number_of_genes_in_background",
+      "ncbiTaxonId",
+      "inputGenes",
+      "preferredNames",
+      "p_value",
+      "fdr",
+      "description"
+    ],
+    "properties": {
+      "category": {
+        "type": "string",
+        "minLength": 1
+      },
+      "term": {
+        "type": "string",
+        "minLength": 1
+      },
+      "number_of_genes": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "number_of_genes_in_background": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "ncbiTaxonId": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "inputGenes": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "preferredNames": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "p_value": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "fdr": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "description": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": true
+  }
+}
