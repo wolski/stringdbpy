@@ -6,6 +6,18 @@ from pathlib import Path
 
 from string_gsea.workflow.templates import TemplatePaths
 
+# FGCZ Quarto template assets, vendored into stringGSEAplot beside the report
+# sources by its `data-raw/sync_quarto_assets.R`. Quarto applies a file named
+# `_metadata.yml` to every `.qmd` in its directory, so staging these next to the
+# reports is what attaches the FGCZ theme, header and toolbar -- the reports
+# themselves name no format.
+FGCZ_ASSETS = (
+    "_metadata.yml",
+    "fgcz.scss",
+    "fgcz_header_quarto.html",
+    "fgcz-plot-finder.html",
+)
+
 
 def render_report(
     dataset_dir: Path,
@@ -16,10 +28,9 @@ def render_report(
     """Copy templates, render reports, clean temporary sources, and mark completion."""
     workunit = dataset_dir.resolve() / f"WU_{workunit_id}_GSEA"
     shutil.copy2(paths.vignettes / "GSEA_report.qmd", workunit / "GSEA_report.qmd")
-    for name in ("index.qmd", "_fgcz-report.yml", "fgcz_header_quarto.html"):
-        source = paths.templates / name
-        if source.exists():
-            shutil.copy2(source, workunit / name)
+    for name in FGCZ_ASSETS:
+        shutil.copy2(paths.vignettes / name, workunit / name)
+    shutil.copy2(paths.templates / "index.qmd", workunit / "index.qmd")
     subprocess.run(
         [
             "quarto",
@@ -44,13 +55,7 @@ def render_report(
         cwd=workunit,
         check=True,
     )
-    for name in (
-        "GSEA_report.qmd",
-        "index.qmd",
-        "_fgcz-report.yml",
-        "fgcz_header_quarto.html",
-        "index.rmarkdown",
-    ):
+    for name in ("GSEA_report.qmd", "index.qmd", "index.rmarkdown", *FGCZ_ASSETS):
         (workunit / name).unlink(missing_ok=True)
     for name in ("plots", "GSEA_report_files", "index_files"):
         directory = workunit / name

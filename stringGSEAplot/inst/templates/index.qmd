@@ -1,6 +1,5 @@
 ---
 title: "STRING-GSEA Results"
-metadata-files: ["_fgcz-report.yml"]
 params:
   workunit_id: "unknown"
   package_dir: "."
@@ -15,7 +14,8 @@ files <- list.files(pkg_dir, recursive = TRUE)
 # Exclude rendering artifacts, support files, and intermediate outputs
 exclude_exact <- c("index.html", "index.qmd", "index.rmarkdown",
                    "gsea_session.yml",
-                   "_fgcz-report.yml", "fgcz_header_quarto.html")
+                   "_metadata.yml", "fgcz.scss",
+                   "fgcz_header_quarto.html", "fgcz-plot-finder.html")
 exclude_ext <- c("tsv", "txt")
 files <- files[!basename(files) %in% exclude_exact]
 files <- files[!tolower(tools::file_ext(files)) %in% exclude_ext]

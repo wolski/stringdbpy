@@ -1,6 +1,8 @@
 ---
 title: "STRING-GSEA Enrichment Report"
-metadata-files: ["_fgcz-report.yml"]
+format:
+  html:
+    include-after-body: fgcz-plot-finder.html
 params:
   json_path: !expr system.file("extdata", "WU2848501_gsea_result.json.gz", package = "stringGSEAplot")
   show_category: 20
@@ -13,15 +15,6 @@ vignette: >
 ```{r setup}
 #| include: false
 library(stringGSEAplot)
-
-# Copy FGCZ report support files into the working directory
-templates_dir <- system.file("templates", package = "stringGSEAplot")
-for (f in c("_fgcz-report.yml", "fgcz_header_quarto.html")) {
-  src <- file.path(templates_dir, f)
-  if (nzchar(src) && file.exists(src) && !file.exists(f)) {
-    file.copy(src, f)
-  }
-}
 
 results <- read_gsea_json(params$json_path)
 contrast_names <- names(results)
@@ -78,7 +71,26 @@ table_cols <- c("ID", "Description", "GeneRatio", "BgRatio",
                 "pvalue", "p.adjust", "qvalue", "Count")
 ```
 
+```{r report-metadata-marker}
+#| results: asis
+# Lets the Download toolbar name its ZIP after the workunit.
+if (!is.null(run_metadata)) {
+  cat(sprintf(
+    "<div id=\"fgcz-report-metadata\" hidden data-workunit-id=\"%s\"></div>\n\n",
+    as.character(run_metadata$workunit_id)
+  ))
+}
+```
+
 ::: {.panel-tabset}
+
+# Overview
+
+<img src="`r knitr::image_uri(system.file("report-assets", "string-gsea-enrichment.svg", package = "stringGSEAplot"))`" alt="Visual abstract: one ranked gene list per contrast is scored by the STRING-DB enrichment API across annotation categories, producing enriched term tables, per-category figures, and a cross-contrast comparison." style="width: 100%; max-height: 22rem; object-fit: contain;">
+
+Each contrast contributes one pre-ranked gene list, which STRING-DB scores against its annotation categories. The tabs follow that path: one tab per contrast holds the enriched terms of each category, **Cross-Contrast** compares the categories the contrasts share.
+
+Input: ranked gene lists for `r length(contrast_names)` contrast(s), scored across `r length(all_categories)` annotation categories (`r length(shared_categories)` shared by all contrasts). Run identifiers and thresholds are recorded in **Session Info**.
 
 # Settings
 
@@ -93,23 +105,20 @@ The interactive plots below are generated with
 [enrichplot](https://bioconductor.org/packages/enrichplot/) and
 [clusterProfiler](https://bioconductor.org/packages/clusterProfiler/).
 
-```{r settings-metadata}
-#| echo: false
+```{r}
+#| label: tbl-settings
+#| tbl-cap: "Enrichment parameters: the significance threshold STRING applied, the direction the gene ranks were read in, and how many terms each figure and table shows."
 if (!is.null(run_metadata)) {
-  meta_df <- data.frame(
-    Parameter = c("Workunit ID", "Species (NCBI Taxon)", "FDR threshold",
-                   "Rank direction", "Caller identity", "STRING API"),
+  settings_df <- data.frame(
+    Parameter = c("FDR threshold", "Rank direction", "Terms shown per figure"),
     Value = c(
-      as.character(run_metadata$workunit_id),
-      as.character(run_metadata$species),
       as.character(run_metadata$fdr),
       as.character(run_metadata$ge_enrichment_rank_direction),
-      as.character(run_metadata$caller_identity),
-      as.character(run_metadata$api_base_url)
+      as.character(params$show_category)
     )
   )
   DT::datatable(
-    meta_df, caption = "Analysis parameters", filter = "none",
+    settings_df, caption = "Enrichment parameters", filter = "none",
     rownames = FALSE, class = "compact stripe",
     options = list(pageLength = 10, scrollX = TRUE, dom = "t")
   )
@@ -383,9 +392,35 @@ cat(":::\n\n")
 
 # Session Info
 
+::: {.panel-tabset}
+
+## Report provenance
+
+```{r}
+#| label: tbl-report-provenance
+#| tbl-cap: "Compact report provenance: which run produced this report, against which species and STRING service."
+provenance <- c(
+  Workunit = if (is.null(run_metadata)) "" else as.character(run_metadata$workunit_id),
+  `Species (NCBI Taxon)` = if (is.null(run_metadata)) "" else as.character(run_metadata$species),
+  `Caller identity` = if (is.null(run_metadata)) "" else as.character(run_metadata$caller_identity),
+  `STRING API` = if (is.null(run_metadata)) "" else as.character(run_metadata$api_base_url),
+  `Enrichment results` = basename(params$json_path),
+  `Report package` = paste("stringGSEAplot", utils::packageVersion("stringGSEAplot")),
+  `Report created` = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
+)
+provenance <- provenance[nzchar(provenance)]
+knitr::kable(
+  data.frame(Field = names(provenance), Value = unname(provenance)),
+  row.names = FALSE
+)
+```
+
+## R session info
+
 ```{r session-info}
-#| echo: false
 utils::sessionInfo()
 ```
+
+:::
 
 :::

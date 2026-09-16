@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := check
 
-.PHONY: check check-fast build build-vignettes document test coverage install lint format clean help site deploy render-report
+.PHONY: check check-fast build build-vignettes document test coverage install lint format clean help site deploy render-report sync-assets
 
 DOCUMENT_CMD = Rscript -e "devtools::document()"
 BUILD_CMD = Rscript -e "devtools::build()"
@@ -13,6 +13,7 @@ INSTALL_CMD = Rscript -e "devtools::install()"
 LINT_CMD = Rscript -e "lintr::lint_package()"
 SITE_CMD = Rscript -e "pkgdown::build_site()"
 DEPLOY_CMD = Rscript -e "pkgdown::deploy_to_branch()"
+SYNC_ASSETS_CMD = Rscript data-raw/sync_quarto_assets.R
 
 help:
 	@echo "stringGSEAplot development targets:"
@@ -24,6 +25,7 @@ help:
 	@echo "  make format     - format package with air"
 	@echo "  make clean      - remove build artifacts"
 	@echo "  make render-report - render GSEA_report.qmd (installs package first)"
+	@echo "  make sync-assets - refresh the vendored FGCZ Quarto template assets"
 	@echo ""
 	@echo "Advanced:"
 	@echo "  make document   - generate roxygen2 docs"
@@ -77,10 +79,12 @@ REPORT_OUT = vignettes/GSEA_report.html
 render-report: install
 	cd vignettes && quarto render GSEA_report.qmd
 
+sync-assets:
+	$(SYNC_ASSETS_CMD)
+
 clean:
 	rm -rf *.Rcheck
 	rm -f Rplots.pdf
 	rm -rf inst/doc doc Meta
 	rm -f $(REPORT_OUT)
-	rm -rf vignettes/plots vignettes/GSEA_report_files
-	rm -f vignettes/_fgcz-report.yml vignettes/fgcz_header_quarto.html
+	rm -rf vignettes/plots vignettes/GSEA_report_files vignettes/.quarto

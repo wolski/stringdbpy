@@ -9,7 +9,7 @@ import yaml
 
 from string_gsea import workflow_cli
 from string_gsea.workflow.packaging import package_results
-from string_gsea.workflow.rendering import render_report
+from string_gsea.workflow.rendering import FGCZ_ASSETS, render_report
 from string_gsea.workflow.templates import (
     OrderedTemplateLocator,
     RPackageTemplateLocator,
@@ -57,8 +57,9 @@ def test_rendering_copies_runs_and_cleans(tmp_path: Path, monkeypatch: pytest.Mo
     templates.mkdir()
     vignettes.mkdir()
     (vignettes / "GSEA_report.qmd").write_text("report")
-    for name in ("index.qmd", "_fgcz-report.yml", "fgcz_header_quarto.html"):
-        (templates / name).write_text(name)
+    for name in FGCZ_ASSETS:
+        (vignettes / name).write_text(name)
+    (templates / "index.qmd").write_text("index")
     (workunit / "plots").mkdir()
     calls: list[list[str]] = []
 
@@ -73,6 +74,8 @@ def test_rendering_copies_runs_and_cleans(tmp_path: Path, monkeypatch: pytest.Mo
     assert done.exists()
     assert not (workunit / "GSEA_report.qmd").exists()
     assert not (workunit / "plots").exists()
+    # The FGCZ template assets are staged for the render and cleaned afterwards.
+    assert not any((workunit / name).exists() for name in FGCZ_ASSETS)
 
 
 def test_package_results_preserves_manifest_and_archive_shape(tmp_path: Path) -> None:

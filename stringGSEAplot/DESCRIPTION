@@ -17,6 +17,7 @@ Imports:
 Suggests:
     DT,
     enrichplot,
+    fgczQuartoTemplate,
     ggplot2,
     ggupset,
     knitr,
@@ -25,5 +26,7 @@ Suggests:
     rmarkdown,
     rprojroot,
     testthat (>= 3.0.0)
+Remotes:
+    fgcz/fgczQuartoTemplate
 Config/testthat/edition: 3
 VignetteBuilder: knitr, quarto

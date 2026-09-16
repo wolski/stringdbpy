@@ -1,7 +1,9 @@
 ## ─────────────────────────────────────────────────────────────
 ## FGCZ Shared Report Defaults
-## Include in individual .qmd files via:
-##   metadata-files: ["_fgcz-report.yml"]
+## Quarto applies this file automatically to every .qmd in this
+## directory (and subdirectories) because it is named _metadata.yml.
+## Individual reports need NO reference to it in their front matter.
+## Keep fgcz.scss and fgcz_header_quarto.html next to it.
 ## ─────────────────────────────────────────────────────────────
 
 format:
@@ -15,8 +17,8 @@ format:
     code-fold: true
     code-tools: true
 
-    # Theme (minimal for now — SCSS branding comes later)
-    theme: cosmo
+    # Theme — flatly base + FGCZ overrides (tabset card styling for now)
+    theme: [spacelab, fgcz.scss]
 
     # Grid sizing
     grid:
@@ -27,8 +29,13 @@ format:
     # FGCZ header
     include-in-header: fgcz_header_quarto.html
 
+    # The search + download toolbar (fgcz-plot-finder.html) is opt-in, not wired
+    # in here: enable it per report via fgczQuartoTemplate::fgcz_render(buttons =
+    # TRUE) and optionally select "search" or "download" by name, or add
+    # `include-after-body: fgcz-plot-finder.html` yourself.
+
     # Figure defaults
-    fig-dpi: 300
+    fig-dpi: 96
     fig-align: left
 
 # Execution
@@ -43,7 +50,7 @@ knitr:
     fig.width: 6
     fig.height: 5
     fig.retina: 2
-    out.width: "30%"
+    out.width: "40%"
 
 # Cross-references
 crossref:
