@@ -18,9 +18,12 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
+    "anndata>=0.13.3.post0",
     "cyclopts",
     "fastexcel[pyarrow,polars]",
     "loguru",
+    "numpy>=2.5.3",
+    "pandas>=3.0.5",
     "polars",
     "pyexcelerate",
     "pyyaml",
@@ -165,6 +168,7 @@ layers = [
     "application",
     "output",
     "input | ports | result_processing | session_yaml",
+    "dea_artifact",
     "model",
 ]
 

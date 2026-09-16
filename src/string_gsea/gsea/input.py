@@ -8,11 +8,19 @@ import zipfile
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import MappingProxyType
 from typing import Protocol
 
 import polars as pl
 
+from string_gsea.gsea.dea_artifact import (
+    ESTIMATE_TYPE_COLUMN,
+    OBSERVED_ESTIMATE,
+    PEPTIDE_COUNT_COLUMN,
+    DeaArtifact,
+    read_dea_artifact,
+)
 from string_gsea.gsea.model.ranks import RankList, RankListCollection
 
 
@@ -34,11 +42,35 @@ class RankFilter(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
-class ExcludeImputed:
-    """Remove rows produced by an imputed model."""
+class ExcludeImputedModel:
+    """Remove rows whose model name marks them as imputed.
+
+    The XLSX schema names the model per row (``Imputed_Mean_moderated``), so
+    imputation is readable only from that label.
+    """
+
+    column: str = "modelName"
 
     def apply(self, dataframe: pl.DataFrame) -> pl.DataFrame:
-        return dataframe.filter(~pl.col("modelName").str.contains("(?i)imputed"))
+        return dataframe.filter(~pl.col(self.column).str.contains("(?i)imput"))
+
+
+@dataclass(frozen=True, slots=True)
+class KeepObservedEstimates:
+    """Keep only rows the model actually estimated from observed data.
+
+    The AnnData schema records estimate provenance per row
+    (``observed`` / ``lod_imputed`` / ``missing_fallback``), which is stricter
+    and more direct than reading it off a model name.
+    """
+
+    column: str = ESTIMATE_TYPE_COLUMN
+    observed: str = OBSERVED_ESTIMATE
+
+    def apply(self, dataframe: pl.DataFrame) -> pl.DataFrame:
+        if self.column not in dataframe.columns:
+            return dataframe
+        return dataframe.filter(pl.col(self.column) == self.observed)
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,9 +78,22 @@ class MinimumPeptides:
     """Retain rows supported by at least ``minimum`` peptides."""
 
     minimum: int
+    column: str = "nrPeptides"
 
     def apply(self, dataframe: pl.DataFrame) -> pl.DataFrame:
-        return dataframe.filter(pl.col("nrPeptides") >= self.minimum)
+        return dataframe.filter(pl.col(self.column) >= self.minimum)
+
+
+@dataclass(frozen=True, slots=True)
+class RankSchema:
+    """Where one input format carries the facts the policies filter on."""
+
+    imputation: RankFilter
+    peptides: str
+
+
+XLSX_SCHEMA = RankSchema(imputation=ExcludeImputedModel(), peptides="nrPeptides")
+ANNDATA_SCHEMA = RankSchema(imputation=KeepObservedEstimates(), peptides=PEPTIDE_COUNT_COLUMN)
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,18 +110,20 @@ class AnalysisPolicy:
         return result
 
 
-ANALYSIS_POLICIES = MappingProxyType(
-    {
-        AnalysisName.PEP_1: AnalysisPolicy(AnalysisName.PEP_1, ()),
-        AnalysisName.PEP_1_NO_IMPUTED: AnalysisPolicy(
-            AnalysisName.PEP_1_NO_IMPUTED, (ExcludeImputed(),)
-        ),
-        AnalysisName.PEP_2: AnalysisPolicy(AnalysisName.PEP_2, (MinimumPeptides(2),)),
-        AnalysisName.PEP_2_NO_IMPUTED: AnalysisPolicy(
-            AnalysisName.PEP_2_NO_IMPUTED,
-            (ExcludeImputed(), MinimumPeptides(2)),
-        ),
+def analysis_policy(name: AnalysisName, schema: RankSchema) -> AnalysisPolicy:
+    """Compose the named policy over the columns one input format uses."""
+    peptides = MinimumPeptides(2, column=schema.peptides)
+    filters: dict[AnalysisName, tuple[RankFilter, ...]] = {
+        AnalysisName.PEP_1: (),
+        AnalysisName.PEP_1_NO_IMPUTED: (schema.imputation,),
+        AnalysisName.PEP_2: (peptides,),
+        AnalysisName.PEP_2_NO_IMPUTED: (schema.imputation, peptides),
     }
+    return AnalysisPolicy(name, filters[name])
+
+
+ANALYSIS_POLICIES = MappingProxyType(
+    {name: analysis_policy(name, XLSX_SCHEMA) for name in AnalysisName}
 )
 
 
@@ -92,6 +139,7 @@ class RankSourceRequest:
 class ArchiveManifest:
     """Relevant archive entries inspected once before source selection."""
 
+    anndata_files: tuple[str, ...]
     xlsx_files: tuple[str, ...]
     rank_files: tuple[str, ...]
 
@@ -100,6 +148,7 @@ class ArchiveManifest:
         with zipfile.ZipFile(archive) as zipped:
             names = zipped.namelist()
         return cls(
+            anndata_files=tuple(name for name in names if name.endswith(".h5ad")),
             xlsx_files=tuple(name for name in names if name.endswith(".xlsx") and "DE_" in name),
             rank_files=tuple(name for name in names if name.endswith(".rnk")),
         )
@@ -115,6 +164,30 @@ class RankSource(Protocol):
     def load(self, request: RankSourceRequest, manifest: ArchiveManifest) -> RankListCollection:
         """Load ranked lists from the archive."""
         ...
+
+
+class AnnDataRankSource:
+    """Read the AnnData DEA artifact and rank by the column roles it records.
+
+    Preferred over the XLSX sheet because the artifact says which column is
+    the effect, the p-value and the contrast, so results from a backend with
+    its own column names (SAINTexpress) rank the same way as a linear model.
+    """
+
+    def supports(self, request: RankSourceRequest, manifest: ArchiveManifest) -> bool:
+        return bool(manifest.anndata_files)
+
+    def load(self, request: RankSourceRequest, manifest: ArchiveManifest) -> RankListCollection:
+        with zipfile.ZipFile(request.archive) as zipped, TemporaryDirectory() as workdir:
+            artifact = read_dea_artifact(Path(zipped.extract(manifest.anndata_files[0], workdir)))
+        analysis = request.analysis
+        rows = artifact.rows
+        if analysis is not None:
+            rows = analysis_policy(analysis, ANNDATA_SCHEMA).apply(rows)
+        return RankListCollection(
+            analysis=analysis.value if analysis is not None else "from_anndata",
+            rank_lists=_ranks_from_artifact(artifact, rows),
+        )
 
 
 class XlsxRankSource:
@@ -161,7 +234,11 @@ class RnkArchiveSource:
 
 def select_rank_source(
     request: RankSourceRequest,
-    sources: tuple[RankSource, ...] = (XlsxRankSource(), RnkArchiveSource()),
+    sources: tuple[RankSource, ...] = (
+        AnnDataRankSource(),
+        XlsxRankSource(),
+        RnkArchiveSource(),
+    ),
 ) -> RankListCollection:
     """Use the first injected source that supports the inspected archive."""
     manifest = ArchiveManifest.inspect(request.archive)
@@ -182,4 +259,27 @@ def _ranks_by_contrast(dataframe: pl.DataFrame) -> list[RankList]:
             pl.col(identifier).alias("id"), pl.col("statistic")
         )
         rank_lists.append(RankList.from_polars(rank_dataframe, contrast=str(contrast)))
+    return rank_lists
+
+
+def _ranks_from_artifact(artifact: DeaArtifact, rows: pl.DataFrame) -> list[RankList]:
+    """Rank one artifact's rows exactly as prolfquapp writes its `.rnk` files.
+
+    Identifiers that map to several subjects are averaged, which is what
+    `prolfquapp:::.write_GSEA()` does before writing a rank file.
+    """
+    scored = (
+        rows.select(
+            pl.col(artifact.identifier).alias("id"),
+            pl.col(artifact.roles.contrast_col).cast(pl.String).alias("contrast"),
+            artifact.roles.rank_score(),
+        )
+        .drop_nulls()
+        .filter(pl.col("score").is_finite())
+    )
+    averaged = scored.group_by("contrast", "id").agg(pl.col("score").mean())
+    rank_lists: list[RankList] = []
+    for contrast in averaged.get_column("contrast").unique().sort().to_list():
+        entries = averaged.filter(pl.col("contrast") == contrast).select("id", "score")
+        rank_lists.append(RankList.from_polars(entries, contrast=str(contrast)))
     return rank_lists
