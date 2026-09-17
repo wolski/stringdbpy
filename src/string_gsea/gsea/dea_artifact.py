@@ -40,7 +40,8 @@ ESTIMATE_TYPE_COLUMN = "estimate_type"
 OBSERVED_ESTIMATE = "observed"
 
 # Per-feature peptide count, as prolfquapp names it in the annotation frame.
-PEPTIDE_COUNT_COLUMN = "nr_peptides"
+# One name whatever reader produced the analysis: prolfquapp canonicalizes it.
+PEPTIDE_COUNT_COLUMN = "nrPeptides"
 
 _PROLFQUAPP_UNS = "prolfquapp"
 _DEA_ARTIFACT_TYPE = "dea_results"
