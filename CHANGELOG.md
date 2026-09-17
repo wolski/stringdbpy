@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- The minimum-peptides policies read `nrPeptides`, the one name prolfquapp now gives the per-feature peptide count. It used to be spelled `nr_peptides` in simulated analyses and `nrPeptides` in real ones, so `pep_2` and `pep_2_no_imputed` passed every fixture and then failed on a real B-Fabric analysis. Requires prolfquapp 2.10.4 or later.
+- A `no_imputed` policy no longer fails on a SAINTexpress analysis. SAINTexpress imputes nothing, so its contrast table carried no `estimate_type` column at all and the filter had no provenance to read; prolfquasaint now stamps every row `observed`, and the policy is the no-op it should be. Every model is asserted to support all four policies.
+
 ## 0.1.0
 
 - Make distribution smoke tests validate the artifacts built by the current version bump instead of looking for the preceding release's wheel.
@@ -7,8 +12,6 @@
 - Rank scores from that artifact reproduce the `.rnk` files prolfquapp writes for the same analysis: the recorded test statistic where the backend provides one, and the effect size where it reports no suitable score. This is asserted for every prolfqua modelling facade, SAINTexpress included.
 - The `no_imputed` policies now drop estimates the model filled in rather than measured. On the AnnData path this reads the per-row estimate provenance and fails explicitly when that provenance is absent; on the XLSX path the model-name pattern again matches current prolfquapp model names such as `lm_impute`, which it had silently stopped matching, leaving `pep_1_no_imputed` and `pep_2_no_imputed` doing nothing.
 - Selecting `--which none` now consumes the rank files already shipped in the archive instead of re-deriving an unfiltered ranking from its AnnData artifact.
-- The minimum-peptides policies read `nrPeptides`, the one name prolfquapp now gives the per-feature peptide count. It used to be spelled `nr_peptides` in simulated analyses and `nrPeptides` in real ones, so `pep_2` and `pep_2_no_imputed` passed every fixture and then failed on a real B-Fabric analysis. Requires prolfquapp 2.10.4 or later.
-- A `no_imputed` policy no longer fails on a SAINTexpress analysis. SAINTexpress imputes nothing, so its contrast table carried no `estimate_type` column at all and the filter had no provenance to read; prolfquasaint now stamps every row `observed`, and the policy is the no-op it should be. Every model is asserted to support all four policies.
 - The tabbed enrichment report and the result landing page now use the shared `fgczQuartoTemplate` look and feel — the FGCZ theme, banner and the top-right Find / Download / View-source toolbar — instead of a private copy of the report defaults. The report opens on an **Overview** tab with a visual abstract and an input summary, and closes on **Session Info** with report provenance and R session info.
 
 - Standardize local and CI quality gates on the shared uv, Ruff, Pyright, deptry, pytest, and package-build workflow; installing pre-commit now activates both the commit and push stages, with the 90% branch-coverage gate enforced before pushes.
