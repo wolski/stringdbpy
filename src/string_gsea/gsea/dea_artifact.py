@@ -138,15 +138,16 @@ class ContrastRoles:
         return self.pvalue_col is not None
 
     def rank_score(self) -> pl.Expr:
-        """The rank score, as `prolfqua::ContrastsInterface$get_rank()` defines it.
+        """The rank score, as prolfquapp's `.write_GSEA()` asks for it.
 
-        Signed `-log10(p)` for a backend that tests differences, and the effect
-        size itself for one that does not (SAINTexpress scores a probability,
-        which carries no direction).
+        The backend's test statistic, which is signed and unbounded. A backend
+        that reports no p-value scores a bounded probability instead
+        (SAINTexpress: SaintScore), which carries no direction and cannot order
+        a ranked list, so its effect size is the rank.
         """
-        if self.pvalue_col is None:
+        if self.pvalue_col is None or self.score_col is None:
             return pl.col(self.effect_col).alias("score")
-        return (pl.col(self.effect_col).sign() * -pl.col(self.pvalue_col).log10()).alias("score")
+        return pl.col(self.score_col).alias("score")
 
 
 @dataclass(frozen=True, slots=True)

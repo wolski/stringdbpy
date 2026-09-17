@@ -69,7 +69,10 @@ class KeepObservedEstimates:
 
     def apply(self, dataframe: pl.DataFrame) -> pl.DataFrame:
         if self.column not in dataframe.columns:
-            return dataframe
+            raise ValueError(
+                f"Cannot exclude imputed estimates: the artifact has no "
+                f"{self.column!r} column, so their provenance is unknown"
+            )
         return dataframe.filter(pl.col(self.column) == self.observed)
 
 
@@ -175,17 +178,20 @@ class AnnDataRankSource:
     """
 
     def supports(self, request: RankSourceRequest, manifest: ArchiveManifest) -> bool:
-        return bool(manifest.anndata_files)
+        # An analysis policy is required, as for the XLSX sheet: `--which none`
+        # asks for the rank files the archive already ships, not for a rederived
+        # and unfiltered ranking of the same contrasts.
+        return request.analysis is not None and bool(manifest.anndata_files)
 
     def load(self, request: RankSourceRequest, manifest: ArchiveManifest) -> RankListCollection:
+        analysis = request.analysis
+        if analysis is None:
+            raise ValueError("AnnData rank source requires an analysis policy")
         with zipfile.ZipFile(request.archive) as zipped, TemporaryDirectory() as workdir:
             artifact = read_dea_artifact(Path(zipped.extract(manifest.anndata_files[0], workdir)))
-        analysis = request.analysis
-        rows = artifact.rows
-        if analysis is not None:
-            rows = analysis_policy(analysis, ANNDATA_SCHEMA).apply(rows)
+        rows = analysis_policy(analysis, ANNDATA_SCHEMA).apply(artifact.rows)
         return RankListCollection(
-            analysis=analysis.value if analysis is not None else "from_anndata",
+            analysis=analysis.value,
             rank_lists=_ranks_from_artifact(artifact, rows),
         )
 

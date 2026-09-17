@@ -11,6 +11,7 @@ import math
 import re
 import zipfile
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -33,7 +34,7 @@ MODELS = [archive.stem for archive in ARCHIVES]
 RNK_NAME = re.compile(r"^(?:GSEA_|Bait_)(?P<contrast>.+?)(?:_WU.*)?$")
 
 
-def _load(archive: Path, analysis: AnalysisName | None = None) -> RankListCollection:
+def _load(archive: Path, analysis: AnalysisName = AnalysisName.PEP_1) -> RankListCollection:
     request = RankSourceRequest(archive, analysis)
     manifest = ArchiveManifest.inspect(archive)
     return AnnDataRankSource().load(request, manifest)
@@ -66,7 +67,7 @@ def test_every_facade_has_a_fixture() -> None:
 def test_anndata_source_ranks_every_model(archive: Path) -> None:
     ranks = _load(archive)
 
-    assert ranks.analysis == "from_anndata"
+    assert ranks.analysis == AnalysisName.PEP_1.value
     assert len(ranks) > 0
     for rank_list in ranks:
         assert rank_list.n_genes > 0
@@ -89,9 +90,18 @@ def test_anndata_ranks_match_the_rank_files_prolfquapp_wrote(archive: Path) -> N
 @pytest.mark.parametrize("archive", ARCHIVES, ids=MODELS)
 def test_anndata_source_wins_over_the_other_inputs(archive: Path) -> None:
     # The fixtures also carry .rnk files, so this pins the selection order.
+    ranks = select_rank_source(RankSourceRequest(archive, AnalysisName.PEP_1))
+
+    assert ranks.analysis == AnalysisName.PEP_1.value
+
+
+@pytest.mark.parametrize("archive", ARCHIVES, ids=MODELS)
+def test_no_policy_reads_the_rank_files_the_archive_ships(archive: Path) -> None:
+    # `--which none` asks for the ranks prolfquapp already wrote, not for a
+    # rederived and unfiltered ranking of the same contrasts.
     ranks = select_rank_source(RankSourceRequest(archive, None))
 
-    assert ranks.analysis == "from_anndata"
+    assert ranks.analysis == "from_rnk"
 
 
 def test_saint_ranks_on_the_effect_size_it_reports(tmp_path: Path) -> None:
@@ -107,20 +117,25 @@ def test_saint_ranks_on_the_effect_size_it_reports(tmp_path: Path) -> None:
     assert roles.pvalue_col is None
     assert not roles.tests_differences
     assert roles.directional
-    # No p-value means the effect size is the rank, not the bounded score.
-    ranks = _load(archive)
+    # SaintScore is a bounded probability and carries no direction, so the
+    # effect size is the rank -- not the score column the artifact names.
+    ranks = _load(archive, AnalysisName.PEP_1)
     effects = artifact.rows.select("log2_EFCs").to_series().to_list()
     assert math.isclose(min(ranks["A"].entries.values()), min(effects), rel_tol=1e-9)
 
 
-def test_linear_model_ranks_are_signed_log_p_values() -> None:
+def test_linear_model_ranks_on_the_test_statistic() -> None:
     archive = next(a for a in ARCHIVES if a.stem == "lm")
-    ranks = _load(archive)
+    with zipfile.ZipFile(archive) as zipped, TemporaryDirectory() as workdir:
+        artifact = read_dea_artifact(Path(zipped.extract("AnnData.h5ad", workdir)))
+    ranks = _load(archive, AnalysisName.PEP_1)
 
-    assert ranks.analysis == "from_anndata"
+    assert artifact.roles.score_col == "statistic"
     scores = [score for rank_list in ranks for score in rank_list.entries.values()]
-    # Signed -log10(p) straddles zero and leaves the |p| = 1 features at zero.
+    # The moderated t is signed and unbounded, so it straddles zero.
     assert min(scores) < 0 < max(scores)
+    statistics = artifact.rows.select("statistic").to_series().to_list()
+    assert math.isclose(max(scores), max(statistics), rel_tol=1e-9)
 
 
 @pytest.mark.parametrize(
