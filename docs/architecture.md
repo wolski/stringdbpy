@@ -45,7 +45,8 @@ TOML, JSON, YAML, requests payloads, Polars data, and packaged mapping archives 
 
 ```bash
 make check
-uv run pre-commit run --all-files
+uv run pre-commit run --hook-stage pre-commit --all-files
+uv run pre-commit run --hook-stage pre-push --all-files
 ```
 
-The full check includes strict Pyright for `src/` and `tests/`, Ruff, Import Linter, deptry, deterministic pytest with at least 90% branch coverage, distribution builds, isolated wheel installation, packaged resource assertions, and console entry-point discovery. Network-dependent smoke and integration tests are marked and non-blocking.
+Installing pre-commit activates both stages. The pre-commit stage runs Ruff, strict Pyright, Import Linter, and deptry; the pre-push stage runs deterministic pytest with the same 90% branch-coverage gate as CI. `make check` additionally verifies the uv lock and distributions through isolated wheel and source installation, packaged resource assertions, and console entry-point discovery. Network-dependent smoke and integration tests are marked and non-blocking.

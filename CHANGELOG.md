@@ -8,7 +8,7 @@
 - Selecting `--which none` now consumes the rank files already shipped in the archive instead of re-deriving an unfiltered ranking from its AnnData artifact.
 - The tabbed enrichment report and the result landing page now use the shared `fgczQuartoTemplate` look and feel — the FGCZ theme, banner and the top-right Find / Download / View-source toolbar — instead of a private copy of the report defaults. The report opens on an **Overview** tab with a visual abstract and an input summary, and closes on **Session Info** with report provenance and R session info.
 
-- Standardize local and CI quality gates on the shared uv, Ruff, Pyright, deptry, pytest, and package-build workflow.
+- Standardize local and CI quality gates on the shared uv, Ruff, Pyright, deptry, pytest, and package-build workflow; installing pre-commit now activates both the commit and push stages, with the 90% branch-coverage gate enforced before pushes.
 - Restore working source and wheel builds, including the packaged taxonomy mappings and Snakemake workflow.
 - Replace the mutable GSEA builder/results flow and ORA monolith with typed `RunGSEA` and `RunORA` use cases using injected STRING-DB gateways.
 - Preserve CLI commands and persisted GSEA/ORA artifacts while introducing polymorphic rank sources, analysis filters, species resolvers, and report-template locators.

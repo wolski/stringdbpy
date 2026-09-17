@@ -1,3 +1,5 @@
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
   - repo: local
     hooks:
@@ -19,7 +21,7 @@ repos:
         language: system
         pass_filenames: false
       - id: import-linter
-        name: Import architecture
+        name: Directed package imports
         entry: .venv/bin/lint-imports
         language: system
         pass_filenames: false
@@ -29,8 +31,8 @@ repos:
         language: system
         pass_filenames: false
       - id: pytest
-        name: Pytest
-        entry: .venv/bin/pytest -q
+        name: Pytest with branch coverage
+        entry: .venv/bin/pytest --cov --cov-branch
         language: system
         pass_filenames: false
         stages: [pre-push]
