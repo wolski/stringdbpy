@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.0.9
+## 0.1.0
 
+- Make distribution smoke tests validate the artifacts built by the current version bump instead of looking for the preceding release's wheel.
 - Read ranks from the `AnnData.h5ad` a prolfquapp analysis writes, in preference to its `DE_*.xlsx` sheet. The artifact records which column is the contrast, the effect and the p-value, so a backend with its own column names — SAINTexpress reports `Bait`, `log2_EFCs`, `SaintScore`, `BFDR` — now ranks through the same code path as a linear model instead of failing on a missing `contrast` column.
 - Rank scores from that artifact reproduce the `.rnk` files prolfquapp writes for the same analysis: the recorded test statistic where the backend provides one, and the effect size where it reports no suitable score. This is asserted for every prolfqua modelling facade, SAINTexpress included.
 - The `no_imputed` policies now drop estimates the model filled in rather than measured. On the AnnData path this reads the per-row estimate provenance and fails explicitly when that provenance is absent; on the XLSX path the model-name pattern again matches current prolfquapp model names such as `lm_impute`, which it had silently stopped matching, leaving `pep_1_no_imputed` and `pep_2_no_imputed` doing nothing.

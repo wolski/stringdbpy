@@ -6,7 +6,7 @@ DOCKER_IMAGE_LOCAL := string-gsea:local
 DOCKER_IMAGE_REMOTE := ghcr.io/wolski/string-gsea:latest
 
 .DEFAULT_GOAL := help
-.PHONY: help sync format format-check lint typecheck deps test build check clean \
+.PHONY: help sync format format-check lint typecheck deps test build build-artifacts check clean \
 	test-smoke test-integration docker-build docker-build-local test-docker \
 	render-docker render clean-integration
 
@@ -37,8 +37,7 @@ deps:  ## Validate dependency declarations
 test:  ## Run unit tests with branch coverage
 	$(VENV_BIN)/pytest --cov --cov-branch
 
-build:  ## Build and validate source and wheel distributions
-	uv build --clear
+build: build-artifacts  ## Build and validate source and wheel distributions
 	$(VENV_BIN)/twine check dist/*
 	wheel_uri=$$($(VENV_BIN)/python -c \
 		'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve().as_uri())' "$(WHEEL)"); \
@@ -68,6 +67,9 @@ build:  ## Build and validate source and wheel distributions
 	uv run --isolated --no-project --with "string-gsea @ $$wheel_uri#sha256=$$wheel_hash" sh -c \
 		'for command in string_gsea_write_config string_gsea_run string_ora_run string_gsea_workflow \
 		_string_gsea_render _string_gsea_render_only _string_gsea_package; do "$$command" --help >/dev/null; done'
+
+build-artifacts:
+	uv build --clear
 
 check:  ## Run every merge-blocking quality gate
 	uv lock --check
