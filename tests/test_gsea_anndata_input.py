@@ -154,6 +154,28 @@ def test_no_imputed_policy_drops_filled_in_estimates(model: str) -> None:
     assert 0 < kept < total
 
 
+def test_no_imputed_policy_is_a_no_op_for_a_backend_that_imputes_nothing() -> None:
+    # SAINTexpress measures every value it reports, so it stamps every row
+    # "observed" rather than omitting the column -- which is what B-Fabric
+    # workunit 351741 failed on, asking pep_2_no_imputed of a SAINT analysis.
+    archive = next(a for a in ARCHIVES if a.stem == "saint")
+
+    everything = _load(archive, AnalysisName.PEP_1)
+    observed_only = _load(archive, AnalysisName.PEP_1_NO_IMPUTED)
+
+    assert sum(rank_list.n_genes for rank_list in observed_only) == sum(
+        rank_list.n_genes for rank_list in everything
+    )
+
+
+@pytest.mark.parametrize("archive", ARCHIVES, ids=MODELS)
+def test_every_model_supports_every_policy(archive: Path) -> None:
+    # A policy that cannot be honoured must fail loudly, so every artifact has
+    # to carry the columns all four policies filter on.
+    for policy in AnalysisName:
+        assert sum(rank_list.n_genes for rank_list in _load(archive, policy)) >= 0
+
+
 @pytest.mark.parametrize("archive", ARCHIVES, ids=MODELS)
 def test_minimum_peptides_policy_reads_the_annotation(archive: Path) -> None:
     every_peptide = _load(archive, AnalysisName.PEP_1)
