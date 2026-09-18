@@ -38,14 +38,30 @@ RUN uv python install 3.13 \
     && chmod -R a+rX /opt/python /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# ── stringGSEAplot R package — install from local source in build context.
-#    Skip vignette compilation (fragile); copy QMD sources manually into doc/.  ──
+# ── FGCZ Quarto template — pinned, as prolfquapp pins it in its DESCRIPTION.
+#    stringGSEAplot Imports it, and fgcz_render() stages the theme from here at
+#    render time, so the styling of a report is fixed by this commit.  ──
+ARG FGCZ_QUARTO_TEMPLATE_REF=dbeb852bc14f4374d59ff8b94350faf84f4513e1
+RUN R -e "remotes::install_github('fgcz/fgczQuartoTemplate', ref='${FGCZ_QUARTO_TEMPLATE_REF}', dependencies=TRUE, upgrade='never')" \
+    && Rscript -e "stopifnot(requireNamespace('fgczQuartoTemplate', quietly=TRUE))"
+
+# ── stringGSEAplot R package — built WITH vignettes and installed from the
+#    tarball, which is what activates `vignettes/.install_extras`: the qmd
+#    sources and the FGCZ assets land in the installed package's doc/. Building
+#    the vignette also renders the packaged example report, so a report that
+#    cannot render fails the image build instead of a production run. Its
+#    rendered HTML is then deleted: it embeds every figure and runs to ~100 MB,
+#    and runtime renders its own report from the real results.  ──
 COPY stringGSEAplot /tmp/stringGSEAplot
-RUN R -e "remotes::install_local('/tmp/stringGSEAplot', build_vignettes=FALSE, dependencies=FALSE, force=TRUE)" \
+RUN cd /tmp \
+    && R CMD build stringGSEAplot \
+    && R CMD INSTALL stringGSEAplot_*.tar.gz \
     && inst=$(Rscript -e "cat(find.package('stringGSEAplot'))") \
-    && mkdir -p "$inst/doc" \
-    && cp /tmp/stringGSEAplot/vignettes/GSEA_report.qmd "$inst/doc/" \
-    && rm -rf /tmp/stringGSEAplot
+    && for asset in GSEA_report.qmd _metadata.yml fgcz.scss fgcz_header_quarto.html fgcz-plot-finder.html; do \
+         test -f "$inst/doc/$asset" || { echo "missing from installed doc/: $asset"; exit 1; }; \
+       done \
+    && rm -f "$inst"/doc/*.html "$inst"/doc/*.R \
+    && rm -rf /tmp/stringGSEAplot /tmp/stringGSEAplot_*.tar.gz
 
 WORKDIR /work
 ENTRYPOINT ["string_gsea_workflow"]

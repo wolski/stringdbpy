@@ -6,17 +6,21 @@ from pathlib import Path
 
 from string_gsea.workflow.templates import TemplatePaths
 
-# FGCZ Quarto template assets, vendored into stringGSEAplot beside the report
-# sources by its `data-raw/sync_quarto_assets.R`. Quarto applies a file named
-# `_metadata.yml` to every `.qmd` in its directory, so staging these next to the
-# reports is what attaches the FGCZ theme, header and toolbar -- the reports
-# themselves name no format.
-FGCZ_ASSETS = (
-    "_metadata.yml",
-    "fgcz.scss",
-    "fgcz_header_quarto.html",
-    "fgcz-plot-finder.html",
+# Rendering is delegated to the R package that owns the report sources, exactly
+# as prolfquapp does: `stringGSEAplot::render_gsea_reports()` stages each qmd
+# and the FGCZ template assets through `fgczQuartoTemplate::fgcz_render()`, so
+# the theme, banner and toolbar come from the installed `fgczQuartoTemplate`
+# rather than from copies vendored into this package's own staging code.
+# `Rscript -e` passes trailing words straight through to commandArgs(), so
+# there is no `--args` separator here -- it would arrive as a fifth word.
+_RENDER_CALL = (
+    "args <- commandArgs(trailingOnly = TRUE); "
+    "stringGSEAplot::render_gsea_reports(args[[1]], args[[2]], args[[3]], args[[4]])"
 )
+
+# Quarto writes these beside the rendered HTML; the delivered archive carries
+# the reports, not their intermediates.
+RENDER_BYPRODUCTS = ("plots", "GSEA_report_files", "index_files")
 
 
 def render_report(
@@ -25,39 +29,21 @@ def render_report(
     paths: TemplatePaths,
     done_file: Path,
 ) -> None:
-    """Copy templates, render reports, clean temporary sources, and mark completion."""
+    """Render the reports through stringGSEAplot, then clean up and mark completion."""
     workunit = dataset_dir.resolve() / f"WU_{workunit_id}_GSEA"
-    shutil.copy2(paths.vignettes / "GSEA_report.qmd", workunit / "GSEA_report.qmd")
-    for name in FGCZ_ASSETS:
-        shutil.copy2(paths.vignettes / name, workunit / name)
-    shutil.copy2(paths.templates / "index.qmd", workunit / "index.qmd")
     subprocess.run(
         [
-            "quarto",
-            "render",
-            "GSEA_report.qmd",
-            "-P",
-            f"json_path:WU{workunit_id}_gsea_result.json",
+            "Rscript",
+            "-e",
+            _RENDER_CALL,
+            str(workunit),
+            workunit_id,
+            str(paths.vignettes),
+            str(paths.templates),
         ],
-        cwd=workunit,
         check=True,
     )
-    subprocess.run(
-        [
-            "quarto",
-            "render",
-            "index.qmd",
-            "-P",
-            f"workunit_id:{workunit_id}",
-            "-P",
-            "package_dir:.",
-        ],
-        cwd=workunit,
-        check=True,
-    )
-    for name in ("GSEA_report.qmd", "index.qmd", "index.rmarkdown", *FGCZ_ASSETS):
-        (workunit / name).unlink(missing_ok=True)
-    for name in ("plots", "GSEA_report_files", "index_files"):
+    for name in RENDER_BYPRODUCTS:
         directory = workunit / name
         if directory.exists():
             shutil.rmtree(directory)

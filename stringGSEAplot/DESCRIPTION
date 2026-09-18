@@ -12,12 +12,12 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports: 
     DOSE,
+    fgczQuartoTemplate,
     jsonlite,
     methods
 Suggests:
     DT,
     enrichplot,
-    fgczQuartoTemplate,
     ggplot2,
     ggupset,
     knitr,
@@ -27,6 +27,6 @@ Suggests:
     rprojroot,
     testthat (>= 3.0.0)
 Remotes:
-    fgcz/fgczQuartoTemplate
+    github::fgcz/fgczQuartoTemplate@dbeb852bc14f4374d59ff8b94350faf84f4513e1
 Config/testthat/edition: 3
 VignetteBuilder: knitr, quarto

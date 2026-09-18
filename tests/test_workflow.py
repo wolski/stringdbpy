@@ -9,7 +9,7 @@ import yaml
 
 from string_gsea import workflow_cli
 from string_gsea.workflow.packaging import package_results
-from string_gsea.workflow.rendering import FGCZ_ASSETS, render_report
+from string_gsea.workflow.rendering import RENDER_BYPRODUCTS, render_report
 from string_gsea.workflow.templates import (
     OrderedTemplateLocator,
     RPackageTemplateLocator,
@@ -48,7 +48,9 @@ def test_r_package_locator_uses_return_codes(monkeypatch: pytest.MonkeyPatch) ->
     )
 
 
-def test_rendering_copies_runs_and_cleans(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_rendering_delegates_to_the_r_package_and_cleans(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     dataset = tmp_path / "dataset"
     workunit = dataset / "WU_W1_GSEA"
     templates = tmp_path / "templates"
@@ -56,11 +58,8 @@ def test_rendering_copies_runs_and_cleans(tmp_path: Path, monkeypatch: pytest.Mo
     workunit.mkdir(parents=True)
     templates.mkdir()
     vignettes.mkdir()
-    (vignettes / "GSEA_report.qmd").write_text("report")
-    for name in FGCZ_ASSETS:
-        (vignettes / name).write_text(name)
-    (templates / "index.qmd").write_text("index")
-    (workunit / "plots").mkdir()
+    for name in RENDER_BYPRODUCTS:
+        (workunit / name).mkdir()
     calls: list[list[str]] = []
 
     def run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -70,12 +69,17 @@ def test_rendering_copies_runs_and_cleans(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr("string_gsea.workflow.rendering.subprocess.run", run)
     done = workunit / "done.txt"
     render_report(dataset, "W1", TemplatePaths(templates, vignettes), done)
-    assert len(calls) == 2
+
+    # One Rscript call: stringGSEAplot stages the reports and the FGCZ assets,
+    # so the template directories are handed to it rather than read here.
+    assert len(calls) == 1
+    command = calls[0]
+    assert command[0] == "Rscript"
+    assert "render_gsea_reports" in command[2]
+    # No `--args`: `Rscript -e` would pass it through as another argument.
+    assert command[3:] == [str(workunit), "W1", str(vignettes), str(templates)]
     assert done.exists()
-    assert not (workunit / "GSEA_report.qmd").exists()
-    assert not (workunit / "plots").exists()
-    # The FGCZ template assets are staged for the render and cleaned afterwards.
-    assert not any((workunit / name).exists() for name in FGCZ_ASSETS)
+    assert not any((workunit / name).exists() for name in RENDER_BYPRODUCTS)
 
 
 def test_package_results_preserves_manifest_and_archive_shape(tmp_path: Path) -> None:

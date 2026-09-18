@@ -7,3 +7,6 @@ tests/data/outputs
 *.egg-info
 .ruff_cache
 stringGSEAplot/docs
+stringGSEAplot/vignettes/GSEA_report.html
+stringGSEAplot/inst/templates/GSEA_report.html
+stringGSEAplot/vignettes/.quarto

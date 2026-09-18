@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- The FGCZ-themed reports render again. The image shipped the report source without the template assets it includes, because the R package was installed with `build_vignettes=FALSE`, which bypasses the `vignettes/.install_extras` that ships them; the run produced every enrichment result and then died copying `_metadata.yml`.
+- Rendering now goes through `stringGSEAplot::render_gsea_reports()`, which stages each report and the FGCZ assets via `fgczQuartoTemplate::fgcz_render()` exactly as prolfquapp does, so the theme, banner and toolbar come from the installed `fgczQuartoTemplate` at a pinned commit rather than from copies staged by this package.
+- The image builds the R package from a tarball built with vignettes, which renders the packaged example report: a report that cannot render now fails the image build instead of a production run.
+
 ## 0.1.2
 
 - Analyses from earlier prolfquapp versions rank again. prolfquapp has written `AnnData.h5ad` since 2.9.0 but only recorded the column roles from 2.10.0, and an archive holding a role-less artifact was claimed and then failed instead of being ranked from the `DE_*.xlsx` sheet beside it. An `.h5ad` now counts as a rank input only when its column roles can actually be read.
