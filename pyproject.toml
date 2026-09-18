@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "string-gsea"
-version = "0.1.3"
+version = "0.1.4"
 description = "Submit STRING-DB enrichment analyses and package reproducible GSEA results."
 readme = "README.md"
 requires-python = ">=3.13"
