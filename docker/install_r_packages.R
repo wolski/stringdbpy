@@ -13,7 +13,14 @@ install.packages(c(
   "lifecycle", "scales", "reshape2", "igraph", "purrr", "plyr",
   "stringr", "ggnewscale", "ggrepel", "ggfun", "ggplotify",
   "ggforce", "gridGraphics", "cowplot", "aplot", "httr",
-  "blob", "DBI", "RSQLite", "memoise"
+  "blob", "DBI", "RSQLite", "memoise",
+  # protsea's Suggests, minus its dev tools: the image BUILDS protsea's
+  # vignette and ships its report templates, so everything they touch is a
+  # build-time requirement here. ggridges is not called as `ggridges::` --
+  # enrichplot::ridgeplot() loads it internally -- so grepping the sources for
+  # namespace calls does not reveal it; keep this list against protsea's
+  # DESCRIPTION instead.
+  "ggridges", "rprojroot"
 ))
 
 # Bioconductor packages — use BiocManager repos, update=FALSE to avoid
@@ -26,8 +33,13 @@ BiocManager::install(
   ask = FALSE, update = FALSE
 )
 
-stopifnot(
-  requireNamespace("DOSE"),
-  requireNamespace("enrichplot"),
-  requireNamespace("clusterProfiler")
-)
+# Fail this layer, rather than a later vignette render, when a package protsea
+# needs is absent.
+for (pkg in c(
+  "DOSE", "enrichplot", "clusterProfiler", "DT", "ggplot2", "ggridges",
+  "ggupset", "knitr", "patchwork", "quarto", "rmarkdown", "rprojroot"
+)) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    stop("required package not installed: ", pkg)
+  }
+}
