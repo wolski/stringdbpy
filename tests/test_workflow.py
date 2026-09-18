@@ -23,10 +23,9 @@ COMPATIBILITY = Path(__file__).parent / "data" / "compatibility"
 def test_workspace_and_ordered_template_locators(tmp_path: Path) -> None:
     package = tmp_path / "protsea"
     (package / "inst" / "templates").mkdir(parents=True)
-    (package / "vignettes").mkdir()
     workspace = WorkspaceTemplateLocator(tmp_path / "stringdbpy")
     assert OrderedTemplateLocator((workspace,)).locate() == TemplatePaths(
-        package / "inst" / "templates", package / "vignettes"
+        package / "inst" / "templates", package / "inst" / "templates"
     )
     with pytest.raises(FileNotFoundError):
         OrderedTemplateLocator(
@@ -39,14 +38,14 @@ def test_r_package_locator_uses_return_codes(monkeypatch: pytest.MonkeyPatch) ->
         return "/Rscript"
 
     monkeypatch.setattr("string_gsea.workflow.templates.shutil.which", executable)
-    outputs = iter(("/templates\n", "/vignettes\n"))
+    outputs = iter(("/templates\n",))
 
     def run(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess([], 0, stdout=next(outputs), stderr="")
 
     monkeypatch.setattr("string_gsea.workflow.templates.subprocess.run", run)
     assert RPackageTemplateLocator().locate() == TemplatePaths(
-        Path("/templates"), Path("/vignettes")
+        Path("/templates"), Path("/templates")
     )
 
 

@@ -57,33 +57,27 @@ ARG FGCZ_QUARTO_TEMPLATE_REF=dbeb852bc14f4374d59ff8b94350faf84f4513e1
 RUN R -e "remotes::install_github('fgcz/fgczQuartoTemplate', ref='${FGCZ_QUARTO_TEMPLATE_REF}', dependencies=TRUE, upgrade='never')" \
     && Rscript -e "stopifnot(requireNamespace('fgczQuartoTemplate', quietly=TRUE))"
 
-# ── protsea R package — built WITH vignettes and installed from the
-#    tarball, which is what activates `vignettes/.install_extras`: the qmd
-#    sources and the FGCZ assets land in the installed package's doc/. Building
-#    the vignette also renders the packaged example report, so a report that
-#    cannot render fails the image build instead of a production run. Its
-#    rendered HTML is deleted BY NAME -- `doc/*.html` would also take
-#    fgcz_header_quarto.html and fgcz-plot-finder.html, which are assets the
-#    report includes, not output -- and the assets are checked afterwards, so
-#    the check describes what the image actually ships.  ──
+# ── protsea R package — built WITH its compact native round-trip vignette.
+#    STRING's parameterized runtime reports are package templates and are not
+#    executed while building package documentation.  ──
 COPY --from=protsea / /tmp/protsea
 RUN cd /tmp \
     && R CMD build protsea \
     && R CMD INSTALL protsea_*.tar.gz \
     && inst=$(Rscript -e "cat(find.package('protsea'))") \
-    && rm -f "$inst"/doc/GSEA_report.html "$inst"/doc/GSEA_report.R \
-    && for asset in GSEA_report.qmd _metadata.yml fgcz.scss fgcz_header_quarto.html fgcz-plot-finder.html; do \
-         test -f "$inst/doc/$asset" || { echo "missing from installed doc/: $asset"; exit 1; }; \
+    && for template in GSEA_report.qmd index.qmd; do \
+         test -f "$inst/templates/$template" || { echo "missing runtime template: $template"; exit 1; }; \
        done \
+    && test -f "$inst/doc/GSEA_roundtrip.html" \
     && rm -rf /tmp/protsea /tmp/protsea_*.tar.gz
 
 # ── Shipped-state check. The render step crosses from Python into R, so the
 #    two halves have to agree in the image: a stale Python layer or a missing R
-#    export is a broken image, not a broken run. The doc/ listing is printed so
+#    export is a broken image, not a broken run. The template listing is printed so
 #    a build log always records what the image ships.  ──
 RUN python -c "import importlib.metadata as meta; print('string-gsea', meta.version('string-gsea'))" \
     && Rscript -e "stopifnot('render_gsea_reports' %in% getNamespaceExports('protsea'))" \
-    && ls -1 "$(Rscript -e "cat(find.package('protsea'))")/doc"
+    && ls -1 "$(Rscript -e "cat(find.package('protsea'))")/templates"
 
 WORKDIR /work
 ENTRYPOINT ["string_gsea_workflow"]

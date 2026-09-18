@@ -44,10 +44,9 @@ class RPackageTemplateLocator:
 
     def locate(self) -> TemplatePaths | None:
         templates = self._system_file("templates")
-        vignettes = self._system_file("doc")
-        if templates is None or vignettes is None:
+        if templates is None:
             return None
-        return TemplatePaths(templates=templates, vignettes=vignettes)
+        return TemplatePaths(templates=templates, vignettes=templates)
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,7 +59,7 @@ class WorkspaceTemplateLocator:
         package = self.repository_root.parent / "protsea"
         paths = TemplatePaths(
             templates=package / "inst" / "templates",
-            vignettes=package / "vignettes",
+            vignettes=package / "inst" / "templates",
         )
         return paths if paths.templates.exists() and paths.vignettes.exists() else None
 

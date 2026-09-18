@@ -2,6 +2,7 @@
 
 ## 0.1.4
 
+- Read the parameterized STRING report from protsea's runtime templates. It is no longer executed as a package vignette, so building protsea documentation runs only the compact native GSEA round-trip article.
 - Use the standalone protsea R package for report rendering; local Docker builds take its sibling checkout as a named build context.
 - Preserve native clusterProfiler payloads and leading-edge memberships when reading and writing shared GSEA JSON.
 
