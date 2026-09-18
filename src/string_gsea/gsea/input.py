@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import io
 import zipfile
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -17,8 +18,9 @@ import polars as pl
 from string_gsea.gsea.dea_artifact import (
     ESTIMATE_TYPE_COLUMN,
     OBSERVED_ESTIMATE,
-    PEPTIDE_COUNT_COLUMN,
+    PEPTIDE_COUNT_COLUMNS,
     DeaArtifact,
+    is_dea_artifact,
     read_dea_artifact,
 )
 from string_gsea.gsea.model.ranks import RankList, RankListCollection
@@ -78,13 +80,24 @@ class KeepObservedEstimates:
 
 @dataclass(frozen=True, slots=True)
 class MinimumPeptides:
-    """Retain rows supported by at least ``minimum`` peptides."""
+    """Retain rows supported by at least ``minimum`` peptides.
+
+    prolfquapp renamed the peptide count it writes, so which of its names an
+    analysis carries depends on the version that produced it, not on the input
+    format. The name is therefore resolved from the columns present.
+    """
 
     minimum: int
-    column: str = "nrPeptides"
+    columns: tuple[str, ...] = PEPTIDE_COUNT_COLUMNS
 
     def apply(self, dataframe: pl.DataFrame) -> pl.DataFrame:
-        return dataframe.filter(pl.col(self.column) >= self.minimum)
+        column = next((name for name in self.columns if name in dataframe.columns), None)
+        if column is None:
+            raise ValueError(
+                f"Cannot require {self.minimum} peptides: the analysis carries "
+                f"none of {list(self.columns)}, so the peptide count is unknown"
+            )
+        return dataframe.filter(pl.col(column) >= self.minimum)
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,11 +105,10 @@ class RankSchema:
     """Where one input format carries the facts the policies filter on."""
 
     imputation: RankFilter
-    peptides: str
 
 
-XLSX_SCHEMA = RankSchema(imputation=ExcludeImputedModel(), peptides="nrPeptides")
-ANNDATA_SCHEMA = RankSchema(imputation=KeepObservedEstimates(), peptides=PEPTIDE_COUNT_COLUMN)
+XLSX_SCHEMA = RankSchema(imputation=ExcludeImputedModel())
+ANNDATA_SCHEMA = RankSchema(imputation=KeepObservedEstimates())
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,7 +127,7 @@ class AnalysisPolicy:
 
 def analysis_policy(name: AnalysisName, schema: RankSchema) -> AnalysisPolicy:
     """Compose the named policy over the columns one input format uses."""
-    peptides = MinimumPeptides(2, column=schema.peptides)
+    peptides = MinimumPeptides(2)
     filters: dict[AnalysisName, tuple[RankFilter, ...]] = {
         AnalysisName.PEP_1: (),
         AnalysisName.PEP_1_NO_IMPUTED: (schema.imputation,),
@@ -151,10 +163,27 @@ class ArchiveManifest:
         with zipfile.ZipFile(archive) as zipped:
             names = zipped.namelist()
         return cls(
-            anndata_files=tuple(name for name in names if name.endswith(".h5ad")),
+            anndata_files=cls._dea_artifacts(archive, names),
             xlsx_files=tuple(name for name in names if name.endswith(".xlsx") and "DE_" in name),
             rank_files=tuple(name for name in names if name.endswith(".rnk")),
         )
+
+    @staticmethod
+    def _dea_artifacts(archive: Path, names: Sequence[str]) -> tuple[str, ...]:
+        """The `.h5ad` members whose column roles a rank source can read.
+
+        An archive from prolfquapp 2.9.x holds an `AnnData.h5ad` that predates
+        `contrast_configuration`. Listing it as a rank input would let the
+        AnnData source claim an archive it cannot rank and fail, instead of
+        leaving the XLSX sheet beside it to be read.
+        """
+        candidates = [name for name in names if name.endswith(".h5ad")]
+        if not candidates:
+            return ()
+        with zipfile.ZipFile(archive) as zipped, TemporaryDirectory() as workdir:
+            return tuple(
+                name for name in candidates if is_dea_artifact(Path(zipped.extract(name, workdir)))
+            )
 
 
 class RankSource(Protocol):

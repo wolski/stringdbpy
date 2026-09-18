@@ -40,8 +40,11 @@ ESTIMATE_TYPE_COLUMN = "estimate_type"
 OBSERVED_ESTIMATE = "observed"
 
 # Per-feature peptide count, as prolfquapp names it in the annotation frame.
-# One name whatever reader produced the analysis: prolfquapp canonicalizes it.
-PEPTIDE_COUNT_COLUMN = "nrPeptides"
+# prolfquapp 2.10.4 settled on `nrPeptides` everywhere; analyses written before
+# it spelled the same count `nr_peptides` on the simulated and MSstats reader
+# paths. Both names are read, in this order, because results already published
+# cannot be rewritten.
+PEPTIDE_COUNT_COLUMNS = ("nrPeptides", "nr_peptides")
 
 _PROLFQUAPP_UNS = "prolfquapp"
 _DEA_ARTIFACT_TYPE = "dea_results"
@@ -162,6 +165,29 @@ class DeaArtifact:
     @property
     def contrasts(self) -> list[str]:
         return self.rows.get_column(self.roles.contrast_col).unique().to_list()
+
+
+def is_dea_artifact(path: Path) -> bool:
+    """Whether this `.h5ad` is a DEA artifact whose column roles can be read.
+
+    prolfquapp has written `AnnData.h5ad` beside its report since 2.9.0, but
+    only 2.10.0 began recording `contrast_configuration`. Without those roles
+    there is nothing to say which column is the contrast or the effect, so an
+    older file is not a rank source and the archive's XLSX sheet is read
+    instead. Reads the metadata alone, leaving the matrices on disk.
+    """
+    adata = ad.read_h5ad(path, backed="r")
+    try:
+        metadata = adata.uns.get(_PROLFQUAPP_UNS)
+        if not isinstance(metadata, Mapping):
+            return False
+        has_roles = isinstance(metadata.get("contrast_configuration"), Mapping)
+        return (
+            has_roles
+            and _optional_text(metadata.get("artifact_type"), "artifact_type") == _DEA_ARTIFACT_TYPE
+        )
+    finally:
+        adata.file.close()
 
 
 def read_dea_artifact(path: Path) -> DeaArtifact:

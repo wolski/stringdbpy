@@ -10,16 +10,22 @@ Python.
 import math
 import re
 import zipfile
+from collections.abc import Callable
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import cast
 
+import pandas as pd
+import polars as pl
 import pytest
+from anndata import AnnData
 
-from string_gsea.gsea.dea_artifact import read_dea_artifact
+from string_gsea.gsea.dea_artifact import is_dea_artifact, read_dea_artifact
 from string_gsea.gsea.input import (
     AnalysisName,
     AnnDataRankSource,
     ArchiveManifest,
+    MinimumPeptides,
     RankSourceRequest,
     select_rank_source,
 )
@@ -184,6 +190,88 @@ def test_minimum_peptides_policy_reads_the_annotation(archive: Path) -> None:
     total = sum(rank_list.n_genes for rank_list in every_peptide)
     kept = sum(rank_list.n_genes for rank_list in two_peptides)
     assert 0 < kept <= total
+
+
+def _rewrite_artifact(archive: Path, destination: Path, edit: Callable[[AnnData], None]) -> Path:
+    """Copy `archive`, applying `edit` to the AnnData it carries.
+
+    Lets a test state what an analysis from an older prolfquapp looked like
+    without committing another binary fixture for every past shape.
+    """
+    anndata = pytest.importorskip("anndata")
+    destination.mkdir(parents=True, exist_ok=True)
+    workdir = destination / "contents"
+    with zipfile.ZipFile(archive) as zipped:
+        zipped.extractall(workdir)
+    artifact = next(workdir.rglob("*.h5ad"))
+    adata = anndata.read_h5ad(artifact)
+    edit(adata)
+    adata.write_h5ad(artifact)
+    rewritten = destination / archive.name
+    with zipfile.ZipFile(rewritten, "w", zipfile.ZIP_DEFLATED) as zipped:
+        for path in sorted(workdir.rglob("*")):
+            if path.is_file():
+                zipped.write(path, path.relative_to(workdir))
+    return rewritten
+
+
+def test_an_artifact_without_column_roles_is_not_a_rank_input(tmp_path: Path) -> None:
+    # prolfquapp wrote AnnData.h5ad from 2.9.0 on, but recorded the column
+    # roles only from 2.10.0. Claiming such an archive and then failing would
+    # hide the DE_*.xlsx beside it, which ranks perfectly well.
+    archive = next(a for a in ARCHIVES if a.stem == "lm")
+
+    def drop_roles(adata: AnnData) -> None:
+        metadata = cast(dict[str, object], adata.uns["prolfquapp"])  # pyright: ignore[reportUnknownMemberType]
+        del metadata["contrast_configuration"]
+
+    legacy = _rewrite_artifact(archive, tmp_path, drop_roles)
+
+    assert ArchiveManifest.inspect(archive).anndata_files
+    assert not ArchiveManifest.inspect(legacy).anndata_files
+    assert not AnnDataRankSource().supports(
+        RankSourceRequest(legacy, AnalysisName.PEP_2), ArchiveManifest.inspect(legacy)
+    )
+
+
+def test_a_non_prolfquapp_anndata_is_not_a_rank_input(tmp_path: Path) -> None:
+    anndata = pytest.importorskip("anndata")
+    import numpy as np
+
+    path = tmp_path / "bare.h5ad"
+    anndata.AnnData(X=np.zeros((2, 2), dtype=float)).write_h5ad(path)
+
+    assert not is_dea_artifact(path)
+
+
+def test_the_earlier_peptide_count_name_is_still_read(tmp_path: Path) -> None:
+    # Analyses written before prolfquapp 2.10.4 spell the count nr_peptides on
+    # the simulated and MSstats reader paths, and cannot be rewritten.
+    archive = next(a for a in ARCHIVES if a.stem == "lm")
+
+    def rename_count(adata: AnnData) -> None:
+        annotation = cast(pd.DataFrame, adata.var)
+        adata.var = annotation.rename(columns={"nrPeptides": "nr_peptides"})
+
+    older = _rewrite_artifact(archive, tmp_path / "renamed", rename_count)
+    # Rewriting the artifact at all shifts one row, so the comparison is against
+    # an untouched rewrite: the column name is then the only difference left.
+    current = _rewrite_artifact(archive, tmp_path / "kept", lambda _: None)
+
+    def ranked(candidate: Path) -> list[int]:
+        request = RankSourceRequest(candidate, AnalysisName.PEP_2)
+        loaded = AnnDataRankSource().load(request, ArchiveManifest.inspect(candidate))
+        return [rank_list.n_genes for rank_list in loaded]
+
+    assert ranked(older) == ranked(current)
+    assert ranked(older) == [count for count in ranked(older) if count > 0]
+
+
+def test_requiring_peptides_fails_loudly_when_no_count_is_recorded() -> None:
+    frame = pl.DataFrame({"protein_Id": ["A", "B"], "statistic": [1.0, -1.0]})
+
+    with pytest.raises(ValueError, match="peptide count is unknown"):
+        MinimumPeptides(2).apply(frame)
 
 
 def test_reading_a_non_prolfquapp_anndata_fails_loudly(tmp_path: Path) -> None:

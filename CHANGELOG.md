@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Analyses from earlier prolfquapp versions rank again. prolfquapp has written `AnnData.h5ad` since 2.9.0 but only recorded the column roles from 2.10.0, and an archive holding a role-less artifact was claimed and then failed instead of being ranked from the `DE_*.xlsx` sheet beside it. An `.h5ad` now counts as a rank input only when its column roles can actually be read.
+- The per-feature peptide count is read under either name prolfquapp has given it, `nrPeptides` or the earlier `nr_peptides`, so `pep_2` and `pep_2_no_imputed` work on results published before 2.10.4 as well. Requiring peptides of an analysis that records no count at all still fails, naming both.
+
 ## 0.1.1
 
 - The minimum-peptides policies read `nrPeptides`, the one name prolfquapp now gives the per-feature peptide count. It used to be spelled `nr_peptides` in simulated analyses and `nrPeptides` in real ones, so `pep_2` and `pep_2_no_imputed` passed every fixture and then failed on a real B-Fabric analysis. Requires prolfquapp 2.10.4 or later.
