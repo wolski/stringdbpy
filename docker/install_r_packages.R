@@ -19,11 +19,15 @@ install.packages(c(
 # Bioconductor packages — use BiocManager repos, update=FALSE to avoid
 # re-downloading the CRAN packages we just installed above
 BiocManager::install(
-  c("AnnotationDbi", "GO.db", "GOSemSim", "BiocParallel", "fgsea", "DOSE", "enrichplot"),
+  c("AnnotationDbi", "GO.db", "GOSemSim", "BiocParallel", "fgsea", "DOSE", "enrichplot",
+    # protsea's round-trip vignette runs clusterProfiler::GSEA(), and the image
+    # builds that vignette, so this is a build-time requirement, not optional.
+    "clusterProfiler"),
   ask = FALSE, update = FALSE
 )
 
 stopifnot(
   requireNamespace("DOSE"),
-  requireNamespace("enrichplot")
+  requireNamespace("enrichplot"),
+  requireNamespace("clusterProfiler")
 )
