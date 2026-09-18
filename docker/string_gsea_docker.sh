@@ -140,6 +140,8 @@ run() {
             --init \
             --user "$(id -u):$(id -g)" \
             -e HOME=/work \
+            -e "USER=$(id -un)" \
+            -e "LOGNAME=$(id -un)" \
             --rm $docker_args \
             --mount "type=bind,source=$(pwd),target=/work" \
             --mount "$config_mount_opts" \
@@ -151,10 +153,18 @@ run() {
     fi
 
     # Mount cwd as /work (read-write), run as current user
+    #
+    # USER/LOGNAME are load-bearing: --user passes a uid that has no entry in
+    # the image's /etc/passwd, so getpass.getuser() falls through to getpwuid()
+    # and raises "No username set in the environment". Snakemake calls it while
+    # building its info header, which kills the workflow before any rule runs.
+    # getuser() reads these variables first, so setting them is enough.
     $DOCKER run \
         --init \
         --user "$(id -u):$(id -g)" \
         -e HOME=/work \
+        -e "USER=$(id -un)" \
+        -e "LOGNAME=$(id -un)" \
         --rm $docker_args \
         --mount "type=bind,source=$(pwd),target=/work" \
         --mount "$config_mount_opts" \
