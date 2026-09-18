@@ -21,15 +21,17 @@ COMPATIBILITY = Path(__file__).parent / "data" / "compatibility"
 
 
 def test_workspace_and_ordered_template_locators(tmp_path: Path) -> None:
-    package = tmp_path / "stringGSEAplot"
+    package = tmp_path / "protsea"
     (package / "inst" / "templates").mkdir(parents=True)
     (package / "vignettes").mkdir()
-    workspace = WorkspaceTemplateLocator(tmp_path)
+    workspace = WorkspaceTemplateLocator(tmp_path / "stringdbpy")
     assert OrderedTemplateLocator((workspace,)).locate() == TemplatePaths(
         package / "inst" / "templates", package / "vignettes"
     )
     with pytest.raises(FileNotFoundError):
-        OrderedTemplateLocator((WorkspaceTemplateLocator(tmp_path / "missing"),)).locate()
+        OrderedTemplateLocator(
+            (WorkspaceTemplateLocator(tmp_path / "missing" / "stringdbpy"),)
+        ).locate()
 
 
 def test_r_package_locator_uses_return_codes(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -70,7 +72,7 @@ def test_rendering_delegates_to_the_r_package_and_cleans(
     done = workunit / "done.txt"
     render_report(dataset, "W1", TemplatePaths(templates, vignettes), done)
 
-    # One Rscript call: stringGSEAplot stages the reports and the FGCZ assets,
+    # One Rscript call: protsea stages the reports and the FGCZ assets,
     # so the template directories are handed to it rather than read here.
     assert len(calls) == 1
     command = calls[0]

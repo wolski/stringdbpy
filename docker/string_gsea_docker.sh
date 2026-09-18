@@ -34,7 +34,7 @@
 #
 # Limitations:
 #   - Paths must be relative to cwd and must not go outside of it.
-#   - Quarto report rendering requires the stringGSEAplot R package (included in the image).
+#   - Quarto report rendering requires the protsea R package (included in the image).
 
 set -euo pipefail
 

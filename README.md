@@ -41,7 +41,7 @@
 - Python 3.13 or higher
 - [UV](https://docs.astral.sh/uv/) package manager (recommended) or pip
 - [Quarto](https://quarto.org/) (for report generation)
-- R with `stringGSEAplot` package (for Quarto reports)
+- R with `protsea` package (for Quarto reports)
 
 ### Install from GitHub
 
@@ -293,3 +293,7 @@ For detailed instructions, see the [Marimo Quick Start](docs/marimo_notebooks/QU
 ## License
 
 Distributed under the [MIT License](https://spdx.org/licenses/MIT.html).
+
+### Companion R package
+
+The shared JSON codec and STRING report templates now live in the standalone [protsea](https://github.com/prolfqua/protsea) package. In a development workspace, place `protsea` beside `stringdbpy` and run `make install` there before rendering reports. `make docker-build-local` supplies `../protsea` as Docker's named `protsea` build context; override `PROTSEA_CONTEXT` to use another checkout or a pinned Git URL. The publish workflow uses the standalone repository, so publish it before triggering a STRING image build.

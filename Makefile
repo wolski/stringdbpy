@@ -2,6 +2,8 @@ VENV_BIN := .venv/bin
 WHEEL = $(firstword $(wildcard dist/*.whl))
 SDIST = $(firstword $(wildcard dist/*.tar.gz))
 
+PROTSEA_CONTEXT ?= ../protsea
+
 DOCKER_IMAGE_LOCAL := string-gsea:local
 DOCKER_IMAGE_REMOTE := ghcr.io/wolski/string-gsea:latest
 
@@ -85,10 +87,10 @@ test-integration:  ## Run the full workflow test suite (STRING-DB + Quarto + R)
 	$(VENV_BIN)/pytest -m integration tests -v -s
 
 docker-build-local:  ## Build the local amd64 Docker image used by CI
-	docker buildx build --platform linux/amd64 -f docker/Dockerfile -t $(DOCKER_IMAGE_LOCAL) --load .
+	docker buildx build --build-context protsea=$(PROTSEA_CONTEXT) --platform linux/amd64 -f docker/Dockerfile -t $(DOCKER_IMAGE_LOCAL) --load .
 
 docker-build:  ## Build the GHCR-tagged Docker image (requires a GHCR login)
-	docker buildx build -f docker/Dockerfile -t $(DOCKER_IMAGE_REMOTE) --load .
+	docker buildx build --build-context protsea=$(PROTSEA_CONTEXT) -f docker/Dockerfile -t $(DOCKER_IMAGE_REMOTE) --load .
 
 test-docker:  ## Run the mouse XLSX workflow in Docker
 	rm -rf tests/data/outputs/mouse_xlsx_docker

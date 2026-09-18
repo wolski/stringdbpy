@@ -131,7 +131,6 @@ exclude = [
     "docs",
     "docker",
     "scripts",
-    "stringGSEAplot",
     "tests",
     "venv",
     "[.]venv",

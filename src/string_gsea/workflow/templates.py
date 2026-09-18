@@ -26,13 +26,13 @@ class TemplateLocator(Protocol):
 
 
 class RPackageTemplateLocator:
-    """Locate templates from an installed ``stringGSEAplot`` R package."""
+    """Locate templates from an installed ``protsea`` R package."""
 
     @staticmethod
     def _system_file(directory: str) -> Path | None:
         if shutil.which("Rscript") is None:
             return None
-        code = f"cat(system.file('{directory}', package='stringGSEAplot'))"
+        code = f"cat(system.file('{directory}', package='protsea'))"
         result = subprocess.run(
             ["Rscript", "-e", code],
             capture_output=True,
@@ -57,7 +57,7 @@ class WorkspaceTemplateLocator:
     repository_root: Path
 
     def locate(self) -> TemplatePaths | None:
-        package = self.repository_root / "stringGSEAplot"
+        package = self.repository_root.parent / "protsea"
         paths = TemplatePaths(
             templates=package / "inst" / "templates",
             vignettes=package / "vignettes",
@@ -76,4 +76,4 @@ class OrderedTemplateLocator:
             paths = locator.locate()
             if paths is not None:
                 return paths
-        raise FileNotFoundError("Could not locate stringGSEAplot report templates")
+        raise FileNotFoundError("Could not locate protsea report templates")

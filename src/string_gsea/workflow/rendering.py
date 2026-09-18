@@ -7,7 +7,7 @@ from pathlib import Path
 from string_gsea.workflow.templates import TemplatePaths
 
 # Rendering is delegated to the R package that owns the report sources, exactly
-# as prolfquapp does: `stringGSEAplot::render_gsea_reports()` stages each qmd
+# as prolfquapp does: `protsea::render_gsea_reports()` stages each qmd
 # and the FGCZ template assets through `fgczQuartoTemplate::fgcz_render()`, so
 # the theme, banner and toolbar come from the installed `fgczQuartoTemplate`
 # rather than from copies vendored into this package's own staging code.
@@ -15,7 +15,7 @@ from string_gsea.workflow.templates import TemplatePaths
 # there is no `--args` separator here -- it would arrive as a fifth word.
 _RENDER_CALL = (
     "args <- commandArgs(trailingOnly = TRUE); "
-    "stringGSEAplot::render_gsea_reports(args[[1]], args[[2]], args[[3]], args[[4]])"
+    "protsea::render_gsea_reports(args[[1]], args[[2]], args[[3]], args[[4]])"
 )
 
 # Quarto writes these beside the rendered HTML; the delivered archive carries
@@ -29,7 +29,7 @@ def render_report(
     paths: TemplatePaths,
     done_file: Path,
 ) -> None:
-    """Render the reports through stringGSEAplot, then clean up and mark completion."""
+    """Render the reports through protsea, then clean up and mark completion."""
     workunit = dataset_dir.resolve() / f"WU_{workunit_id}_GSEA"
     subprocess.run(
         [

@@ -2,6 +2,9 @@
 
 ## 0.1.4
 
+- Use the standalone protsea R package for report rendering; local Docker builds take its sibling checkout as a named build context.
+- Preserve native clusterProfiler payloads and leading-edge memberships when reading and writing shared GSEA JSON.
+
 - `docker/string_gsea_docker.sh` sets USER and LOGNAME. `--user` passes a uid with no `/etc/passwd` entry, so Snakemake's `getpass.getuser()` raised `No username set in the environment` before any rule ran; the workflow could not be run through the image from a checkout at all.
 - The image now installs this package from the sources being built instead of re-fetching GitHub `main`. A `git+https://` install never changes the Docker instruction's text, so the layer was reused from cache and the published image shipped a string-gsea one release behind: `0.1.3` carried `0.1.2` and rendered through the code path that release had replaced.
 - Two FGCZ template assets are no longer deleted from the installed R package. Removing the rendered vignette with `doc/*.html` also removed `fgcz_header_quarto.html` and `fgcz-plot-finder.html`, which the report includes; they are now kept, and the image asserts what it ships after pruning rather than before.

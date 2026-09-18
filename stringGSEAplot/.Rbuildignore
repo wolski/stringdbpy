@@ -1,9 +1,0 @@
-^LICENSE\.md$
-^Makefile$
-^vignettes/\.quarto$
-^vignettes/GSEA_report\.html$
-^inst/templates/GSEA_report\.html$
-^inst/templates/plots$
-^docs$
-^data-raw$
-^_pkgdown\.yml$

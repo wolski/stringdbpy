@@ -1,5 +1,6 @@
 # pyright: reportUnknownMemberType=false
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -20,6 +21,19 @@ from string_gsea.gsea.model.enrichment import (
 )
 from string_gsea.gsea.model.json_boundary import InvalidModelDocument
 from string_gsea.gsea.model.ranks import GenePool, RankList, RankListCollection
+
+
+def test_native_clusterprofiler_json_round_trip(tmp_path: Path) -> None:
+    """Fixture produced by protsea from clusterProfiler::GSEA with exponent 1.5."""
+    source = Path(__file__).parent / "data" / "compatibility" / "native_gsea.json"
+    original = json.loads(source.read_text())
+    result = GSEAResult.from_json(source)
+    category = result.get_category("A_vs_B", "PTMSEA")
+    assert category.gsea_result is not None
+    assert category.terms[0].leading_edge_ids
+    target = tmp_path / "roundtrip.json"
+    result.to_json(target)
+    assert json.loads(target.read_text()) == original
 
 
 @pytest.fixture

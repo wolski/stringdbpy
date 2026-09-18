@@ -1,9 +1,0 @@
-*.html
-*.R
-
-# Vendored FGCZ Quarto template assets (data-raw/sync_quarto_assets.R)
-!fgcz_header_quarto.html
-!fgcz-plot-finder.html
-
-/.quarto/
-**/*.quarto_ipynb

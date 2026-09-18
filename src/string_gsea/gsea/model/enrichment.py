@@ -8,6 +8,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import polars as pl
 
@@ -58,6 +59,7 @@ class TermGSEA:
     genes_mapped: int
     genes_in_set: int
     gene_ids: tuple[str, ...]
+    leading_edge_ids: tuple[str, ...] | None = None
 
     @property
     def gene_ratio(self) -> float:
@@ -72,7 +74,7 @@ class TermGSEA:
         return sum(h.input_value for h in hits) / len(hits)
 
     def to_dict(self) -> JsonObject:
-        return {
+        data: JsonObject = {
             "term_id": self.term_id,
             "category": self.category,
             "description": self.description,
@@ -84,6 +86,9 @@ class TermGSEA:
             "genes_in_set": self.genes_in_set,
             "gene_ids": list(self.gene_ids),
         }
+        if self.leading_edge_ids is not None:
+            data["leading_edge_ids"] = list(self.leading_edge_ids)
+        return data
 
     @classmethod
     def from_dict(cls, data: Mapping[str, object]) -> TermGSEA:
@@ -100,6 +105,14 @@ class TermGSEA:
             gene_ids=tuple(
                 required_string(item, "gene_ids entry")
                 for item in json_array(data.get("gene_ids"), "gene_ids")
+            ),
+            leading_edge_ids=(
+                tuple(
+                    required_string(item, "leading_edge_ids entry")
+                    for item in json_array(data["leading_edge_ids"], "leading_edge_ids")
+                )
+                if "leading_edge_ids" in data
+                else None
             ),
         )
 
@@ -128,6 +141,8 @@ class CategoryGSEA:
     contrast: str
     gene_pool: GenePool
     terms: tuple[TermGSEA, ...]
+    # Native R plotting payload, retained without interpreting S4-specific data.
+    gsea_result: JsonObject | None = None
 
     def __post_init__(self) -> None:
         for term in self.terms:
@@ -137,11 +152,14 @@ class CategoryGSEA:
 
     def to_dict(self) -> JsonObject:
         """Serialize category (without gene_pool — stored at contrast level)."""
-        return {
+        data: JsonObject = {
             "category": self.category,
             "contrast": self.contrast,
             "terms": [t.to_dict() for t in self.terms],
         }
+        if self.gsea_result is not None:
+            data["gsea_result"] = self.gsea_result
+        return data
 
     @classmethod
     def from_dict(cls, data: Mapping[str, object], gene_pool: GenePool) -> CategoryGSEA:
@@ -152,6 +170,11 @@ class CategoryGSEA:
             terms=tuple(
                 TermGSEA.from_dict(json_object(term, "term"))
                 for term in json_array(data.get("terms"), "terms")
+            ),
+            gsea_result=(
+                cast(JsonObject, json_object(data["gsea_result"], "gsea_result"))
+                if "gsea_result" in data
+                else None
             ),
         )
 

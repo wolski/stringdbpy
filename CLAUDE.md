@@ -49,4 +49,4 @@ string_gsea_workflow --help
 
 Use `--which none` for RNK archives. The other supported analysis policies are `pep_1`, `pep_1_no_imputed`, `pep_2`, and `pep_2_no_imputed`.
 
-The companion R package `stringGSEAplot` supplies report templates. Installed-package and workspace lookup are explicit injected locators; do not add exception-based fallback.
+The standalone companion R package `protsea` supplies report templates and the shared R JSON codec. Its workspace checkout is a sibling of stringdbpy. Installed-package and workspace lookup are explicit injected locators; do not add exception-based fallback.

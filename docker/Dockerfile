@@ -2,7 +2,7 @@
 # Mixed Python 3.13 + R 4.5 + Quarto + Snakemake
 # Multi-arch: linux/amd64, linux/arm64
 #
-# Build:  docker buildx build -f docker/Dockerfile -t string-gsea:local --load .
+# Build:  docker buildx build --build-context protsea=../protsea -f docker/Dockerfile -t string-gsea:local --load .
 # Run:    docker run --rm -v $(pwd)/tests:/work \
 #           -v ~/.config/string_gsea:/root/.config/string_gsea:ro \
 #           string-gsea:local --cores 1
@@ -51,13 +51,13 @@ assert installed == source, f'installed {installed}, sources say {source}'" \
 ENV PATH="/opt/venv/bin:$PATH"
 
 # ── FGCZ Quarto template — pinned, as prolfquapp pins it in its DESCRIPTION.
-#    stringGSEAplot Imports it, and fgcz_render() stages the theme from here at
+#    protsea Imports it, and fgcz_render() stages the theme from here at
 #    render time, so the styling of a report is fixed by this commit.  ──
 ARG FGCZ_QUARTO_TEMPLATE_REF=dbeb852bc14f4374d59ff8b94350faf84f4513e1
 RUN R -e "remotes::install_github('fgcz/fgczQuartoTemplate', ref='${FGCZ_QUARTO_TEMPLATE_REF}', dependencies=TRUE, upgrade='never')" \
     && Rscript -e "stopifnot(requireNamespace('fgczQuartoTemplate', quietly=TRUE))"
 
-# ── stringGSEAplot R package — built WITH vignettes and installed from the
+# ── protsea R package — built WITH vignettes and installed from the
 #    tarball, which is what activates `vignettes/.install_extras`: the qmd
 #    sources and the FGCZ assets land in the installed package's doc/. Building
 #    the vignette also renders the packaged example report, so a report that
@@ -66,24 +66,24 @@ RUN R -e "remotes::install_github('fgcz/fgczQuartoTemplate', ref='${FGCZ_QUARTO_
 #    fgcz_header_quarto.html and fgcz-plot-finder.html, which are assets the
 #    report includes, not output -- and the assets are checked afterwards, so
 #    the check describes what the image actually ships.  ──
-COPY stringGSEAplot /tmp/stringGSEAplot
+COPY --from=protsea / /tmp/protsea
 RUN cd /tmp \
-    && R CMD build stringGSEAplot \
-    && R CMD INSTALL stringGSEAplot_*.tar.gz \
-    && inst=$(Rscript -e "cat(find.package('stringGSEAplot'))") \
+    && R CMD build protsea \
+    && R CMD INSTALL protsea_*.tar.gz \
+    && inst=$(Rscript -e "cat(find.package('protsea'))") \
     && rm -f "$inst"/doc/GSEA_report.html "$inst"/doc/GSEA_report.R \
     && for asset in GSEA_report.qmd _metadata.yml fgcz.scss fgcz_header_quarto.html fgcz-plot-finder.html; do \
          test -f "$inst/doc/$asset" || { echo "missing from installed doc/: $asset"; exit 1; }; \
        done \
-    && rm -rf /tmp/stringGSEAplot /tmp/stringGSEAplot_*.tar.gz
+    && rm -rf /tmp/protsea /tmp/protsea_*.tar.gz
 
 # ── Shipped-state check. The render step crosses from Python into R, so the
 #    two halves have to agree in the image: a stale Python layer or a missing R
 #    export is a broken image, not a broken run. The doc/ listing is printed so
 #    a build log always records what the image ships.  ──
 RUN python -c "import importlib.metadata as meta; print('string-gsea', meta.version('string-gsea'))" \
-    && Rscript -e "stopifnot('render_gsea_reports' %in% getNamespaceExports('stringGSEAplot'))" \
-    && ls -1 "$(Rscript -e "cat(find.package('stringGSEAplot'))")/doc"
+    && Rscript -e "stopifnot('render_gsea_reports' %in% getNamespaceExports('protsea'))" \
+    && ls -1 "$(Rscript -e "cat(find.package('protsea'))")/doc"
 
 WORKDIR /work
 ENTRYPOINT ["string_gsea_workflow"]
