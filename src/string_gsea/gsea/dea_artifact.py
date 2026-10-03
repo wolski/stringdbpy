@@ -10,10 +10,13 @@ the numbers came from a linear model, limma or SAINTexpress.
 Layout written by `prolfquapp::as_AnnData.SummarizedExperiment()`:
 
 - `var` carries the per-feature annotation (identifiers, peptide counts)
-- each contrast is one `varm` matrix, its columns named in `uns` by
-  `varm_columns`, its non-numeric columns in `varm_annotations`, and the order
-  of both in `varm_column_order` / `varm_key_order`
+- each contrast is one `varm` entry, listed in order by `varm_key_order`
 - `uns["prolfquapp"]` carries the column roles, provenance and schema version
+
+The `varm` entry has two layouts. prolfquapp 2.10.x writes a numeric matrix,
+its columns named in `uns` by `varm_columns` and its non-numeric columns in
+`varm_annotations`. From 2.11.0 it writes a data frame carrying its own columns,
+the feature keys among them, and `varm_columns` is gone.
 """
 
 from __future__ import annotations
@@ -21,7 +24,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import Protocol, cast
 
 import anndata as ad
 import numpy as np
@@ -213,8 +216,9 @@ def read_dea_artifact(path: Path) -> DeaArtifact:
             f"feature annotation column: {features.columns}"
         )
 
+    layout = _varm_layout(metadata)
     frames = [
-        _contrast_frame(adata, metadata, key, features)
+        _with_features(features, layout.contrast_values(adata, key))
         for key in _names(metadata.get("varm_key_order"), "varm_key_order")
         if _is_contrast_key(key)
     ]
@@ -247,29 +251,65 @@ def _is_contrast_key(key: str) -> bool:
     return key.startswith("constrast_")
 
 
-def _contrast_frame(
-    adata: ad.AnnData,
-    metadata: Mapping[str, object],
-    key: str,
-    features: pl.DataFrame,
-) -> pl.DataFrame:
-    """One contrast's rows, feature annotation joined on the feature axis."""
-    columns = _names(_group_entry(metadata, "varm_columns", key), f"varm_columns[{key}]")
-    values = cast(Mapping[str, NDArray[np.float64]], adata.varm)[key]
-    if values.shape[1] != len(columns):
-        raise ValueError(
-            f"AnnData varm[{key}] has {values.shape[1]} columns but "
-            f"varm_columns names {len(columns)}"
+class _VarmLayout(Protocol):
+    """How one artifact stores a contrast's columns in `varm`."""
+
+    def contrast_values(self, adata: ad.AnnData, key: str) -> pl.DataFrame:
+        """One contrast's columns, row-aligned with `var`."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class _MatrixLayout:
+    """prolfquapp 2.10.x: a numeric matrix, its column names kept in `uns`."""
+
+    metadata: Mapping[str, object]
+
+    def contrast_values(self, adata: ad.AnnData, key: str) -> pl.DataFrame:
+        columns = _names(_group_entry(self.metadata, "varm_columns", key), f"varm_columns[{key}]")
+        values = cast(Mapping[str, NDArray[np.float64]], adata.varm)[key]
+        if values.shape[1] != len(columns):
+            raise ValueError(
+                f"AnnData varm[{key}] has {values.shape[1]} columns but "
+                f"varm_columns names {len(columns)}"
+            )
+        frame = pl.DataFrame(
+            {name: values[:, index] for index, name in enumerate(columns)},
         )
-    frame = pl.DataFrame(
-        {name: values[:, index] for index, name in enumerate(columns)},
-    )
-    annotations = _group_entry(metadata, "varm_annotations", key)
-    if isinstance(annotations, Mapping):
-        frame = frame.with_columns(
-            [pl.Series(name, list(column)) for name, column in annotations.items()]
-        )
-    return pl.concat([features, frame], how="horizontal")
+        annotations = _group_entry(self.metadata, "varm_annotations", key)
+        if isinstance(annotations, Mapping):
+            frame = frame.with_columns(
+                [pl.Series(name, list(column)) for name, column in annotations.items()]
+            )
+        return frame
+
+
+class _FrameLayout:
+    """prolfquapp 2.11.0+: a data frame indexed by the feature ids."""
+
+    def contrast_values(self, adata: ad.AnnData, key: str) -> pl.DataFrame:
+        values = cast(Mapping[str, object], adata.varm)[key]
+        if not isinstance(values, pd.DataFrame):
+            raise ValueError(
+                f"AnnData varm[{key}] is not a data frame, and no varm_columns names its columns"
+            )
+        return pl.from_pandas(values.reset_index(drop=True))
+
+
+def _varm_layout(metadata: Mapping[str, object]) -> _VarmLayout:
+    """The layout the writer used: only 2.10.x names the matrix columns in `uns`."""
+    if isinstance(metadata.get("varm_columns"), Mapping):
+        return _MatrixLayout(metadata)
+    return _FrameLayout()
+
+
+def _with_features(features: pl.DataFrame, values: pl.DataFrame) -> pl.DataFrame:
+    """One contrast's rows, feature annotation joined on the feature axis.
+
+    A 2.11.0 contrast frame repeats the feature keys `var` already carries;
+    the annotation's copy is kept.
+    """
+    return pl.concat([features, values.select(pl.exclude(features.columns))], how="horizontal")
 
 
 def _group_entry(metadata: Mapping[str, object], group: str, key: str) -> object:

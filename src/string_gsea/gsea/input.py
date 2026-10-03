@@ -45,15 +45,20 @@ class RankFilter(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class ExcludeImputedModel:
-    """Remove rows whose model name marks them as imputed.
+    """Remove the rows an XLSX sheet marks as imputed.
 
-    The XLSX schema names the model per row (``Imputed_Mean_moderated``), so
-    imputation is readable only from that label.
+    A sheet that records estimate provenance (``estimate_type``) is filtered on
+    it: there the model name is the facade's (``lm_impute``) on every row,
+    observed or not, and matching it would drop them all. An older sheet names
+    the model per row (``Imputed_Mean_moderated``), so imputation is readable
+    only from that label.
     """
 
     column: str = "modelName"
 
     def apply(self, dataframe: pl.DataFrame) -> pl.DataFrame:
+        if ESTIMATE_TYPE_COLUMN in dataframe.columns:
+            return KeepObservedEstimates().apply(dataframe)
         return dataframe.filter(~pl.col(self.column).str.contains("(?i)imput"))
 
 

@@ -30,10 +30,10 @@ from string_gsea.gsea.input import (
     select_rank_source,
 )
 from string_gsea.gsea.model.ranks import RankListCollection
-from tests.conftest import anndata_fixture_archives
+from tests.conftest import anndata_fixture_archives, anndata_fixture_id
 
 ARCHIVES = anndata_fixture_archives()
-MODELS = [archive.stem for archive in ARCHIVES]
+MODELS = [anndata_fixture_id(archive) for archive in ARCHIVES]
 
 # prolfquapp names a rank file `GSEA_<contrast>_WU<workunit>.rnk`, or
 # `Bait_<contrast>.rnk` for a directional backend.
@@ -67,6 +67,8 @@ def test_every_facade_has_a_fixture() -> None:
     assert len(ARCHIVES) >= 20, "regenerate with scripts/generate_h5ad_fixtures.R"
     assert "saint" in MODELS
     assert "lm" in MODELS
+    assert "v2_11/saint" in MODELS
+    assert "v2_11/lm_impute" in MODELS
 
 
 @pytest.mark.parametrize("archive", ARCHIVES, ids=MODELS)

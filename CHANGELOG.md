@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.5
+
+- Analyses from prolfquapp 2.11.0 rank again. 2.11.0 stores each contrast in the `AnnData.h5ad` as a `varm` data frame carrying its own column names and drops `uns["prolfquapp"]["varm_columns"]`, so every GSEA run on a current DEA result failed with `Missing varm_columns[...]`. Both layouts are now read: the 2.11.0 data frames, and the 2.10.x matrices named in `uns`.
+- `pep_1_no_imputed` and `pep_2_no_imputed` on the `DE_*.xlsx` sheet read `estimate_type` when the sheet has it. The model-name match marked every row of an `lm_impute` analysis as imputed, because the facade name is on every row, and the sheet ranked no contrast at all.
+
 ## 0.1.4
 
 - Read the parameterized STRING report from protsea's runtime templates. It is no longer executed as a package vignette, so building protsea documentation runs only the compact native GSEA round-trip article.

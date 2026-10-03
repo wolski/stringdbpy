@@ -31,6 +31,21 @@ def test_analysis_policies_apply_composed_filters() -> None:
     assert ANALYSIS_POLICIES[AnalysisName.PEP_2_NO_IMPUTED].apply(dataframe).height == 1
 
 
+def test_xlsx_no_imputed_reads_estimate_type_over_the_facade_name() -> None:
+    # prolfquapp 2.11.0 names the `lm_impute` facade on every row; only
+    # `estimate_type` says which rows it imputed.
+    dataframe = pl.DataFrame(
+        {
+            "modelName": ["lm_impute", "lm_impute", "lm_impute"],
+            "estimate_type": ["observed", "lod_imputed", "observed"],
+            "nrPeptides": [1, 2, 2],
+        }
+    )
+
+    assert ANALYSIS_POLICIES[AnalysisName.PEP_1_NO_IMPUTED].apply(dataframe).height == 2
+    assert ANALYSIS_POLICIES[AnalysisName.PEP_2_NO_IMPUTED].apply(dataframe).height == 1
+
+
 def _rank_archive(path: Path) -> Path:
     with zipfile.ZipFile(path, "w") as archive:
         archive.writestr("A.rnk", "P1\t1.5\nP2\t-0.5\n")

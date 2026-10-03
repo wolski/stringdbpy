@@ -83,6 +83,52 @@ def test_reads_a_minimal_artifact(tmp_path: Path) -> None:
     assert artifact.rows.height == 2
 
 
+def _frame_metadata() -> dict[str, object]:
+    """prolfquapp 2.11.0 metadata: no varm_columns, the frames name their own columns."""
+    metadata = _metadata()
+    del metadata["varm_columns"]
+    del metadata["varm_annotations"]
+    return metadata
+
+
+def test_reads_varm_data_frames(tmp_path: Path) -> None:
+    import pandas as pd
+
+    adata = ad.AnnData(
+        X=np.zeros((2, 2), dtype=float),
+        obs=pd.DataFrame(index=["S1", "S2"]),
+        var=pd.DataFrame({"protein_Id": ["P1", "P2"]}, index=["P1", "P2"]),
+    )
+    adata.varm["constrast_A"] = pd.DataFrame(
+        {
+            "modelName": ["lm", "lm"],
+            "protein_Id": ["P1", "P2"],
+            "contrast": ["A", "A"],
+            "diff": [1.0, -1.0],
+            "statistic": [2.0, -2.0],
+            "p.value": [0.01, 0.2],
+            "FDR": [0.02, 0.3],
+        },
+        index=["P1", "P2"],
+    )
+    adata.uns["prolfquapp"] = _frame_metadata()
+    path = tmp_path / "frames.h5ad"
+    adata.write_h5ad(path)
+
+    artifact = read_dea_artifact(path)
+
+    assert artifact.contrasts == ["A"]
+    assert artifact.rows.columns.count("protein_Id") == 1
+    assert artifact.rows.get_column("statistic").to_list() == [2.0, -2.0]
+
+
+def test_a_varm_matrix_without_column_names_is_refused(tmp_path: Path) -> None:
+    path = _write(tmp_path / "unnamed.h5ad", _frame_metadata(), varm=_values())
+
+    with pytest.raises(ValueError, match="no varm_columns names its columns"):
+        read_dea_artifact(path)
+
+
 def test_wrong_artifact_type_is_refused(tmp_path: Path) -> None:
     path = _write(tmp_path / "lfq.h5ad", _metadata(artifact_type="lfqdata"), varm=_values())
 
