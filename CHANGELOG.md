@@ -4,12 +4,11 @@
 
 - Analyses from prolfquapp 2.11.0 rank again. 2.11.0 stores each contrast in the `AnnData.h5ad` as a `varm` data frame carrying its own column names and drops `uns["prolfquapp"]["varm_columns"]`, so every GSEA run on a current DEA result failed with `Missing varm_columns[...]`. Both layouts are now read: the 2.11.0 data frames, and the 2.10.x matrices named in `uns`.
 - `pep_1_no_imputed` and `pep_2_no_imputed` on the `DE_*.xlsx` sheet read `estimate_type` when the sheet has it. The model-name match marked every row of an `lm_impute` analysis as imputed, because the facade name is on every row, and the sheet ranked no contrast at all.
-
-## 0.1.4
-
 - Read the parameterized STRING report from protsea's runtime templates. It is no longer executed as a package vignette, so building protsea documentation runs only the compact native GSEA round-trip article.
 - Use the standalone protsea R package for report rendering; local Docker builds take its sibling checkout as a named build context.
 - Preserve native clusterProfiler payloads and leading-edge memberships when reading and writing shared GSEA JSON.
+
+## 0.1.4
 
 - `docker/string_gsea_docker.sh` sets USER and LOGNAME. `--user` passes a uid with no `/etc/passwd` entry, so Snakemake's `getpass.getuser()` raised `No username set in the environment` before any rule ran; the workflow could not be run through the image from a checkout at all.
 - The image now installs this package from the sources being built instead of re-fetching GitHub `main`. A `git+https://` install never changes the Docker instruction's text, so the layer was reused from cache and the published image shipped a string-gsea one release behind: `0.1.3` carried `0.1.2` and rendered through the code path that release had replaced.
