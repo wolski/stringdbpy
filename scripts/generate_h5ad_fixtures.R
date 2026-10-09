@@ -17,6 +17,11 @@ suppressPackageStartupMessages({
 suppressPackageStartupMessages(
   saint_available <- requireNamespace("prolfquasaint", quietly = TRUE)
 )
+# prolfquatakeoutmissing registers `lm_missing`, which prolfqua 1.9.0 removed;
+# without it lm_missing.zip is not regenerated.
+suppressPackageStartupMessages(
+  requireNamespace("prolfquatakeoutmissing", quietly = TRUE)
+)
 
 args <- commandArgs(trailingOnly = TRUE)
 output_dir <- if (length(args) >= 1) args[[1]] else "tests/data/h5ad"
